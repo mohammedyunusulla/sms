@@ -17,8 +17,11 @@ export default function QrScannerInput({ label, value, onChange, idSeed }: QrSca
   useEffect(() => {
     return () => {
       if (qrRef.current) {
-        qrRef.current.stop().catch(() => undefined);
-        qrRef.current.clear().catch(() => undefined);
+        const instance = qrRef.current;
+        qrRef.current = null;
+        void instance.stop().catch(() => undefined).finally(() => {
+          instance.clear();
+        });
       }
     };
   }, []);
@@ -33,8 +36,9 @@ export default function QrScannerInput({ label, value, onChange, idSeed }: QrSca
         { fps: 10, qrbox: { width: 240, height: 240 } },
         (decodedText) => {
           onChange(decodedText.trim());
-          stopScanner();
-        }
+          void stopScanner();
+        },
+        () => undefined
       );
       setIsScanning(true);
     } catch (error: any) {
@@ -44,9 +48,10 @@ export default function QrScannerInput({ label, value, onChange, idSeed }: QrSca
 
   const stopScanner = async () => {
     if (!qrRef.current) return;
-    await qrRef.current.stop().catch(() => undefined);
-    await qrRef.current.clear().catch(() => undefined);
+    const instance = qrRef.current;
     qrRef.current = null;
+    await instance.stop().catch(() => undefined);
+    instance.clear();
     setIsScanning(false);
   };
 
