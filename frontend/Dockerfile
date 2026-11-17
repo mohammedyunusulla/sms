@@ -2,8 +2,18 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+ARG NPM_REGISTRY=https://registry.npmjs.org
+ARG NPM_TOKEN=
+
 COPY package*.json ./
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+RUN set -eux; \
+    npm config set registry "${NPM_REGISTRY}"; \
+    if [ -n "${NPM_TOKEN}" ]; then \
+      REG_HOST="$(echo "${NPM_REGISTRY}" | sed -E 's#^https?://##; s#/$##')"; \
+      npm config set "//${REG_HOST}/:_authToken" "${NPM_TOKEN}"; \
+    fi; \
+    if [ -f package-lock.json ]; then npm ci; else npm install; fi; \
+    rm -f /root/.npmrc
 
 COPY . .
 

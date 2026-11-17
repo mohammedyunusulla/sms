@@ -57,12 +57,18 @@ jobs:
           VM_USER: ${{ secrets.VM_USER }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           VM_SSH_PORT: ${{ secrets.VM_SSH_PORT }}
+          NPM_REGISTRY: ${{ secrets.NPM_REGISTRY }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
           PORT="${VM_SSH_PORT:-22}"
+          NPM_REGISTRY_ESCAPED="$(printf '%q' "${NPM_REGISTRY:-https://registry.npmjs.org}")"
+          NPM_TOKEN_ESCAPED="$(printf '%q' "${NPM_TOKEN:-}")"
           ssh -i ~/.ssh/id_rsa -p "$PORT" "$VM_USER@$VM_HOST" "bash -s" <<EOF
           set -euo pipefail
           cd "$DEPLOY_PATH"
+          export NPM_REGISTRY=${NPM_REGISTRY_ESCAPED}
+          export NPM_TOKEN=${NPM_TOKEN_ESCAPED}
           if command -v podman-compose >/dev/null 2>&1; then
             COMPOSE_CMD='podman-compose'
           elif command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
@@ -73,7 +79,8 @@ jobs:
           fi
 
           \$COMPOSE_CMD down || true
-          \$COMPOSE_CMD up -d --build
+          \$COMPOSE_CMD build backend frontend
+          \$COMPOSE_CMD up -d
 
           if command -v podman >/dev/null 2>&1; then
             podman image prune -f
