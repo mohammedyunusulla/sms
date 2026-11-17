@@ -639,8 +639,18 @@ def super_admin_stats(_: User = Depends(get_current_user)):
         data={
             "total_schools": 1,
             "active_schools": 1,
+            "inactive_schools": 0,
             "total_users": 1,
             "active_users": 1,
+            "total_super_admins": 1,
+            "total_school_admins": 0,
+            "plan_distribution": {
+                "BASIC": 0,
+                "STANDARD": 1,
+                "PREMIUM": 0,
+            },
+            "recent_schools": [],
+            "recent_admins": [],
         }
     )
 
@@ -926,13 +936,20 @@ def create_super_admin(payload: dict[str, Any], _: User = Depends(get_current_us
 def school_dashboard_stats(_: User = Depends(get_current_user)):
     return ok_response(
         data={
-            "total_institutions": 1,
+            "total_schools": 1,
+            "active_schools": 1,
+            "inactive_schools": 0,
             "total_users": 1,
-            "total_students": 0,
-            "total_educators": 0,
-            "active_institutions": 1,
-            "inactive_institutions": 0,
-            "system_health": 100,
+            "active_users": 1,
+            "total_super_admins": 1,
+            "total_school_admins": 0,
+            "plan_distribution": {
+                "BASIC": 0,
+                "STANDARD": 1,
+                "PREMIUM": 0,
+            },
+            "recent_schools": [],
+            "recent_admins": [],
             "last_updated": datetime.now(UTC).isoformat(),
         }
     )
