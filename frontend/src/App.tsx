@@ -122,6 +122,9 @@ const BusScanReport = lazy(() => import("./pages/BusManagement").then(m => ({ de
 const Assignments = lazy(() => import("./pages/AssignmentManagement").then(m => ({ default: m.Assignments })));
 const AssignmentReview = lazy(() => import("./pages/AssignmentManagement").then(m => ({ default: m.AssignmentReview })));
 const StudentAssignments = lazy(() => import("./pages/AssignmentManagement").then(m => ({ default: m.StudentAssignments })));
+const HomeworkHub = lazy(() => import("./modules/homework/pages/HomeworkHub"));
+const TeacherHomeworkPage = lazy(() => import("./modules/homework/pages/TeacherHomeworkPage"));
+const StudentHomeworkPage = lazy(() => import("./modules/homework/pages/StudentHomeworkPage"));
 
 /**
  * Wraps a route element with PermissionGuard if the path has a permission config.
@@ -334,6 +337,9 @@ function AppContent() {
                         <Route path="/assignments" element={guarded('/assignments', <Assignments />)} />
                         <Route path="/assignments/:id/review" element={guarded('/assignments/:id/review', <AssignmentReview />)} />
                         <Route path="/assignments/my-assignments" element={guarded('/assignments/my-assignments', <StudentAssignments />)} />
+                        <Route path="/homework" element={guarded('/homework', <HomeworkHub />)} />
+                        <Route path="/homework/teacher" element={guarded('/homework/teacher', <TeacherHomeworkPage />)} />
+                        <Route path="/homework/student" element={guarded('/homework/student', <StudentHomeworkPage />)} />
 
                         {/* Syllabus Management Routes */}
                         <Route path="/syllabus" element={guarded('/syllabus', <SyllabusList />)} />

@@ -14,6 +14,7 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
+*.db
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
@@ -37,3 +38,4 @@ pnpm-debug.log*
 # Containers / build
 *.tar
 *.log
+backend/uploads/
