@@ -17,13 +17,22 @@ SMS/
 ├─ backend/
 │  ├─ Dockerfile
 │  ├─ requirements.txt
-│  └─ main.py
+│  ├─ main.py
+│  └─ app/modules/homework/
+│     ├─ models.py
+│     ├─ gemini_service.py
+│     └─ router.py
 └─ frontend/
    ├─ Dockerfile
    ├─ nginx.conf
    ├─ package.json
-   ├─ vite.config.js
-   └─ src/
+   ├─ vite.config.ts
+   └─ src/modules/homework/
+      ├─ api/homeworkApi.ts
+      ├─ components/QrScannerInput.tsx
+      ├─ pages/TeacherHomeworkPage.tsx
+      ├─ pages/StudentHomeworkPage.tsx
+      └─ pages/HomeworkHub.tsx
 ```
 
 ## Runtime Architecture
@@ -57,6 +66,38 @@ Use `.env.example` as the baseline.
 - `APP_PORT=8000`
 - `CORS_ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,https://dev-sms.klopterz.in`
 - `VITE_API_BASE_URL=/api`
+- `GEMINI_API_KEY=<your-google-gemini-api-key>`
+- `HOMEWORK_UPLOAD_DIR=./uploads/homework` (optional)
+
+## AI-Assisted Homework & Efficiency Tracking Module
+
+New feature scope:
+
+- **Backend module:** `backend/app/modules/homework/`
+- **Frontend module:** `frontend/src/modules/homework/`
+- **API prefix:** `/api/homework`
+
+Key backend capabilities:
+
+- Student QR sticker assignment and retrieval.
+- Homework assignment creation/listing.
+- Session lifecycle (start, pause/resume, submit).
+- AI Socratic hints (`gemini-2.5-flash`) without direct answers.
+- AI grading from uploaded notebook images with structured feedback JSON.
+- Efficiency scoring based on accuracy, active time vs expected time, and hints used.
+- Teacher analytics endpoint for assignment-level completion and performance insights.
+
+Key frontend capabilities:
+
+- Teacher workflow:
+  - Create assignments with expected duration and optional rubric.
+  - Generate/print student QR stickers.
+  - View assignment analytics with efficiency indicators.
+- Student workflow:
+  - Scan sticker (camera/manual fallback) to start.
+  - Live timer with pause/resume.
+  - Ask AI for Socratic hints.
+  - Scan-to-finish and upload multiple notebook images for instant report card.
 
 ## Local Development
 
@@ -89,6 +130,13 @@ Or:
 ```bash
 docker compose down
 ```
+
+Notes:
+
+- Backend upload volume in compose:
+  - Host: `./backend/uploads`
+  - Container: `/app/uploads`
+- Ensure `GEMINI_API_KEY` is present before using homework hint/grading endpoints.
 
 ## CI/CD Workflow
 
