@@ -1,0 +1,83 @@
+name: Deploy SMS Dev
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed
+
+jobs:
+  deploy:
+    if: github.event_name == 'push' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+          VM_SSH_PORT: ${{ secrets.VM_SSH_PORT }}
+        run: |
+          set -euo pipefail
+          test -n "$VM_HOST"
+          test -n "$VM_USER"
+          test -n "$VM_SSH_KEY"
+          PORT="${VM_SSH_PORT:-22}"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$VM_SSH_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p "$PORT" -H "$VM_HOST" >> ~/.ssh/known_hosts
+
+      - name: Sync project to VM
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          VM_SSH_PORT: ${{ secrets.VM_SSH_PORT }}
+        run: |
+          set -euo pipefail
+          PORT="${VM_SSH_PORT:-22}"
+          rsync -az --delete \
+            --exclude ".git/" \
+            -e "ssh -i ~/.ssh/id_rsa -p $PORT" \
+            ./ "$VM_USER@$VM_HOST:$DEPLOY_PATH/"
+
+      - name: Rebuild and restart services
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          VM_SSH_PORT: ${{ secrets.VM_SSH_PORT }}
+        run: |
+          set -euo pipefail
+          PORT="${VM_SSH_PORT:-22}"
+          ssh -i ~/.ssh/id_rsa -p "$PORT" "$VM_USER@$VM_HOST" "bash -s" <<EOF
+          set -euo pipefail
+          cd "$DEPLOY_PATH"
+          if command -v podman-compose >/dev/null 2>&1; then
+            COMPOSE_CMD='podman-compose'
+          elif command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+            COMPOSE_CMD='docker compose'
+          else
+            echo 'No compose runtime found (podman-compose or docker compose).'
+            exit 1
+          fi
+
+          \$COMPOSE_CMD down || true
+          \$COMPOSE_CMD up -d --build
+
+          if command -v podman >/dev/null 2>&1; then
+            podman image prune -f
+          elif command -v docker >/dev/null 2>&1; then
+            docker image prune -f
+          fi
+          EOF
