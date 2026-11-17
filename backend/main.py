@@ -656,29 +656,157 @@ def super_admin_stats(_: User = Depends(get_current_user)):
 
 
 @app.get("/api/schoolAdminDashboard/stats/{skid}")
+def school_admin_dashboard_stats(skid: str, _: User = Depends(get_current_user)):
+    return ok_response(
+        data={
+            "academic_year": current_year_payload(),
+            "stats": {
+                "students_count": 0,
+                "male_students": 0,
+                "female_students": 0,
+                "teachers_count": 0,
+                "parents_count": 0,
+                "overall_users_count": 0,
+                "today_attendance_present": 0,
+                "today_attendance_total_students": 0,
+            },
+            "skid": skid,
+        }
+    )
+
+
 @app.get("/api/schoolAdminDashboard/attendance-overview/{skid}")
+def school_admin_attendance_overview(skid: str, _: User = Depends(get_current_user)):
+    return ok_response(
+        data={
+            "total_students": 0,
+            "weekly_trend": [],
+            "today_present": 0,
+            "today_absent": 0,
+            "today_total_marked": 0,
+            "today_percentage": 0,
+            "skid": skid,
+        }
+    )
+
+
 @app.get("/api/schoolAdminDashboard/finance-summary/{skid}")
+def school_admin_finance_summary(skid: str, _: User = Depends(get_current_user)):
+    return ok_response(
+        data={
+            "total_fees": 0,
+            "total_collected": 0,
+            "total_pending": 0,
+            "total_discount": 0,
+            "total_expenses": 0,
+            "collection_rate": 0,
+            "status_breakdown": {
+                "paid": 0,
+                "partial": 0,
+                "pending": 0,
+                "overdue": 0,
+            },
+            "recent_payments": [],
+            "skid": skid,
+        }
+    )
+
+
 @app.get("/api/schoolAdminDashboard/breakdown/monthly/{skid}")
+def school_admin_expense_breakdown(
+    skid: str,
+    month: int | None = None,
+    _: User = Depends(get_current_user),
+):
+    month_value = month if month and 1 <= month <= 12 else datetime.now(UTC).month
+    month_name = datetime(2000, month_value, 1).strftime("%B")
+    return ok_response(
+        data={
+            "month": month_value,
+            "year": datetime.now(UTC).year,
+            "month_name": month_name,
+            "total_expenses": 0,
+            "categories": [],
+            "dates": [],
+            "category_data": {},
+            "category_totals": {},
+            "skid": skid,
+        }
+    )
+
+
 @app.get("/api/schoolAdminDashboard/timetable/{skid}")
-def school_admin_dashboard(skid: str, _: User = Depends(get_current_user)):
-    return ok_response(data={"skid": skid, "summary": {}})
+def school_admin_timetable(skid: str, _: User = Depends(get_current_user)):
+    return ok_response(
+        data={
+            "timetable": None,
+            "entries": [],
+            "timetable_by_day": {},
+            "skid": skid,
+        }
+    )
 
 
 @app.get("/api/teacherDashboard/students/teacher/count/{skid}/{teacher_id}")
+def teacher_student_count(skid: str, teacher_id: int, _: User = Depends(get_current_user)):
+    return ok_response(data={"skid": skid, "teacher_id": teacher_id, "count": 0})
+
+
 @app.get("/api/teacherDashboard/attendance/absentees/count/{skid}/{academic_year_id}/{date}")
-@app.get("/api/teacherDashboard/timetable/teacher/{skid}/{teacher_id}/{date}")
-@app.get("/api/teacherDashboard/timetable/teacher/week/{skid}/{teacher_id}")
-def teacher_dashboard(
+def teacher_absentees_count(
     skid: str,
-    teacher_id: int,
+    academic_year_id: int,
+    date: str,
     _: User = Depends(get_current_user),
 ):
-    return ok_response(data={"skid": skid, "teacher_id": teacher_id, "items": []})
+    return ok_response(
+        data={
+            "skid": skid,
+            "academic_year_id": academic_year_id,
+            "date": date,
+            "count": 0,
+            "preview": [],
+        }
+    )
+
+
+@app.get("/api/teacherDashboard/timetable/teacher/{skid}/{teacher_id}/{date}")
+def teacher_day_timetable(
+    skid: str,
+    teacher_id: int,
+    date: str,
+    _: User = Depends(get_current_user),
+):
+    return ok_response(data=[])
+
+
+@app.get("/api/teacherDashboard/timetable/teacher/week/{skid}/{teacher_id}")
+def teacher_week_timetable(
+    skid: str,
+    teacher_id: int,
+    start_date: str | None = None,
+    _: User = Depends(get_current_user),
+):
+    return ok_response(
+        data={
+            "skid": skid,
+            "teacher_id": teacher_id,
+            "week_start": start_date or datetime.now(UTC).date().isoformat(),
+            "timetable_by_day": {
+                "Monday": [],
+                "Tuesday": [],
+                "Wednesday": [],
+                "Thursday": [],
+                "Friday": [],
+                "Saturday": [],
+            },
+        }
+    )
 
 
 @app.get("/api/timeTable/student/{skid}/{student_id}/{date}")
 def student_day_timetable(skid: str, student_id: int, date: str, _: User = Depends(get_current_user)):
-    return ok_response(data={"skid": skid, "student_id": student_id, "date": date, "slots": []})
+    return ok_response(data=[])
 
 
 @app.get("/api/educator/dashboard")
