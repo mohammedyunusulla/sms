@@ -748,20 +748,65 @@ def school_admin_timetable(skid: str, _: User = Depends(get_current_user)):
 
 
 @app.get("/api/teacherDashboard/students/teacher/count/{skid}/{teacher_id}")
+def teacher_student_count(skid: str, teacher_id: int, _: User = Depends(get_current_user)):
+    return ok_response(data={"skid": skid, "teacher_id": teacher_id, "count": 0})
+
+
 @app.get("/api/teacherDashboard/attendance/absentees/count/{skid}/{academic_year_id}/{date}")
-@app.get("/api/teacherDashboard/timetable/teacher/{skid}/{teacher_id}/{date}")
-@app.get("/api/teacherDashboard/timetable/teacher/week/{skid}/{teacher_id}")
-def teacher_dashboard(
+def teacher_absentees_count(
     skid: str,
-    teacher_id: int,
+    academic_year_id: int,
+    date: str,
     _: User = Depends(get_current_user),
 ):
-    return ok_response(data={"skid": skid, "teacher_id": teacher_id, "items": []})
+    return ok_response(
+        data={
+            "skid": skid,
+            "academic_year_id": academic_year_id,
+            "date": date,
+            "count": 0,
+            "preview": [],
+        }
+    )
+
+
+@app.get("/api/teacherDashboard/timetable/teacher/{skid}/{teacher_id}/{date}")
+def teacher_day_timetable(
+    skid: str,
+    teacher_id: int,
+    date: str,
+    _: User = Depends(get_current_user),
+):
+    return ok_response(data=[])
+
+
+@app.get("/api/teacherDashboard/timetable/teacher/week/{skid}/{teacher_id}")
+def teacher_week_timetable(
+    skid: str,
+    teacher_id: int,
+    start_date: str | None = None,
+    _: User = Depends(get_current_user),
+):
+    return ok_response(
+        data={
+            "skid": skid,
+            "teacher_id": teacher_id,
+            "week_start": start_date or datetime.now(UTC).date().isoformat(),
+            "timetable_by_day": {
+                "Monday": [],
+                "Tuesday": [],
+                "Wednesday": [],
+                "Thursday": [],
+                "Friday": [],
+                "Saturday": [],
+            },
+        }
+    )
 
 
 @app.get("/api/timeTable/student/{skid}/{student_id}/{date}")
 def student_day_timetable(skid: str, student_id: int, date: str, _: User = Depends(get_current_user)):
-    return ok_response(data={"skid": skid, "student_id": student_id, "date": date, "slots": []})
+    return ok_response(data=[])
 
 
 @app.get("/api/educator/dashboard")
