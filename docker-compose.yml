@@ -2,7 +2,7 @@ services:
   backend:
     container_name: sms_backend_dev
     build:
-      context: ./school-management-backend
+      context: ./backend
     restart: always
     environment:
       DATABASE_URL: postgresql://admin:ChangeThisStrongPassword123!@global_postgres:5432/sms_dev
@@ -17,7 +17,7 @@ services:
   frontend:
     container_name: sms_frontend_dev
     build:
-      context: ./school-management-frontend
+      context: ./frontend
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
     restart: always
