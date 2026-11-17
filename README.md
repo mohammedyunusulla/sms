@@ -14,11 +14,11 @@ SMS/
 ├─ .gitignore
 ├─ .env.example
 ├─ docker-compose.yml
-├─ school-management-backend/
+├─ backend/
 │  ├─ Dockerfile
 │  ├─ requirements.txt
 │  └─ main.py
-└─ school-management-frontend/
+└─ frontend/
    ├─ Dockerfile
    ├─ nginx.conf
    ├─ package.json
