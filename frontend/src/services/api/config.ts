@@ -145,4 +145,15 @@ export const API_ENDPOINTS = {
         UPDATE_SUBMISSIONS: (assignmentId: number) => `/assignments/${assignmentId}/submissions`,
         DELETE: (assignmentId: number) => `/assignments/${assignmentId}`,
     },
+    HOMEWORK: {
+        ASSIGN_STICKER: '/homework/stickers/assign',
+        LIST_STICKERS: '/homework/stickers',
+        CREATE_ASSIGNMENT: '/homework/assignments',
+        LIST_ASSIGNMENTS: '/homework/assignments',
+        START_SESSION: '/homework/sessions/start',
+        TOGGLE_PAUSE: (sessionId: number) => `/homework/sessions/${sessionId}/toggle-pause`,
+        ASK_HINT: (sessionId: number) => `/homework/sessions/${sessionId}/hint`,
+        SUBMIT: (sessionId: number) => `/homework/sessions/${sessionId}/submit`,
+        ANALYTICS: (assignmentId: number) => `/homework/analytics/assignment/${assignmentId}`,
+    },
 } as const;

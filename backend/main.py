@@ -10,6 +10,9 @@ from pydantic import BaseModel
 from sqlalchemy import JSON, Boolean, DateTime, Integer, String, create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
+from app.modules.homework.models import create_homework_tables
+from app.modules.homework.router import create_homework_router
+
 
 def _parse_origins() -> list[str]:
     raw = os.getenv(
@@ -341,11 +344,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.include_router(
+    create_homework_router(
+        get_db_dep=get_db,
+        get_current_user_dep=get_current_user,
+        ok_response_fn=ok_response,
+        resource_record_model=ResourceRecord,
+    )
+)
 
 
 @app.on_event("startup")
 def startup_event() -> None:
     Base.metadata.create_all(bind=engine)
+    create_homework_tables(engine)
     db = SessionLocal()
     try:
         exists = db.scalar(select(User).where(User.username == "admin"))

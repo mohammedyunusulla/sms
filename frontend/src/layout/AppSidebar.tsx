@@ -69,6 +69,12 @@ const allMenuItems: NavItem[] = [
         name: "My Assignments",
         path: "/assignments/my-assignments",
     },
+    // AI Homework Tracking (Teacher/Student/Admin)
+    {
+        icon: <TaskIcon />,
+        name: "Homework AI",
+        path: "/homework",
+    },
     // Attendance (SchoolAdmin, Principal, Teacher)
     {
         icon: <ListIcon />,

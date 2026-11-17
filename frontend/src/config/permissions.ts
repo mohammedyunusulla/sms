@@ -175,6 +175,9 @@ export const ROUTE_PERMISSION_MAP: Record<string, RoutePermissionConfig> = {
   '/assignments': { permission: Permission.MANAGE_ASSIGNMENTS },
   '/assignments/:id/review': { permission: Permission.MANAGE_ASSIGNMENTS },
   '/assignments/my-assignments': { permission: Permission.VIEW_ASSIGNMENTS },
+  '/homework': { anyPermission: [Permission.MANAGE_ASSIGNMENTS, Permission.VIEW_ASSIGNMENTS] },
+  '/homework/teacher': { permission: Permission.MANAGE_ASSIGNMENTS },
+  '/homework/student': { permission: Permission.VIEW_ASSIGNMENTS },
 
   // Bus Scan
   '/bus-scan': { permission: Permission.MANAGE_BUS_SCAN },
@@ -311,6 +314,12 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, SidebarGroupPermissionConfig
     excludeFromFullAccess: ['/assignments/my-assignments'],
     excludeIfHasPermission: {
       '/assignments/my-assignments': Permission.MANAGE_ASSIGNMENTS,
+    },
+  },
+  'Homework AI': {
+    groupPermissions: [Permission.MANAGE_ASSIGNMENTS, Permission.VIEW_ASSIGNMENTS],
+    itemPermissions: {
+      '/homework': Permission.VIEW_ASSIGNMENTS,
     },
   },
   'Syllabus Management': {
