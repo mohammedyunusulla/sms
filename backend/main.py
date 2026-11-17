@@ -882,54 +882,189 @@ def school_toggle_status(
 
 
 @app.get("/api/school/list/school-admins")
-def school_admin_list(_: User = Depends(get_current_user)):
-    return ok_response(data=[])
+def school_admin_list(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+    admins = db.scalars(select(User).where(User.role == "SCHOOL_ADMIN")).all()
+    return ok_response(
+        data=[
+            {
+                "id": admin.id,
+                "first_name": admin.first_name,
+                "last_name": admin.last_name,
+                "full_name": f"{admin.first_name} {admin.last_name}".strip(),
+                "username": admin.username,
+                "email": admin.email,
+                "phone": admin.phone,
+                "role": admin.role,
+                "school_id": admin.school_id,
+                "school_name": admin.school_name,
+                "school_code": admin.school_code,
+                "skid": admin.skid,
+                "is_active": admin.is_active,
+            }
+            for admin in admins
+        ]
+    )
 
 
 @app.patch("/api/school/school-admin/change-password/{admin_id}")
-def school_admin_change_password(admin_id: int, _: dict[str, Any], __: User = Depends(get_current_user)):
+def school_admin_change_password(
+    admin_id: int,
+    payload: dict[str, Any],
+    db: Session = Depends(get_db),
+    __: User = Depends(get_current_user),
+):
+    user = db.get(User, admin_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="School admin not found")
+    new_password = payload.get("new_password")
+    if not new_password:
+        raise HTTPException(status_code=400, detail="new_password is required")
+    user.password_hash = get_password_hash(str(new_password))
+    db.add(user)
+    db.commit()
     return ok_response(data={"admin_id": admin_id}, message="Password updated")
 
 
 @app.get("/api/users/schoolAdmin/{skid}/{admin_id}")
-def get_school_admin(skid: str, admin_id: int, _: User = Depends(get_current_user)):
-    return ok_response(
-        extra={
-            "user": {
-                "id": admin_id,
-                "skid": skid,
-                "username": "school_admin",
-                "email": "admin@school.com",
-                "role": "SCHOOL_ADMIN",
-            }
-        }
-    )
+def get_school_admin(
+    skid: str,
+    admin_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    user = db.get(User, admin_id)
+    if not user or user.skid != skid:
+        raise HTTPException(status_code=404, detail="School admin not found")
+    return ok_response(extra={"user": auth_user_payload(user)})
 
 
 @app.post("/api/users/create")
 def create_user_endpoint(
     payload: dict[str, Any], db: Session = Depends(get_db), _: User = Depends(get_current_user)
 ):
+    email = payload.get("email")
+    username = payload.get("username") or email
+    password = payload.get("password")
+    if not email or not username or not password:
+        raise HTTPException(status_code=400, detail="email, username, and password are required")
+
+    exists = db.scalar(select(User).where((User.email == email) | (User.username == username)))
+    if exists:
+        raise HTTPException(status_code=409, detail="User already exists")
+
+    school_id = int(payload.get("school_id") or 1)
+    role = str(payload.get("role") or "SCHOOL_ADMIN")
+    user = User(
+        username=str(username),
+        email=str(email),
+        password_hash=get_password_hash(str(password)),
+        first_name=str(payload.get("first_name") or "School"),
+        last_name=str(payload.get("last_name") or "Admin"),
+        phone=str(payload.get("phone") or ""),
+        role=role,
+        plan=str(payload.get("plan") or "standard"),
+        school_id=school_id,
+        school_code=str(payload.get("school_code") or payload.get("skid") or "EDU001"),
+        school_name=str(payload.get("school_name") or "Edusphere School"),
+        skid=str(payload.get("skid") or "EDU001"),
+        school_user_id=school_id,
+        is_active=bool(payload.get("is_active", True)),
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
     record = create_record(db, "users", payload)
-    return ok_response(extra={"user": record_to_dict(record)}, message="User created")
+    return ok_response(
+        data={"resource_record": record_to_dict(record)},
+        extra={"user": auth_user_payload(user)},
+        message="User created",
+    )
 
 
 @app.put("/api/users/update/{user_id}")
 def update_user_endpoint(
     user_id: int, payload: dict[str, Any], db: Session = Depends(get_db), _: User = Depends(get_current_user)
 ):
-    record = update_record(db, user_id, payload)
-    return ok_response(extra={"user": record_to_dict(record)}, message="User updated")
+    user = db.get(User, user_id)
+    if user:
+        if "first_name" in payload:
+            user.first_name = str(payload["first_name"])
+        if "last_name" in payload:
+            user.last_name = str(payload["last_name"])
+        if "email" in payload:
+            user.email = str(payload["email"])
+        if "username" in payload:
+            user.username = str(payload["username"])
+        if "phone" in payload:
+            user.phone = str(payload["phone"])
+        if "role" in payload:
+            user.role = str(payload["role"])
+        if "skid" in payload:
+            user.skid = str(payload["skid"])
+        if "school_name" in payload:
+            user.school_name = str(payload["school_name"])
+        if "school_code" in payload:
+            user.school_code = str(payload["school_code"])
+        if "password" in payload and payload["password"]:
+            user.password_hash = get_password_hash(str(payload["password"]))
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    record = db.get(ResourceRecord, user_id)
+    if record and record.resource == "users":
+        record = update_record(db, user_id, payload)
+    response_user = auth_user_payload(user) if user else (record_to_dict(record) if record else payload)
+    return ok_response(extra={"user": response_user}, message="User updated")
 
 
 @app.get("/api/users/super-admins")
-def list_super_admins(_: User = Depends(get_current_user)):
-    return ok_response(data=[{"id": 1, "username": "admin", "role": "SUPER_ADMIN"}])
+def list_super_admins(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+    admins = db.scalars(select(User).where(User.role == "SUPER_ADMIN")).all()
+    return ok_response(
+        data=[
+            {
+                "id": admin.id,
+                "username": admin.username,
+                "email": admin.email,
+                "role": admin.role,
+                "is_active": admin.is_active,
+            }
+            for admin in admins
+        ]
+    )
 
 
 @app.post("/api/users/create-super-admin")
-def create_super_admin(payload: dict[str, Any], _: User = Depends(get_current_user)):
-    return ok_response(extra={"user": payload}, message="Super admin created")
+def create_super_admin(
+    payload: dict[str, Any], db: Session = Depends(get_db), _: User = Depends(get_current_user)
+):
+    email = payload.get("email")
+    username = payload.get("username") or email
+    password = payload.get("password")
+    if not username or not password:
+        raise HTTPException(status_code=400, detail="username/email and password are required")
+
+    exists = db.scalar(select(User).where((User.email == email) | (User.username == username)))
+    if exists:
+        raise HTTPException(status_code=409, detail="User already exists")
+
+    user = User(
+        username=str(username),
+        email=str(email or f"{username}@school.com"),
+        password_hash=get_password_hash(str(password)),
+        first_name=str(payload.get("first_name") or "Super"),
+        last_name=str(payload.get("last_name") or "Admin"),
+        role="SUPER_ADMIN",
+        school_name=str(payload.get("school_name") or "Edusphere School"),
+        school_code=str(payload.get("school_code") or "EDU001"),
+        skid=str(payload.get("skid") or "EDU001"),
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return ok_response(extra={"user": auth_user_payload(user)}, message="Super admin created")
 
 
 @app.get("/api/school/dashboard/stats")
