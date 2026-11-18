@@ -24,7 +24,9 @@ USER app
 
 EXPOSE 8000
 
-ENV APP_MODULE=main:app \
-    APP_PORT=8000
+ENV APP_PORT=8000 \
+    FLASK_HOST=0.0.0.0 \
+    FLASK_PORT=8000 \
+    FLASK_DEBUG=False
 
-CMD ["sh", "-c", "${BACKEND_START_CMD:-uvicorn ${APP_MODULE} --host 0.0.0.0 --port ${APP_PORT}}"]
+CMD ["sh", "-c", "${BACKEND_START_CMD:-python run.py}"]
