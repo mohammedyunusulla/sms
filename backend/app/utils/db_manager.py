@@ -11,6 +11,7 @@ from app import db
 from app.utils.seeders import seed_default_roles
 from flask import current_app
 from urllib.parse import urlparse
+from urllib.parse import quote_plus
 
 
 logger = logging.getLogger(__name__)
@@ -125,9 +126,8 @@ from contextlib import contextmanager
 def switch_to_school_db(skid):
     # Dynamically build DB URI
     db_name = f"skool_{skid}"
-    print("db_name", db_name)
-    db_uri = f"postgresql://{Config.POSTGRES_USER}:{Config.POSTGRES_PASSWORD}@{Config.POSTGRES_HOST}:{Config.POSTGRES_PORT}/{db_name}"
-    print("db_uri", db_uri)
+    encoded_password = quote_plus(Config.POSTGRES_PASSWORD)
+    db_uri = f"postgresql://{Config.POSTGRES_USER}:{encoded_password}@{Config.POSTGRES_HOST}:{Config.POSTGRES_PORT}/{db_name}"
     engine = create_engine(db_uri)
     
     from sqlalchemy.orm import sessionmaker

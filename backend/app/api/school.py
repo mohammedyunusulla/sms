@@ -28,7 +28,7 @@ def create_school():
                 'message': f"School with code '{data['code']}' already exists.",
                 'status': 'error',
                 'code': 409
-            }), 200
+            }), 409
         
         # Create school
         result = SchoolService.create_school(data)
