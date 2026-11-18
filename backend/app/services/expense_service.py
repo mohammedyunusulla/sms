@@ -1,0 +1,446 @@
+from app.models.tenant import SchoolUsers, Teacher, Staff
+from app.models.tenant.ExpenseModels import *
+from app.utils.db_manager import switch_to_school_db
+from sqlalchemy.orm import joinedload
+
+class ExpenseService:
+    # Predefined categories (from UI constant)
+    EXPENSE_CATEGORIES = [
+        "Staff Salaries",
+        "Electricity Bill",
+        "Water Bill",
+        "Functions/Events",
+        "Transport/Vehicle Service",
+        "Maintenance",
+        "Supplies/Stationery",
+        "Infrastructure",
+        "Other"
+    ]
+    
+    @staticmethod
+    def get_staff_salary_setups(skid, academic_year_id):
+        """Get all salary setups for staff - optimized with eager loading"""
+        try:
+            with switch_to_school_db(skid) as tenant_session:
+                setups = (
+                    tenant_session.query(StaffSalarySetup)
+                    .join(SchoolUsers, StaffSalarySetup.staff_id == SchoolUsers.id)
+                    .outerjoin(Teacher, SchoolUsers.id == Teacher.user_id)
+                    .outerjoin(Staff, SchoolUsers.id == Staff.user_id)
+                    .options(
+                        joinedload(StaffSalarySetup.staff).joinedload(SchoolUsers.role_obj),
+                        joinedload(StaffSalarySetup.staff).joinedload(SchoolUsers.teacher),
+                        joinedload(StaffSalarySetup.staff).joinedload(SchoolUsers.staff)
+                    )
+                    .filter(
+                        StaffSalarySetup.is_active == True,
+                        StaffSalarySetup.academic_year_id == academic_year_id
+                    )
+                    .order_by(SchoolUsers.first_name, SchoolUsers.last_name)
+                    .all()
+                )
+                
+                return [
+                    {
+                        'id': s.id,
+                        'staff_id': s.staff_id,
+                        'staff_name': f"{s.staff.first_name} {s.staff.last_name}",
+                        'role_name': s.staff.role_obj.role_name if s.staff.role_obj else None,
+                        'employee_id': s.staff.teacher.employee_id if s.staff.teacher else (s.staff.staff.employee_id if s.staff.staff else None),
+                        'basic_salary': float(s.basic_salary),
+                        'allowances': s.allowances,
+                        'deductions': s.deductions,
+                        'gross_salary': float(s.gross_salary),
+                        'net_salary': float(s.net_salary),
+                        'effective_from': s.effective_from.isoformat() if s.effective_from else None,
+                        'effective_to': s.effective_to.isoformat() if s.effective_to else None,
+                        'is_active': s.is_active,
+                        'academic_year_id': s.academic_year_id
+                    }
+                    for s in setups
+                ]
+                
+        except Exception as e:
+            raise Exception(f"Failed to get salary setups: {str(e)}")
+    
+    @staticmethod
+    def create_salary_setup(skid, data):
+        try:
+            with switch_to_school_db(skid) as tenant_session:
+                # Calculate gross and net
+                allowances_total = sum(data.get('allowances', {}).values())
+                deductions_total = sum(data.get('deductions', {}).values())
+                gross = data['basic_salary'] + allowances_total
+                net = gross - deductions_total
+                
+                setup = StaffSalarySetup(
+                    staff_id=data['staff_id'],
+                    academic_year_id=data['academic_year_id'],
+                    basic_salary=data['basic_salary'],
+                    allowances=data.get('allowances', {}),
+                    deductions=data.get('deductions', {}),
+                    gross_salary=gross,
+                    net_salary=net,
+                    effective_from=data['effective_from'],
+                    effective_to=data.get('effective_to'),
+                    is_active=True
+                )
+                
+                tenant_session.add(setup)
+                tenant_session.commit()
+                return setup.to_dict()
+        except Exception as e:
+            tenant_session.rollback()
+            raise Exception(f"Failed to create salary setup: {str(e)}")
+            
+    @staticmethod
+    def update_salary_setup(skid, data):
+        """Update existing salary setup - simplified"""
+        try:
+            with switch_to_school_db(skid) as tenant_session:
+                setup_id = data.get('id')
+                if not setup_id:
+                    raise ValueError("Setup ID is required for update")
+                
+                # Fetch setup
+                setup = tenant_session.query(StaffSalarySetup).filter(
+                    StaffSalarySetup.id == setup_id
+                ).one_or_none()
+                
+                if not setup:
+                    raise ValueError("Salary setup not found")
+                
+                # Calculate new totals
+                basic = data['basic_salary']
+                allowances = data.get('allowances', {})
+                deductions = data.get('deductions', {})
+                allowances_total = sum(allowances.values())
+                deductions_total = sum(deductions.values())
+                gross = basic + allowances_total
+                net = gross - deductions_total
+                
+                # Update fields
+                setup.basic_salary = basic
+                setup.allowances = allowances
+                setup.deductions = deductions
+                setup.gross_salary = gross
+                setup.net_salary = net
+                setup.effective_from = data['effective_from']
+                setup.effective_to = data.get('effective_to')
+                setup.is_active = data.get('is_active', True)
+                
+                tenant_session.commit()
+                
+        except Exception as e:
+            tenant_session.rollback()
+            raise Exception(f"Failed to update salary setup: {str(e)}")
+
+            
+    @staticmethod
+    def delete_salary_setup(skid, setup_id):
+        """Delete (soft delete) salary setup"""
+        try:
+            with switch_to_school_db(skid) as tenant_session:
+                setup = tenant_session.query(StaffSalarySetup).filter(
+                    StaffSalarySetup.id == setup_id
+                ).one_or_none()
+                
+                if not setup:
+                    raise ValueError("Salary setup not found")
+                
+                # Check if there are any salary payments linked
+                payment_count = tenant_session.query(SalaryPayment).filter(
+                    SalaryPayment.salary_setup_id == setup_id
+                ).count()
+                
+                if payment_count > 0:
+                    # Soft delete - just mark as inactive
+                    setup.is_active = False
+                    tenant_session.commit()
+                    return {'message': 'Salary setup deactivated (has payment history)', 'soft_delete': True}
+                else:
+                    # Hard delete - no payment history
+                    tenant_session.delete(setup)
+                    tenant_session.commit()
+                    return {'message': 'Salary setup deleted successfully', 'soft_delete': False}
+                    
+        except Exception as e:
+            tenant_session.rollback()
+            raise Exception(f"Failed to delete salary setup: {str(e)}")
+        
+    @staticmethod
+    def generate_monthly_salaries(skid, academic_year_id, month, year):
+        try:
+            with switch_to_school_db(skid) as tenant_session:
+                # Get all active salary setups
+                setups = (
+                    tenant_session.query(StaffSalarySetup)
+                    .filter(
+                        StaffSalarySetup.academic_year_id == academic_year_id,
+                        StaffSalarySetup.is_active == True
+                    )
+                    .all()
+                )
+                
+                payments = []
+                for setup in setups:
+                    # Check if already generated
+                    existing = (
+                        tenant_session.query(SalaryPayment)
+                        .filter(
+                            SalaryPayment.staff_id == setup.staff_id,
+                            SalaryPayment.payment_month == month,
+                            SalaryPayment.payment_year == year
+                        )
+                        .first()
+                    )
+                    
+                    if not existing:
+                        payment = SalaryPayment(
+                            staff_id=setup.staff_id,
+                            salary_setup_id=setup.id,
+                            academic_year_id=academic_year_id,
+                            payment_month=month,
+                            payment_year=year,
+                            basic_salary=setup.basic_salary,
+                            allowances_paid=setup.allowances,
+                            deductions_applied=setup.deductions,
+                            gross_amount=setup.gross_salary,
+                            net_amount_paid=setup.net_salary,
+                            status='pending'
+                        )
+                        tenant_session.add(payment)
+                        payments.append(payment)
+                
+                tenant_session.commit()
+                return [
+                    {
+                        **p.to_dict(),
+                        'staff_name': p.staff.full_name
+                    }
+                    for p in payments
+                ]
+        except Exception as e:
+            tenant_session.rollback()
+            raise Exception(f"Failed to generate salaries: {str(e)}")
+    
+    @staticmethod
+    def mark_salary_paid(skid, payment_id, payment_data):
+        try:
+            with switch_to_school_db(skid) as tenant_session:
+                payment = tenant_session.query(SalaryPayment).get(payment_id)
+                if not payment:
+                    raise ValueError("Payment not found")
+                
+                payment.status = 'paid'
+                payment.payment_date = payment_data.get('payment_date')
+                payment.payment_method = payment_data.get('payment_method')
+                payment.transaction_reference = payment_data.get('transaction_reference')
+                payment.paid_by = payment_data.get('paid_by')
+                
+                # Auto-create expense entry
+                expense = Expense(
+                    academic_year_id=payment.academic_year_id,
+                    expense_category='Staff Salaries',
+                    expense_date=payment.payment_date,
+                    amount=payment.net_amount_paid,
+                    vendor_name=payment.staff.full_name,
+                    description=f"Salary payment for {payment.staff.full_name} - {payment.payment_month}/{payment.payment_year}",
+                    reference_type='salary_payment',
+                    reference_id=payment.id,
+                    payment_method=payment.payment_method,
+                    approval_status='approved',
+                    approved_by=payment_data.get('paid_by'),
+                    created_by=payment_data.get('paid_by')
+                )
+                
+                tenant_session.add(expense)
+                tenant_session.commit()
+                return payment.to_dict()
+        except Exception as e:
+            tenant_session.rollback()
+            raise Exception(f"Failed to mark salary as paid: {str(e)}")
+    
+    
+    @staticmethod
+    def mark_salary_unpaid(skid, payment_id):
+        """Mark salary as unpaid - revert payment and delete expense"""
+        try:
+            with switch_to_school_db(skid) as tenant_session:
+                # Get the salary payment
+                payment = (
+                    tenant_session.query(SalaryPayment)
+                    .options(joinedload(SalaryPayment.staff))
+                    .filter(SalaryPayment.id == payment_id)
+                    .one_or_none()
+                )
+                
+                if not payment:
+                    raise ValueError("Payment not found")
+                
+                if payment.status != 'paid':
+                    raise ValueError("Payment is not in paid status")
+                
+                # Find and delete the linked expense
+                expense = tenant_session.query(Expense).filter(
+                    Expense.reference_type == 'salary_payment',
+                    Expense.reference_id == payment_id
+                ).first()
+                
+                if expense:
+                    tenant_session.delete(expense)
+                
+                # Revert payment status
+                payment.status = 'pending'
+                payment.payment_date = None
+                payment.payment_method = None
+                payment.transaction_reference = None
+                payment.paid_by = None
+                
+                tenant_session.commit()
+
+        except Exception as e:
+            tenant_session.rollback()
+            raise Exception(f"Failed to mark salary as unpaid: {str(e)}")
+
+    
+    @staticmethod
+    def create_expense(skid, data):
+        """Create expense record - type-safe"""
+        try:
+            with switch_to_school_db(skid) as tenant_session:
+                expense = Expense(
+                    academic_year_id=int(data['academic_year_id']),
+                    expense_category=data['expense_category'],
+                    expense_date=data['expense_date'],
+                    amount=float(data['amount']),
+                    vendor_name=data.get('vendor_name') or None,
+                    description=data.get('description') or None,
+                    payment_method=data['payment_method'],
+                    receipt_attachment_url=data.get('receipt_attachment_url') or None,
+                    approval_status=data.get('approval_status', 'approved'),
+                    created_by=data.get('created_by'),
+                    reference_type=data.get('reference_type'),
+                    reference_id=data.get('reference_id')
+                )
+                
+                tenant_session.add(expense)
+                tenant_session.commit()
+                tenant_session.refresh(expense)
+                
+                return {
+                    'id': expense.id,
+                    'expense_category': expense.expense_category,
+                    'expense_date': expense.expense_date.isoformat(),
+                    'amount': float(expense.amount),
+                    'vendor_name': expense.vendor_name,
+                    'payment_method': expense.payment_method,
+                    'approval_status': expense.approval_status
+                }
+                
+        except ValueError as ve:
+            tenant_session.rollback()
+            raise Exception(f"Invalid data type: {str(ve)}")
+        except Exception as e:
+            tenant_session.rollback()
+            raise Exception(f"Failed to create expense: {str(e)}")
+
+    @staticmethod
+    def update_expense(skid, expense_id, data):
+        """Update existing expense"""
+        try:
+            with switch_to_school_db(skid) as tenant_session:
+                expense = tenant_session.query(Expense).filter(
+                    Expense.id == expense_id
+                ).one_or_none()
+                
+                if not expense:
+                    raise ValueError("Expense not found")
+                
+                # Update fields
+                expense.expense_category = data.get('expense_category', expense.expense_category)
+                expense.expense_date = data.get('expense_date', expense.expense_date)
+                expense.amount = float(data.get('amount', expense.amount))
+                expense.vendor_name = data.get('vendor_name')
+                expense.description = data.get('description')
+                expense.payment_method = data.get('payment_method', expense.payment_method)
+                expense.receipt_attachment_url = data.get('receipt_attachment_url')
+                
+                tenant_session.commit()
+                
+        except Exception as e:
+            tenant_session.rollback()
+            raise Exception(f"Failed to update expense: {str(e)}")
+    
+    @staticmethod
+    def delete_expense(skid, expense_id):
+        """Delete expense"""
+        try:
+            with switch_to_school_db(skid) as tenant_session:
+                expense = tenant_session.query(Expense).filter(
+                    Expense.id == expense_id
+                ).one_or_none()
+                
+                if not expense:
+                    raise ValueError("Expense not found")
+                
+                # Check if it's a salary payment reference
+                if expense.reference_type == 'salary_payment':
+                    raise ValueError("Cannot delete salary payment expense. Please delete from salary payments.")
+                
+                tenant_session.delete(expense)
+                tenant_session.commit()
+                
+        except Exception as e:
+            tenant_session.rollback()
+            raise Exception(f"Failed to delete expense: {str(e)}")
+
+   
+    @staticmethod
+    def get_salary_payments(skid, academic_year_id=None):
+        try:
+            with switch_to_school_db(skid) as tenant_session:
+                query = (
+                    tenant_session.query(SalaryPayment)
+                    .join(SchoolUsers, SalaryPayment.staff_id == SchoolUsers.id)
+                )
+                
+                if academic_year_id:
+                    query = query.filter(SalaryPayment.academic_year_id == academic_year_id)
+                
+                payments = query.order_by(
+                    SalaryPayment.payment_year.desc(),
+                    SalaryPayment.payment_month.desc()
+                ).all()
+                
+                return [
+                    {
+                        **payment.to_dict(),
+                        'staff_name': payment.staff.full_name
+                    }
+                    for payment in payments
+                ]
+        except Exception as e:
+            raise Exception(f"Failed to get salary payments: {str(e)}")
+
+    
+    @staticmethod
+    def get_expenses(skid, filters=None):
+        try:
+            with switch_to_school_db(skid) as tenant_session:
+                query = tenant_session.query(Expense)
+                
+                if filters:
+                    if filters.get('academic_year_id'):
+                        query = query.filter(Expense.academic_year_id == filters['academic_year_id'])
+                    if filters.get('category'):
+                        query = query.filter(Expense.expense_category == filters['category'])
+                    if filters.get('start_date'):
+                        query = query.filter(Expense.expense_date >= filters['start_date'])
+                    if filters.get('end_date'):
+                        query = query.filter(Expense.expense_date <= filters['end_date'])
+                
+                expenses = query.order_by(Expense.expense_date.desc()).all()
+                return [expense.to_dict() for expense in expenses]
+        except Exception as e:
+            raise Exception(f"Failed to get expenses: {str(e)}")

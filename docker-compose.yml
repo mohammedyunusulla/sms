@@ -5,11 +5,19 @@ services:
       context: ./backend
     restart: always
     environment:
-      DATABASE_URL: postgresql://admin:ChangeThisStrongPassword123!@global_postgres:5432/sms_dev
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      APP_MODULE: ${APP_MODULE:-main:app}
+      FLASK_ENV: ${FLASK_ENV:-development}
+      FLASK_HOST: 0.0.0.0
+      FLASK_PORT: "8000"
+      FLASK_DEBUG: ${FLASK_DEBUG:-False}
+      SECRET_KEY: ${SECRET_KEY:-dev-secret-key-change-in-production}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-jwt-dev-secret-string}
+      POSTGRES_HOST: ${POSTGRES_HOST:-global_postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeThisStrongPassword123!}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      SUPER_ADMIN_DATABASE_URL: ${SUPER_ADMIN_DATABASE_URL:-postgresql://admin:ChangeThisStrongPassword123!@global_postgres:5432/sms_dev}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,https://dev-sms.klopterz.in}
       APP_PORT: "8000"
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,https://dev-sms.klopterz.in}
     ports:
       - "127.0.0.1:8001:8000"
     volumes:

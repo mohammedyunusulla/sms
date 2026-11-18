@@ -1,0 +1,6 @@
+@echo off
+echo Creating revision for MAIN DB...
+alembic -c migrations_main/alembic_main.ini revision --autogenerate -m "Main DB Update"
+echo Applying upgrade to MAIN DB...
+alembic -c migrations_main/alembic_main.ini upgrade head
+pause

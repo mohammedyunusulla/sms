@@ -1,0 +1,91 @@
+# Python Backend CI/CD Pipeline
+trigger:
+  branches:
+    include:
+      - main
+
+pool:
+  name: Default
+
+variables:
+  environmentName: 'IDC-Primary-VM1'
+  appPath: '/var/www/sms/backend'
+  serviceName: 'sms-backend'
+  archiveName: 'backend_$(Build.BuildId).tar.gz'
+
+stages:
+- stage: Build
+  displayName: Build
+  jobs:
+  - job: PackageApp
+    displayName: Package Application
+    steps:
+    - checkout: self
+      clean: true
+
+    - script: |
+        echo "📦 Creating package..."
+        mkdir -p pkg
+        
+        rsync -a --exclude '.git' --exclude 'venv' --exclude '__pycache__' --exclude 'tests' ./ pkg/
+        
+        tar -czf $(Build.ArtifactStagingDirectory)/$(archiveName) -C pkg .
+        
+        echo "✅ Package created"
+      displayName: 'Create Package'
+
+    - publish: '$(Build.ArtifactStagingDirectory)/$(archiveName)'
+      artifact: 'backend-drop'
+
+- stage: Deploy
+  displayName: Deploy
+  dependsOn: Build
+  jobs:
+  - deployment: DeployBackend
+    displayName: Deploy to VM
+    environment: '$(environmentName)'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: 'backend-drop'
+
+          - script: |
+              set -e
+              
+              echo "📦 Extracting application..."
+              RELEASE_DIR="$(appPath)/releases/$(Build.BuildId)"
+              sudo mkdir -p "$RELEASE_DIR"
+              sudo tar -xzf $(Pipeline.Workspace)/backend-drop/$(archiveName) -C "$RELEASE_DIR"
+              
+              echo "🐍 Setting up Python environment..."
+              sudo python3 -m venv "$RELEASE_DIR/venv"
+              sudo "$RELEASE_DIR/venv/bin/pip" install --upgrade pip
+              sudo "$RELEASE_DIR/venv/bin/pip" install -r "$RELEASE_DIR/requirements.txt"
+              
+              echo "🔗 Updating symlink..."
+              sudo ln -sfn "$RELEASE_DIR" "$(appPath)/current"
+              
+              echo "🔄 Restarting service..."
+              sudo systemctl daemon-reload
+              sudo systemctl restart $(serviceName)
+              sudo systemctl enable $(serviceName)
+              
+              echo "⏳ Waiting for service to start..."
+              sleep 5
+            
+              echo "🩺 Health check..."
+              for i in {1..10}; do
+                if curl -f http://127.0.0.1:5000/api/auth/login; then
+                  echo "✅ Service is healthy"
+                  exit 0
+                fi
+                echo "Retry $i/10..."
+                sleep 3
+              done
+              
+              echo "❌ Health check failed"
+              sudo journalctl -u $(serviceName) -n 30 --no-pager
+              exit 1
+            displayName: 'Deploy Application'
