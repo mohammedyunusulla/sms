@@ -17,6 +17,8 @@ services:
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
       SUPER_ADMIN_DATABASE_URL: ${SUPER_ADMIN_DATABASE_URL:-postgresql://admin:ChangeThisStrongPassword123!@global_postgres:5432/sms_dev}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,https://dev-sms.klopterz.in}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      HOMEWORK_UPLOAD_DIR: ${HOMEWORK_UPLOAD_DIR:-/app/uploads/homework}
       APP_PORT: "8000"
     ports:
       - "127.0.0.1:8001:8000"
