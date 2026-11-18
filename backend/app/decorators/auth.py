@@ -14,6 +14,10 @@ def login_required(allowed_roles=None):
         @jwt_required()
         def decorated_function(*args, **kwargs):
             try:
+                # Allow CORS preflight without JWT validation.
+                if request.method == 'OPTIONS':
+                    return current_app.make_default_options_response()
+
                 # Get current user ID from JWT
                 current_user_id = get_jwt_identity()
                 if not current_user_id:

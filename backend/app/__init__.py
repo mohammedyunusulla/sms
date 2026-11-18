@@ -50,7 +50,7 @@ def create_app(config_name=None):
         parent_bp, roles_bp, user_roles_bp, timeTable_bp, studentParent_bp, fee_bp, announcement_bp,
         school_admin_dashboard_bp, exam_bp, marks_bp, progress_card_bp, expense_bp, academic_year_bp,
         teacher_dashboard_bp, syllabus_bp, assignment_bp, student_dashboard_bp, room_bp, seating_bp,
-        bus_scan_bp, staff_bp
+        bus_scan_bp, staff_bp, homework_bp
     )
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(user_bp, url_prefix='/api/users')
@@ -81,6 +81,7 @@ def create_app(config_name=None):
     app.register_blueprint(seating_bp, url_prefix='/api/seating')
     app.register_blueprint(bus_scan_bp, url_prefix='/api/bus-scan')
     app.register_blueprint(staff_bp, url_prefix='/api/staff')
+    app.register_blueprint(homework_bp, url_prefix='/api/homework')
 
     from app.api import bus_location_bp
     app.register_blueprint(bus_location_bp, url_prefix='/api/bus-location')
