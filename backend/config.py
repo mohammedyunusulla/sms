@@ -32,9 +32,9 @@ class Config:
     _PG_PWD_ENC = quote_plus(POSTGRES_PASSWORD)
     _PG_BASE = f'postgresql://{POSTGRES_USER}:{_PG_PWD_ENC}@{POSTGRES_HOST}:{POSTGRES_PORT}'
 
-    # Super Admin Database (for managing schools)
+    # Super Admin Database (for managing schools/users in main DB)
     SUPER_ADMIN_DATABASE_URL = os.environ.get('SUPER_ADMIN_DATABASE_URL') or \
-        f'{_PG_BASE}/skool_main'
+        f'{_PG_BASE}/sms_dev'
 
     # Template for school databases (use .format(skid=...) to substitute)
     SCHOOL_DATABASE_TEMPLATE = f'{_PG_BASE}/skool_{{skid}}'

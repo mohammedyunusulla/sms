@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import QRCode from 'qrcode';
+import { useNavigate } from 'react-router';
 import { homeworkApi } from '../api/homeworkApi';
 import { HomeworkAnalytics, HomeworkAssignment, StudentStickerRow } from '../types';
 
@@ -8,6 +9,7 @@ type ClassItem = { id: number; class_name?: string; name?: string };
 type SectionItem = { id: number; section_name?: string; name?: string };
 
 export default function TeacherHomeworkPage() {
+  const navigate = useNavigate();
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [sections, setSections] = useState<SectionItem[]>([]);
   const [assignments, setAssignments] = useState<HomeworkAssignment[]>([]);
@@ -27,6 +29,7 @@ export default function TeacherHomeworkPage() {
     due_date: '',
   });
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<number>(0);
+  const hasSections = sections.length > 0;
 
   useEffect(() => {
     const init = async () => {
@@ -95,6 +98,10 @@ export default function TeacherHomeworkPage() {
 
   const onCreateAssignment = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (!form.section_id) {
+      toast.error('Please create/select a section first from Class Management.');
+      return;
+    }
     try {
       setLoading(true);
       await homeworkApi.createAssignment({
@@ -157,6 +164,11 @@ export default function TeacherHomeworkPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <form onSubmit={onCreateAssignment} className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
           <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Create Assignment</h2>
+          {!hasSections && form.class_id > 0 && (
+            <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-200">
+              No sections found for this class. Create one in Class Management, then return here.
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <select
               value={form.class_id || ''}
@@ -182,6 +194,14 @@ export default function TeacherHomeworkPage() {
                 </option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={() => form.class_id && navigate(`/classes/${form.class_id}`)}
+              disabled={!form.class_id}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+            >
+              Manage Sections
+            </button>
             <input
               placeholder="Subject"
               value={form.subject}

@@ -10,6 +10,7 @@ import os
 import logging
 from logging.handlers import RotatingFileHandler
 from config import config
+from sqlalchemy import text
 
 # Initialize extensions
 db = SQLAlchemy()
@@ -40,6 +41,7 @@ def create_app(config_name=None):
     cors.init_app(app, resources={r"/api/*": {"origins": allowed_origins}})
     jwt.init_app(app)
     limiter.init_app(app)
+    _bootstrap_main_schema(app)
     
     # Setup logging
     # setup_logging(app)
@@ -121,6 +123,36 @@ def create_app(config_name=None):
         return {'message': 'Authorization token is required'}, 401
     
     return app
+
+
+def _bootstrap_main_schema(app):
+    """
+    Ensure main-database tables/columns required by the migrated backend exist.
+    This keeps fresh environments functional even without running migrations.
+    """
+    with app.app_context():
+        import app.models  # noqa: F401 - registers model metadata
+
+        db.create_all()
+
+        # Backfill auth hardening columns for legacy users table schemas.
+        db.session.execute(
+            text(
+                """
+                ALTER TABLE IF EXISTS users
+                ADD COLUMN IF NOT EXISTS failed_login_attempts INTEGER DEFAULT 0
+                """
+            )
+        )
+        db.session.execute(
+            text(
+                """
+                ALTER TABLE IF EXISTS users
+                ADD COLUMN IF NOT EXISTS locked_until TIMESTAMP NULL
+                """
+            )
+        )
+        db.session.commit()
 
 def setup_logging(app):
     if not os.path.exists('logs'):

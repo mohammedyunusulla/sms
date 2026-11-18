@@ -17,10 +17,18 @@ class SchoolService:
     @staticmethod
     def create_school(data):
         """Create a new school"""
+        created_db_name = None
         try:
-             # Generate unique database name
+            required_fields = ['name', 'code']
+            missing = [field for field in required_fields if not (data.get(field) and str(data.get(field)).strip())]
+            if missing:
+                return {
+                    'success': False,
+                    'message': f"Missing required fields: {', '.join(missing)}"
+                }
+
+            # Generate unique database name
             db_name = DatabaseNameGenerator.generate_db_name(data)
-            print("db_name----------", db_name)
             # Validate plan if provided
             plan = data.get('plan', 'BASIC').upper()
             if plan not in [p.value for p in SchoolPlan]:
@@ -33,7 +41,6 @@ class SchoolService:
             # Step 1: Create database for school
             try:
                 created_db_name  = DatabaseManager.create_school_database(db_name)
-                print("created_db_name----------", created_db_name)
             except Exception as db_error:
                 logger.error(f"Error creating school database: {str(db_error)}")
                 return {
@@ -80,7 +87,8 @@ class SchoolService:
         except Exception as e:
             db.session.rollback()
             logger.error(f"Error creating school: {str(e)}")
-            DatabaseManager.drop_school_database(created_db_name)
+            if created_db_name:
+                DatabaseManager.drop_school_database(created_db_name)
             return {
                 'success': False,
                 'message': 'Failed to create school'
