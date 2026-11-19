@@ -51,6 +51,20 @@ const ClassDetail: FC = () => {
     });
     const [teachers, setTeachers] = useState<any[]>([]);
     const [isSavingSection, setIsSavingSection] = useState(false);
+    const [sectionToDelete, setSectionToDelete] = useState<{ id: number; section_name: string } | null>(null);
+
+    const handleDeleteSection = async () => {
+        if (!sectionToDelete) return;
+        try {
+            await classService.deleteSection(sectionToDelete.id);
+            toast.success(`Section ${sectionToDelete.section_name} deleted`);
+            setSectionToDelete(null);
+            fetchClassData();
+        } catch (err) {
+            toast.error((err as { message?: string })?.message || 'Failed to delete section');
+            setSectionToDelete(null);
+        }
+    };
 
     // Fetch class and sections on mount
     useEffect(() => {
@@ -219,6 +233,18 @@ const ClassDetail: FC = () => {
                                             </svg>
                                         </button>
                                     )}
+                                    {hasPermission(Permission.MANAGE_CLASSES) && (
+                                        <button
+                                            onClick={() => setSectionToDelete({ id: section.id, section_name: section.section_name })}
+                                            className="p-2 text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400"
+                                            title="Delete Section"
+                                            aria-label={`Delete section ${section.section_name}`}
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                        </button>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -303,6 +329,16 @@ const ClassDetail: FC = () => {
                 onConfirm={handleDeleteClass}
                 title="Delete Class?"
                 message="Are you sure you want to delete this class? This action cannot be undone."
+                confirmText="Delete"
+                type="danger"
+            />
+
+            <ConfirmDialog
+                isOpen={!!sectionToDelete}
+                onCancel={() => setSectionToDelete(null)}
+                onConfirm={handleDeleteSection}
+                title="Delete Section?"
+                message={`Delete section "${sectionToDelete?.section_name}"? This is only allowed when the section has no students, attendance, timetables, assignments or exams. Its subject links are removed with it.`}
                 confirmText="Delete"
                 type="danger"
             />

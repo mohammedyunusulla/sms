@@ -227,9 +227,8 @@ class ClassService {
         throw new Error(response.data?.message || 'Failed to update section');
     }
 
-
-    // Bulk delete classes
-    async bulkDelete(ids: string[]): Promise<void> {
+    // Delete a section (refused by the backend if anything still uses it)
+    async deleteSection(sectionId: string | number): Promise<void> {
         const api = getApiClient();
         const schoolId = getSchoolId();
 
@@ -237,9 +236,9 @@ class ClassService {
             throw new Error('School ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/bulk-delete/${schoolId}`, { ids });
+        const response = await api.delete(`${this.baseUrl}/section/delete/${schoolId}/${sectionId}`);
         if (response.code !== 200 || response.status !== 'success') {
-            throw new Error(response.data?.message || 'Failed to delete classes');
+            throw new Error(response.message || 'Failed to delete section');
         }
     }
 

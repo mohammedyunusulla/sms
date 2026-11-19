@@ -42,6 +42,7 @@ export interface IUser {
     updatedAt?: string;
     updated_at?: string; // Alias for updatedAt (snake_case from API)
     lastLogin?: string;
+    is_active?: boolean; // Returned by the users list API
 }
 
 export interface IAuthState {
@@ -533,6 +534,9 @@ export interface ISubject {
     credits?: number;
     status: 'ACTIVE' | 'INACTIVE';
     createdAt: string;
+    // Fields returned by the backend subject API
+    class_id?: number | string;
+    description?: string;
 }
 
 export interface IMarks {

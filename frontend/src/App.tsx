@@ -98,6 +98,7 @@ const TeacherInvigilatorSchedule = lazy(() => import("./pages/ExamManagement").t
 
 // Lazy loaded Academics Management
 const SubjectList = lazy(() => import("./pages/AcademicsManagement").then(m => ({ default: m.SubjectList })));
+const SubjectForm = lazy(() => import("./pages/AcademicsManagement").then(m => ({ default: m.SubjectForm })));
 const MarksEntry = lazy(() => import("./pages/AcademicsManagement").then(m => ({ default: m.MarksEntry })));
 const ClassProgress = lazy(() => import("./pages/AcademicsManagement").then(m => ({ default: m.ClassProgress })));
 const ProgressCardView = lazy(() => import("./pages/AcademicsManagement").then(m => ({ default: m.ProgressCardView })));
@@ -325,6 +326,8 @@ function AppContent() {
 
                         {/* Academics Management Routes */}
                         <Route path="/academics/subjects" element={guarded('/academics/subjects', <SubjectList />)} />
+                        <Route path="/academics/subjects/new" element={guarded('/academics/subjects/new', <SubjectForm />)} />
+                        <Route path="/academics/subjects/:id/edit" element={guarded('/academics/subjects/:id/edit', <SubjectForm />)} />
                         <Route path="/academics/marks/entry" element={guarded('/academics/marks/entry', <MarksEntry />)} />
                         <Route path="/academics/progress/class" element={guarded('/academics/progress/class', <ClassProgress />)} />
                         <Route path="/academics/progress-card/:studentId/:examId" element={guarded('/academics/progress-card/:studentId/:examId', <ProgressCardView />)} />

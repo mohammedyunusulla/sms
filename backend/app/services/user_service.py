@@ -779,3 +779,79 @@ class UserService:
 
         except Exception as e:
             raise Exception(f"Failed to get provisioning report: {str(e)}")
+    # ------------------------------------------------------------------
+    # School-user based view/edit (the Users list shows tenant school_users)
+    # ------------------------------------------------------------------
+    @staticmethod
+    def get_school_user(skid, school_user_id):
+        """Return a tenant school user with role and login info, or None."""
+        with switch_to_school_db(skid) as tenant_session:
+            su = tenant_session.query(SchoolUsers).filter_by(id=int(school_user_id)).first()
+            if not su:
+                return None
+            role = tenant_session.query(Role).filter_by(id=su.role_id).first() if su.role_id else None
+            data = {
+                'id': su.id,
+                'username': su.username,
+                'first_name': su.first_name,
+                'last_name': su.last_name,
+                'name': su.full_name,
+                'full_name': su.full_name,
+                'email': su.email,
+                'phone': su.phone,
+                'gender': su.gender,
+                'date_of_birth': su.date_of_birth.isoformat() if su.date_of_birth else None,
+                'address': su.address,
+                'role': role.role_code if role else (
+                    'SCHOOL_ADMIN' if tenant_session.query(SchoolAdmin).filter_by(user_id=su.id).first() else None),
+                'role_name': role.role_name if role else None,
+                'is_active': bool(su.is_active),
+                'status': 'active' if su.is_active else 'inactive',
+                'created_at': su.created_at.isoformat() if getattr(su, 'created_at', None) else None,
+                'updated_at': su.updated_at.isoformat() if getattr(su, 'updated_at', None) else None,
+            }
+        main_user = User.query.filter_by(school_user_id=int(school_user_id), skid=skid).first()
+        if not data['role'] and main_user:
+            # School admins have no tenant role row; their role lives on the main login
+            data['role'] = main_user.role.value if hasattr(main_user.role, 'value') else str(main_user.role)
+            data['role_name'] = data['role'].replace('_', ' ').title()
+        data['has_login'] = main_user is not None
+        data['main_user_id'] = main_user.id if main_user else None
+        data['login_active'] = bool(main_user.is_active) if main_user else False
+        return data
+
+    @staticmethod
+    def update_school_user(skid, school_user_id, data):
+        """
+        Update a tenant school user's personal details and keep their login (if any) in sync.
+        Role and active status are NOT changed here (status uses delete/reactivate).
+        """
+        editable = ['username', 'first_name', 'last_name', 'email', 'phone', 'gender', 'date_of_birth', 'address']
+        changes = {k: (v.strip() if isinstance(v, str) else v) for k, v in data.items() if k in editable}
+        if 'first_name' in changes and not changes['first_name']:
+            raise ValueError('First name is required')
+        if 'email' in changes and not changes['email']:
+            raise ValueError('Email is required')
+        school_user_id = int(school_user_id)
+        main_user = User.query.filter_by(school_user_id=school_user_id, skid=skid).first()
+
+        with switch_to_school_db(skid) as tenant_session:
+            su = tenant_session.query(SchoolUsers).filter_by(id=school_user_id).first()
+            if not su:
+                raise LookupError('User not found')
+            for field in ('username', 'email'):
+                value = changes.get(field)
+                if value and value != getattr(su, field):
+                    clash = tenant_session.query(SchoolUsers).filter(getattr(SchoolUsers, field) == value, SchoolUsers.id != school_user_id).first()
+                    main_clash = User.query.filter(getattr(User, field) == value, User.id != (main_user.id if main_user else 0)).first()
+                    if clash or main_clash:
+                        raise ValueError(f"That {field} is already in use")
+            for key, value in changes.items():
+                setattr(su, key, value or None if key in ('phone', 'gender', 'date_of_birth', 'address') else value)
+
+        if main_user:
+            for key in ('username', 'first_name', 'last_name', 'email', 'phone'):
+                if key in changes and hasattr(main_user, key):
+                    setattr(main_user, key, changes[key] or None if key == 'phone' else changes[key])
+            db.session.commit()
+        return UserService.get_school_user(skid, school_user_id)

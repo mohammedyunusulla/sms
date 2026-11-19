@@ -55,13 +55,13 @@ const UserDetail: FC = () => {
     if (!selectedUser) return;
 
     const confirmed = window.confirm(
-      'Are you sure you want to delete this user? This action cannot be undone.'
+      'Delete this user? They will be marked inactive and can no longer log in. Their records are kept and they can be reactivated.'
     );
 
     if (confirmed) {
       try {
         await userService.delete(selectedUser.id);
-        toast.success('User deleted successfully');
+        toast.success('User deleted. Their records are kept and they can be reactivated.');
         setTimeout(() => navigate('/users'), 1500);
       } catch (err: any) {
         toast.error(err.message || 'Failed to delete user');

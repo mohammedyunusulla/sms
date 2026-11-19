@@ -81,17 +81,12 @@ class SubjectService:
                 subject.credits = data.get('credits', 1)
                 subject.description = data.get('description')
                 
-                # Remove existing teacher assignments
-                tenant_session.query(TeacherSubject).filter_by(subject_id=subject.id).delete()
-    
-                # Reassign teachers
-                teacher_ids = data.get("teacher_ids", [])
-                for teacher_id in teacher_ids:
-                    assignment = TeacherSubject(
-                        teacher_id=teacher_id,
-                        subject_id=subject.id
-                    )
-                    tenant_session.add(assignment)
+                # Replace teacher assignments only when the caller sends teacher_ids.
+                # (The subject edit form doesn't, and must not wipe existing assignments.)
+                if 'teacher_ids' in data:
+                    tenant_session.query(TeacherSubject).filter_by(subject_id=subject.id).delete()
+                    for teacher_id in data.get('teacher_ids') or []:
+                        tenant_session.add(TeacherSubject(teacher_id=teacher_id, subject_id=subject.id))
     
                 tenant_session.commit()
                 tenant_session.refresh(subject)

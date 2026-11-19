@@ -4,6 +4,7 @@
  */
 
 export { default as SubjectList } from './SubjectList';
+export { default as SubjectForm } from './SubjectForm';
 export { default as MarksEntry } from './MarksEntry';
 export { default as ClassProgress } from './ClassProgress';
 export { default as ProgressCardView } from './ProgressCardView';

@@ -45,22 +45,16 @@ interface ISubjectListResponse {
     };
 }
 
+// Field names match the backend (/subjects/create/subject, /subjects/update/subject)
 interface ICreateSubjectRequest {
-    name: string;
-    code: string;
-    classId: string;
-    teacherId: string;
+    subject_name: string;
+    subject_code: string;
+    class_id: number;
     credits?: number;
-    status?: 'ACTIVE' | 'INACTIVE';
+    description?: string;
 }
 
-interface IUpdateSubjectRequest {
-    name?: string;
-    code?: string;
-    teacherId?: string;
-    credits?: number;
-    status?: 'ACTIVE' | 'INACTIVE';
-}
+type IUpdateSubjectRequest = Partial<ICreateSubjectRequest>;
 
 // ============================================
 // Marks Interfaces
@@ -158,7 +152,7 @@ class AcademicsService {
             throw new Error('School ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.subjectsUrl}/${id}/${schoolId}`) as unknown as ApiResponse<ISubject>;
+        const response = await api.get(`${this.subjectsUrl}/get/${schoolId}/${id}`) as unknown as ApiResponse<ISubject>;
         return (response.data || response) as unknown as ISubject;
     }
 
@@ -457,23 +451,6 @@ class AcademicsService {
 
         const response = await api.get(`${this.progressUrl}/class/${classId}/${schoolId}`, { params }) as unknown as ApiResponse;
         return response.data || response;
-    }
-
-
-    // Export marks to CSV
-    async exportMarksToCSV(params?: IMarksListParams): Promise<Blob> {
-        const api = getApiClient();
-        const schoolId = getSchoolId();
-
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
-        }
-
-        const response = await api.get(`${this.marksUrl}/export/csv/${schoolId}`, {
-            params,
-            responseType: 'blob',
-        }) as unknown as Blob;
-        return response;
     }
 
 

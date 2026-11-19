@@ -127,7 +127,7 @@ const SubjectList: FC = () => {
                 actions={
                     <Button
                         variant="primary"
-                        onClick={() => navigate('/academics/subjects/new')}
+                        onClick={() => navigate(`/academics/subjects/new${filters.classId ? `?classId=${filters.classId}` : ''}`)}
                     >
                         + New Subject
                     </Button>
@@ -197,15 +197,6 @@ const SubjectList: FC = () => {
                                             </td>
                                             <td className="px-6 py-4 text-sm flex items-center gap-2">
                                                 <Button
-                                                    variant="secondary"
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        navigate(`/academics/subjects/${subject.id}`)
-                                                    }
-                                                >
-                                                    View
-                                                </Button>
-                                                <Button
                                                     variant="info"
                                                     size="sm"
                                                     onClick={() =>
@@ -243,7 +234,7 @@ const SubjectList: FC = () => {
                     action={
                         <Button
                             variant="primary"
-                            onClick={() => navigate('/academics/subjects/new')}
+                            onClick={() => navigate(`/academics/subjects/new${filters.classId ? `?classId=${filters.classId}` : ''}`)}
                         >
                             Create Subject
                         </Button>

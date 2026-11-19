@@ -168,6 +168,8 @@ export const ROUTE_PERMISSION_MAP: Record<string, RoutePermissionConfig> = {
 
   // Academics
   '/academics/subjects': { permission: Permission.VIEW_EXAMS },
+  '/academics/subjects/new': { permission: Permission.MANAGE_CLASSES },
+  '/academics/subjects/:id/edit': { permission: Permission.MANAGE_CLASSES },
   '/academics/assign-subjects': { permission: Permission.MANAGE_TEACHERS },
   '/academics/marks/entry': { permission: Permission.MANAGE_MARKS },
   '/academics/progress/class': { permission: Permission.VIEW_MARKS },

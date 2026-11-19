@@ -104,7 +104,7 @@ class UserService {
             throw new Error('School ID not found. Please log in again.');
         }
 
-        const response = (await api.get(`${this.baseUrl}/${id}/${schoolId}`)) as ApiResponse;
+        const response = (await api.get(`${this.baseUrl}/get/${schoolId}/${id}`)) as ApiResponse;
         return (response.user || response.data) as IUser;
     }
 
@@ -137,7 +137,7 @@ class UserService {
             throw new Error('School ID not found. Please log in again.');
         }
 
-        const response = (await api.put(`${this.baseUrl}/update/${id}/${schoolId}`, data)) as ApiResponse;
+        const response = (await api.put(`${this.baseUrl}/update-school/${schoolId}/${id}`, data)) as ApiResponse;
         if (response.code === 200 && response.status === 'success') {
             return (response.user || response.data) as IUser;
         }
@@ -155,9 +155,27 @@ class UserService {
             throw new Error('School ID not found. Please log in again.');
         }
 
-        const response = (await api.delete(`${this.baseUrl}/delete/${id}/${schoolId}`)) as ApiResponse;
+        // Soft delete: inactive + login disabled; records kept, can be reactivated
+        const response = (await api.delete(`${this.baseUrl}/delete/${schoolId}/${id}`)) as ApiResponse;
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.message || 'Failed to delete user');
+        }
+    }
+
+    /**
+     * Reactivate a (soft-)deleted user: active again and login re-enabled
+     */
+    async reactivate(id: string): Promise<void> {
+        const api = getApiClient();
+        const schoolId = getSchoolId();
+
+        if (!schoolId) {
+            throw new Error('School ID not found. Please log in again.');
+        }
+
+        const response = (await api.patch(`${this.baseUrl}/reactivate/${schoolId}/${id}`)) as ApiResponse;
+        if (response.code !== 200 || response.status !== 'success') {
+            throw new Error(response.message || 'Failed to reactivate user');
         }
     }
 
@@ -222,41 +240,6 @@ class UserService {
             return response;
         }
         throw new Error(response.message || 'Failed to deactivate user');
-    }
-
-    /**
-     * Bulk delete users
-     */
-    async bulkDelete(ids: string[]): Promise<void> {
-        const api = getApiClient();
-        const schoolId = getSchoolId();
-
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
-        }
-
-        const response = (await api.post(`${this.baseUrl}/bulk-delete/${schoolId}`, { ids })) as ApiResponse;
-        if (response.code !== 200 || response.status !== 'success') {
-            throw new Error(response.message || 'Failed to bulk delete users');
-        }
-    }
-
-    /**
-     * Export users to CSV
-     */
-    async exportToCSV(params?: IUserListParams): Promise<Blob> {
-        const api = getApiClient();
-        const schoolId = getSchoolId();
-
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
-        }
-
-        const response = await api.get(`${this.baseUrl}/export/csv/${schoolId}`, {
-            params,
-            responseType: 'blob',
-        });
-        return response as unknown as Blob;
     }
 
     /**

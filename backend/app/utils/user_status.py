@@ -14,6 +14,7 @@ from app.utils.db_manager import switch_to_school_db
 def set_school_user_active(skid, school_user_id, active, profile_model, label):
     """
     profile_model: the role table keyed by user_id (e.g. Teacher, Parent) — used to confirm the role.
+                   Pass None for generic school users (any role).
     Returns {'success', 'code', 'message', 'data'}.
     """
     try:
@@ -23,7 +24,10 @@ def set_school_user_active(skid, school_user_id, active, profile_model, label):
 
     with switch_to_school_db(skid) as tenant_session:
         school_user = tenant_session.query(SchoolUsers).filter_by(id=school_user_id).first()
-        profile = school_user and tenant_session.query(profile_model).filter_by(user_id=school_user_id).first()
+        if profile_model is None:
+            profile = school_user
+        else:
+            profile = school_user and tenant_session.query(profile_model).filter_by(user_id=school_user_id).first()
         if not profile:
             return {'success': False, 'code': 404, 'message': f'{label} not found'}
         if bool(school_user.is_active) == bool(active):

@@ -219,22 +219,6 @@ class AnnouncementService {
     }
 
 
-    // Bulk delete announcements 
-    async bulkDelete(ids: string[]): Promise<void> {
-        const api = getApiClient();
-        const schoolId = getSchoolId();
-
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
-        }
-
-        const response = await api.post(`${this.baseUrl}/bulk-delete/${schoolId}`, { ids }) as unknown as ApiResponse;
-        if (response.code !== 200 || response.status !== 'success') {
-            throw new Error(response.message || 'Failed to delete announcements');
-        }
-    }
-
-
     // Export announcements to CSV 
     async exportToCSV(params?: IAnnouncementListParams): Promise<Blob> {
         const api = getApiClient();

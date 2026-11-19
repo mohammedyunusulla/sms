@@ -2,7 +2,8 @@ from app import db
 from app.models.tenant import Class, Teacher, SchoolUsers, Student, StudentEnrollment
 from app.models.tenant.Sections import Section
 from app.utils.db_manager import switch_to_school_db
-from app.utils.usage_check import usage_summary, CLASS_REFERENCES, blocked_message
+from app.utils.usage_check import usage_summary, CLASS_REFERENCES, SECTION_REFERENCES, blocked_message
+from sqlalchemy import text
 from datetime import date
 
 class ClassService:
@@ -271,15 +272,18 @@ class ClassService:
                 if not section:
                     raise ValueError("Section not found")
                 
-                # Check if section has students enrolled
-                # You might want to add this check based on your business logic
-                # students = tenant_session.query(Student).filter_by(section_id=section_id).all()
-                # if students:
-                #     raise ValueError("Cannot delete section with enrolled students")
-                
+                # Only allow deleting a section nothing depends on
+                usage = usage_summary(tenant_session, SECTION_REFERENCES, section_id)
+                if usage:
+                    raise ValueError(blocked_message(section.section_name or f'#{section_id}', 'section', usage))
+
+                # Subject links are configuration only: remove them with the section
+                tenant_session.execute(text('DELETE FROM section_subjects WHERE section_id = :id'), {'id': int(section_id)})
                 tenant_session.delete(section)
                 tenant_session.commit()
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to delete section: {str(e)}")
 
