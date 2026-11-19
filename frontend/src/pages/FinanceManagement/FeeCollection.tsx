@@ -10,7 +10,7 @@ import { PageHeader, DataTable, Badge, Button, StatCard, Modal, FormInput, FormS
 const StudentExamTimetableModal = lazy(() => import('../ExamManagement/components/StudentExamTimetableModal'));
 import { financeService } from '../../services/modules/financeService';
 import { useAuthStore } from '../../stores/authStore';
-import { IStudentFeeSummary, IStudentFee, IInstallment, IPaymentData } from '../../types/index';
+import { IStudentFeeSummary, IStudentFee, IInstallment, IPaymentData, IFeePayment } from '../../types/index';
 import InstallmentDialog from './InstallmentDialog';
 import { usePermissions } from '../../hooks/usePermissions';
 import { Permission } from '../../config/permissions';
@@ -251,25 +251,41 @@ const FeeCollection: FC = () => {
     }, []);
 
     // Handle individual installment/fee receipt print
-    const handlePrintReceipt = useCallback(async (fee: IStudentFee, installment?: IInstallment, action: PdfAction = 'print') => {
+    // Receipts come from the actual payment (its receipt number, date, amount, mode, transaction/cheque).
+    // They used to be built from the fee/installment, which has none of these: "RCP-<fee id>", the cumulative
+    // paid amount and mode "N/A".
+    const latestPayment = (fee: IStudentFee, installment?: IInstallment): IFeePayment | undefined =>
+        [...(fee.payments || [])]
+            .filter((p) => !installment || p.installment_id === installment.id)
+            .sort((a, b) => (a.payment_date === b.payment_date ? b.id - a.id : a.payment_date < b.payment_date ? 1 : -1))[0];
+    const modeLabel = (mode?: string) => PAYMENT_MODES.find((m) => m.value === mode)?.label || mode || '';
+
+    const handlePrintReceipt = useCallback(async (fee: IStudentFee, installment?: IInstallment, action: PdfAction = 'print', chosen?: IFeePayment) => {
         if (!selectedStudent) return;
+        const payment = chosen || latestPayment(fee, installment);
+        if (!payment) {
+            toast.error('No payment found to print a receipt for');
+            return;
+        }
+        const paidInstallment = installment
+            || (payment.installment_id ? (feeInstallments[fee.id] || []).find((i) => i.id === payment.installment_id) : undefined);
 
         try {
             const receiptData: any = {
-                receiptNumber: installment?.receipt_number || fee.receipt_number || `RCP-${installment?.id || fee.id}`,
-                receiptDate: installment?.payment_date || fee.payment_date || new Date().toISOString(),
+                receiptNumber: payment.receipt_number,
+                receiptDate: payment.payment_date,
                 studentName: selectedStudent.name,
                 rollNumber: selectedStudent.roll_no || '',
                 className: selectedStudent.class || '',
                 sectionName: selectedStudent.section || '',
                 feeName: fee.fee_structure?.fee_name || fee.fee_name || '',
-                installmentName: installment?.installment_name,
-                amountPaid: installment ? installment.paid_amount : fee.paid_amount,
-                paymentMode: installment?.payment_mode || fee.payment_mode || 'N/A',
-                transaction_id: installment?.transaction_id || fee.transaction_id,
-                cheque_number: installment?.cheque_number || fee.cheque_number,
-                bank_name: installment?.bank_name || fee.bank_name,
-                remarks: installment?.remarks || fee.remarks,
+                installmentName: paidInstallment?.installment_name,
+                amountPaid: payment.amount_paid,
+                paymentMode: modeLabel(payment.payment_mode),
+                transaction_id: payment.transaction_id,
+                cheque_number: payment.cheque_number,
+                bank_name: (payment as IFeePayment & { bank_name?: string }).bank_name,
+                remarks: payment.remarks,
                 totalAmount: fee.total_amount,
                 paidAmount: fee.paid_amount,
                 balanceAmount: fee.balance_amount,
@@ -280,7 +296,7 @@ const FeeCollection: FC = () => {
             console.error('Error generating receipt:', err);
             toast.error('Failed to generate receipt');
         }
-    }, [selectedStudent, getSchoolData]);
+    }, [selectedStudent, getSchoolData, feeInstallments]);
 
     // Handle full summary receipt for all installments
     const handlePrintFullSummary = useCallback(async (fee: IStudentFee, action: PdfAction = 'print') => {
@@ -299,16 +315,20 @@ const FeeCollection: FC = () => {
                 totalAmount: fee.total_amount,
                 paidAmount: fee.paid_amount,
                 balanceAmount: fee.balance_amount,
-                installmentPayments: installments
-                    .filter(inst => inst.status === 'PAID')
-                    .map(inst => ({
-                        installmentName: inst.installment_name,
-                        amount: inst.amount,
-                        paidAmount: inst.paid_amount,
-                        paymentDate: inst.payment_date || inst.updated_at || inst.due_date,
-                        paymentMode: inst.payment_mode || 'N/A',
-                        transactionId: inst.transaction_id,
-                    })),
+                // every real payment on this fee (installment payments and any paid in full)
+                installmentPayments: [...(fee.payments || [])]
+                    .sort((a, b) => (a.payment_date === b.payment_date ? a.id - b.id : a.payment_date < b.payment_date ? -1 : 1))
+                    .map((p) => {
+                        const inst = installments.find((i) => i.id === p.installment_id);
+                        return {
+                            installmentName: inst ? inst.installment_name : `Payment ${p.receipt_number}`,
+                            amount: inst ? inst.amount : p.amount_paid,
+                            paidAmount: p.amount_paid,
+                            paymentDate: p.payment_date,
+                            paymentMode: modeLabel(p.payment_mode),
+                            transactionId: p.transaction_id || p.receipt_number,
+                        };
+                    }),
             };
             await generateFeeSummaryReceiptPdf(summaryData, getSchoolData(), action);
             toast.success(`Summary receipt ${action === 'download' ? 'downloaded' : action === 'print' ? 'sent to printer' : 'opened'} successfully`);
@@ -760,6 +780,7 @@ const FeeCollection: FC = () => {
                 installments={historyFeeId ? feeInstallments[historyFeeId] || [] : []}
                 canCancel={isFullAccess}
                 onCancelled={refreshSummary}
+                onPrint={(payment) => historyFee && handlePrintReceipt(historyFee, undefined, 'print', payment)}
             />
 
             {/* Apply discount */}

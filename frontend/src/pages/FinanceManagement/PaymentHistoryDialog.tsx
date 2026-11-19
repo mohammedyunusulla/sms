@@ -18,6 +18,8 @@ interface PaymentHistoryDialogProps {
     /** Cancelling is admin-only on the server; others just see the history. */
     canCancel?: boolean;
     onCancelled: () => void;
+    /** Print this payment's receipt */
+    onPrint?: (payment: IFeePayment) => void;
 }
 
 const money = (v: number | string | undefined) => `₹${parseFloat(String(v || 0)).toLocaleString('en-IN')}`;
@@ -25,7 +27,7 @@ const money = (v: number | string | undefined) => `₹${parseFloat(String(v || 0
 const formatDate = (d?: string) =>
     d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 
-const PaymentHistoryDialog: FC<PaymentHistoryDialogProps> = ({ isOpen, onClose, fee, installments, canCancel = true, onCancelled }) => {
+const PaymentHistoryDialog: FC<PaymentHistoryDialogProps> = ({ isOpen, onClose, fee, installments, canCancel = true, onCancelled, onPrint }) => {
     const [cancelling, setCancelling] = useState<IFeePayment | null>(null);
     const [reason, setReason] = useState('');
     const [reasonError, setReasonError] = useState('');
@@ -132,6 +134,7 @@ const PaymentHistoryDialog: FC<PaymentHistoryDialogProps> = ({ isOpen, onClose, 
                             </div>
                             <div className="flex items-center gap-2">
                                 <Badge variant="success" size="sm">Paid</Badge>
+                                {onPrint && <Button variant="info" size="sm" onClick={() => onPrint(p)}>Print</Button>}
                                 {canCancel && <Button variant="danger" size="sm" onClick={() => setCancelling(p)}>Cancel</Button>}
                             </div>
                         </div>
