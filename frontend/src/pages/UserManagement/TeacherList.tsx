@@ -121,11 +121,25 @@ const TeacherList: FC = () => {
         try {
             setLoading(true);
             await teacherService.delete(selectedTeacher!.id);
-            toast.success('Teacher deleted successfully!');
+            toast.success('Teacher deleted. Their records are kept and they can be reactivated.');
             fetchTeachers(currentPage, pageSize);
             setDeleteConfirmOpen(false);
         } catch (err: any) {
             toast.error(err.message || 'Failed to delete teacher.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleReactivate = async (teacher: { id: string | number; full_name?: string }) => {
+        setShowActionsMenu(null);
+        try {
+            setLoading(true);
+            await teacherService.reactivate(String(teacher.id));
+            toast.success(`${teacher.full_name || 'Teacher'} reactivated`);
+            fetchTeachers(currentPage, pageSize);
+        } catch (err) {
+            toast.error((err as { message?: string })?.message || 'Failed to reactivate teacher.');
         } finally {
             setLoading(false);
         }
@@ -330,7 +344,19 @@ const TeacherList: FC = () => {
                             </svg>
                             View
                         </button>
-                        {hasPermission(Permission.DELETE_TEACHERS) && (
+                        {hasPermission(Permission.DELETE_TEACHERS) && rows.find(r => r.id === showActionsMenu)?.is_active === false && (
+                            <button
+                                onClick={() => handleReactivate(rows.find(r => r.id === showActionsMenu)!)}
+                                className="w-full text-left px-4 py-2 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors flex items-center gap-2 text-green-700 dark:text-green-400 last:rounded-b-lg"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Reactivate
+                            </button>
+                        )}
+
+                        {hasPermission(Permission.DELETE_TEACHERS) && rows.find(r => r.id === showActionsMenu)?.is_active !== false && (
                             <button
                                 onClick={() => handleDelete(rows.find(r => r.id === showActionsMenu)!)}
                                 className="w-full text-left px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2 text-red-600 dark:text-red-400 last:rounded-b-lg"
@@ -348,7 +374,7 @@ const TeacherList: FC = () => {
             <ConfirmDialog
                 isOpen={deleteConfirmOpen}
                 title="Delete Teacher"
-                message={`Are you sure you want to delete the teacher "${selectedTeacher?.full_name}"?`}
+                message={`Delete "${selectedTeacher?.full_name}"? They will be marked inactive and can no longer log in. All their records are kept, and you can reactivate them at any time.`}
                 type="danger"
                 confirmText="Yes, Delete"
                 cancelText="Cancel"

@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify
 from app.services.teacher_service import TeacherService
 from app.decorators import log_actions, login_required
+from app.utils.user_status import set_school_user_active, status_response
+from app.models.tenant.Teacher import Teacher
 from app.models.main.User import UserRole
 
 teacher_bp = Blueprint('teachers', __name__)
@@ -92,17 +94,8 @@ def delete_teacher(skid, teacher_id):
         if not teacher_id:
             raise ValueError("Teacher ID is required")
         
-        # Delete the teacher
-        result = TeacherService.delete_teacher_user(teacher_id, skid)
-        
-        if not result:
-            return jsonify({'message': 'Teacher not found'}), 404
-        
-        return jsonify({
-            'message': 'User deleted successfully',
-            'status': 'success',
-            'code': 200
-        }), 200
+        # Soft delete: inactive + login disabled; all records are kept and can be reactivated.
+        return status_response(set_school_user_active(skid, teacher_id, False, Teacher, 'Teacher'))
         
     except ValueError as e:
         return jsonify({'message': str(e)}), 400
@@ -231,3 +224,14 @@ def assign_subjects_to_teacher(teacher_id, skid):
 
     except Exception as e:
         return jsonify({'message': f'Failed to assign subjects: {str(e)}'}), 500
+
+
+@teacher_bp.route('/reactivate/<skid>/<teacher_id>', methods=['PATCH'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@log_actions('REACTIVATE_TEACHER_USER')
+def reactivate_teacher(skid, teacher_id):
+    """Undo a soft delete: active again and login re-enabled."""
+    try:
+        return status_response(set_school_user_active(skid, teacher_id, True, Teacher, 'Teacher'))
+    except Exception as e:
+        return jsonify({'code': 500, 'status': 'error', 'message': f'Failed to reactivate teacher: {str(e)}'}), 500

@@ -4,6 +4,7 @@ from app import db
 from app.models.tenant import SectionSubject, Subject, TeacherSubject, SchoolUsers
 from app.models.tenant.Sections import Section
 from app.utils.db_manager import switch_to_school_db
+from app.utils.usage_check import usage_summary, SUBJECT_REFERENCES, blocked_message
 
 
 class SubjectService:
@@ -112,12 +113,19 @@ class SubjectService:
                 
                 if not subject:
                     raise ValueError("Subject not found")
-                
+
+                # Only allow deleting a subject nothing depends on
+                usage = usage_summary(tenant_session, SUBJECT_REFERENCES, subject_id)
+                if usage:
+                    raise ValueError(blocked_message(subject.subject_name or f'#{subject_id}', 'subject', usage))
+
                 tenant_session.delete(subject)
                 tenant_session.commit()
                 
                 return True
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to delete subject: {str(e)}")
 

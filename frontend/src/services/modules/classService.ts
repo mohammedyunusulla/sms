@@ -85,9 +85,9 @@ class ClassService {
             throw new Error('School ID not found. Please log in again.');
         }
 
-        const response = await api.delete(`${this.baseUrl}/delete/${id}/${schoolId}`);
+        const response = await api.delete(`${this.baseUrl}/class/delete/${schoolId}/${id}`);
         if (response.code !== 200 || response.status !== 'success') {
-            throw new Error(response.data?.message || 'Failed to delete class');
+            throw new Error(response.message || response.data?.message || 'Failed to delete class');
         }
     }
 

@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify
 from app.services.parent_service import ParentService
 from app.decorators import log_actions, login_required
+from app.utils.user_status import set_school_user_active, status_response
+from app.models.tenant.Parent import Parent
 
 parent_bp = Blueprint('parents', __name__)
 
@@ -99,17 +101,8 @@ def delete_parent(skid, parent_id):
         if not parent_id:
             raise ValueError("Parent ID is required")
         
-        # Delete the parent
-        result = ParentService.delete_parent_user(parent_id, skid)
-        
-        if not result:
-            return jsonify({'message': 'Parent not found'}), 404
-        
-        return jsonify({
-            'message': 'Parent deleted successfully',
-            'status': 'success',
-            'code': 200
-        }), 200
+        # Soft delete: inactive + login disabled; all records are kept and can be reactivated.
+        return status_response(set_school_user_active(skid, parent_id, False, Parent, 'Parent'))
         
     except ValueError as e:
         return jsonify({'message': str(e)}), 400
@@ -255,3 +248,14 @@ def get_student_parents(student_id, skid):
             'status': 'error',
             'code': 500
         }), 500
+
+
+@parent_bp.route('/reactivate/<skid>/<parent_id>', methods=['PATCH'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@log_actions('REACTIVATE_PARENT_USER')
+def reactivate_parent(skid, parent_id):
+    """Undo a soft delete: active again and login re-enabled."""
+    try:
+        return status_response(set_school_user_active(skid, parent_id, True, Parent, 'Parent'))
+    except Exception as e:
+        return jsonify({'code': 500, 'status': 'error', 'message': f'Failed to reactivate parent: {str(e)}'}), 500

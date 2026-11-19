@@ -114,9 +114,24 @@ class TeacherService {
             throw new Error('School ID not found. Please log in again.');
         }
 
-        const response = await api.delete(`${this.baseUrl}/delete/${id}/${schoolId}`);
+        const response = await api.delete(`${this.baseUrl}/delete/${schoolId}/${id}`);
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.data?.message || 'Failed to delete teacher');
+        }
+    }
+
+    // Reactivate a (soft-)deleted teacher: active again and login re-enabled.
+    async reactivate(id: string): Promise<void> {
+        const api = getApiClient();
+        const schoolId = getSchoolId();
+
+        if (!schoolId) {
+            throw new Error('School ID not found. Please log in again.');
+        }
+
+        const response = (await api.patch(`${this.baseUrl}/reactivate/${schoolId}/${id}`));
+        if (response.code !== 200 || response.status !== 'success') {
+            throw new Error(response.message || 'Failed to reactivate teacher');
         }
     }
     /**

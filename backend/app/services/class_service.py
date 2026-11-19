@@ -2,6 +2,7 @@ from app import db
 from app.models.tenant import Class, Teacher, SchoolUsers, Student, StudentEnrollment
 from app.models.tenant.Sections import Section
 from app.utils.db_manager import switch_to_school_db
+from app.utils.usage_check import usage_summary, CLASS_REFERENCES, blocked_message
 from datetime import date
 
 class ClassService:
@@ -78,8 +79,10 @@ class ClassService:
                 if not class_obj:
                     raise ValueError("Class not found")
                 
-                # Check if class has students enrolled
-                # You might want to add this check based on your business logic
+                # Only allow deleting a class nothing depends on (its empty sections are removed with it)
+                usage = usage_summary(tenant_session, CLASS_REFERENCES, class_id)
+                if usage:
+                    raise ValueError(blocked_message(class_obj.class_name or f'#{class_id}', 'class', usage))
                 Sections = tenant_session.query(Section).filter_by(class_id=class_id).all()
                 
                 # Delete all Section first
@@ -90,6 +93,8 @@ class ClassService:
                 tenant_session.delete(class_obj)
                 tenant_session.commit()
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to delete class: {str(e)}")
 
