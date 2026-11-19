@@ -36,6 +36,10 @@ class TeacherDashboardService:
 
                 # Import Timetable model
                 from app.models.tenant.TimeTable import Timetable
+                from app.services.timeTable_service import live_timetable_ids
+                live_ids = live_timetable_ids(tenant_session, date_obj)  # published, active, this year, latest
+                if not live_ids:
+                    return []
 
                 # Query timetable entries for the teacher on the specified day
                 entries = tenant_session.query(
@@ -59,6 +63,7 @@ class TeacherDashboardService:
                     Section, Timetable.section_id == Section.id
                 ).filter(
                     and_(
+                        Timetable.id.in_(live_ids),
                         TimetableEntry.teacher_id == teacher_id,
                         TimetableEntry.day_of_week == day_name,
                         TimetableEntry.is_active == True
@@ -249,13 +254,18 @@ class TeacherDashboardService:
                 # Import Timetable model
                 from app.models.tenant.TimeTable import Timetable
 
-                # Get all unique section IDs taught by the teacher
+                # Get all unique section IDs taught by the teacher (live timetables only)
+                from app.services.timeTable_service import live_timetable_ids
+                live_ids = live_timetable_ids(tenant_session, date.today())
+                if not live_ids:
+                    return 0
                 section_ids = tenant_session.query(
                     distinct(Timetable.section_id)
                 ).join(
                     TimetableEntry, TimetableEntry.timetable_id == Timetable.id
                 ).filter(
                     and_(
+                        Timetable.id.in_(live_ids),
                         TimetableEntry.teacher_id == teacher_id,
                         TimetableEntry.is_active == True
                     )
@@ -308,7 +318,12 @@ class TeacherDashboardService:
                     # Get Monday of current week
                     base_date = today - timedelta(days=today.weekday())
 
-                # Query all timetable entries for the teacher
+                # Query all timetable entries for the teacher (live timetables only)
+                from app.services.timeTable_service import live_timetable_ids
+                live_ids = live_timetable_ids(tenant_session, base_date)
+                if not live_ids:
+                    return {'week_start': base_date.isoformat(),
+                            'timetable_by_day': {d: [] for d in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']}}
                 entries = tenant_session.query(
                     TimetableEntry.id,
                     TimetableEntry.day_of_week,
@@ -329,6 +344,7 @@ class TeacherDashboardService:
                     Section, Timetable.section_id == Section.id
                 ).filter(
                     and_(
+                        Timetable.id.in_(live_ids),
                         TimetableEntry.teacher_id == teacher_id,
                         TimetableEntry.is_active == True
                     )

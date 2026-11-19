@@ -39,10 +39,9 @@ class TimetableEntry(BaseModelTenant, BaseModelTenantMixin):
             'timetable_id', 'day_of_week', 'period_number',
             name='unique_period_per_day_per_timetable'
         ),
-        UniqueConstraint(
-            'teacher_id', 'day_of_week', 'start_time', 'end_time',
-            name='unique_teacher_schedule_per_time_slot'
-        ),
+        # No database-wide (teacher, day, time) key: it blocked a teacher's slot in every other timetable
+        # (semester 2, next year, even deleted ones). Double-booking is checked by
+        # TimetableService.check_teacher_conflicts within the same year, semester and active timetables.
     )
     
     def __repr__(self):

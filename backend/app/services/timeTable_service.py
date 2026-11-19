@@ -9,6 +9,50 @@ from app.utils.db_manager import switch_to_school_db
 logger = logging.getLogger(__name__)
 
 
+_schema_checked = set()
+
+
+def ensure_timetable_schema(session, skid):
+    """Existing school databases still have the old (teacher, day, time) unique key: drop it once per process."""
+    if skid in _schema_checked:
+        return
+    from sqlalchemy import text
+    session.execute(text("ALTER TABLE timetable_entries DROP CONSTRAINT IF EXISTS unique_teacher_schedule_per_time_slot"))
+    session.commit()
+    _schema_checked.add(skid)
+
+
+def _year_name(session, year_id):
+    from app.models.tenant.AcademicYear import AcademicYear
+    year = session.query(AcademicYear).filter_by(id=year_id).first() if year_id else None
+    return year.year_name if year else None
+
+
+def live_timetable_ids(session, on_date, section_id=None):
+    """
+    The timetables people should see on a date: published (not draft) and active, in the academic year of that
+    date, and for each section the most recently published one (so publishing semester 2 replaces semester 1).
+    """
+    from app.models.tenant.TimeTable import Timetable
+    from app.models.tenant.AcademicYear import AcademicYear
+    year = session.query(AcademicYear).filter(
+        AcademicYear.start_date <= on_date, AcademicYear.end_date >= on_date
+    ).first() or session.query(AcademicYear).filter_by(is_current=True).first()
+    if not year:
+        return set()
+    query = session.query(Timetable.id, Timetable.section_id).filter(
+        Timetable.academic_year_id == year.id,
+        Timetable.is_active.is_(True),
+        Timetable.is_draft.isnot(True),
+    )
+    if section_id is not None:
+        query = query.filter(Timetable.section_id == section_id)
+    latest = {}
+    for tt_id, sec_id in query.order_by(Timetable.updated_at.desc().nullslast(), Timetable.id.desc()).all():
+        latest.setdefault(sec_id, tt_id)
+    return set(latest.values())
+
+
 class TimetableService:
 
     @staticmethod
@@ -259,7 +303,8 @@ class TimetableService:
             with switch_to_school_db(skid) as tenant_session:
                 from app.models.tenant.TimeTable import Timetable
                 from app.models.tenant.TimeTableEntry import TimetableEntry
-                
+                ensure_timetable_schema(tenant_session, skid)
+
                 # Check if timetable already exists
                 existing_timetable = tenant_session.query(Timetable).filter(
                     Timetable.class_id == data['class_id'],
@@ -269,8 +314,10 @@ class TimetableService:
                 ).first()
                 
                 if existing_timetable:
-                    # Update existing timetable
+                    # Update existing timetable (and bring back one that was deleted: delete only marks it
+                    # inactive, and re-saving used to leave it invisible)
                     timetable = existing_timetable
+                    timetable.is_active = True
                     # Delete existing entries
                     tenant_session.query(TimetableEntry).filter(
                         TimetableEntry.timetable_id == timetable.id
@@ -414,6 +461,7 @@ class TimetableService:
                     'class_name': timetable.class_ref.class_name,
                     'section_name': timetable.section_obj.section_name,
                     'academic_year_id': timetable.academic_year_id,
+                    'academic_year': _year_name(tenant_session, timetable.academic_year_id),
                     'semester': timetable.semester,
                     'is_draft': timetable.is_draft,
                     'configuration': {
@@ -454,13 +502,20 @@ class TimetableService:
                 
                 query = query.options(
                     joinedload(Timetable.class_ref),
-                    joinedload(Timetable.section_obj)
+                    joinedload(Timetable.section_obj),
+                    joinedload(Timetable.entries)
                 )
-                
+
                 timetables = query.all()
-                
+
+                days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
                 result = []
                 for tt in timetables:
+                    # the list showed "0 Time Slots" for every timetable: it never returned its periods
+                    slots = sorted(
+                        (e for e in tt.entries if e.is_active),
+                        key=lambda e: (days.index(e.day_of_week) if e.day_of_week in days else 9, e.period_number),
+                    )
                     result.append({
                         'id': tt.id,
                         'class_name': tt.class_ref.class_name,
@@ -468,6 +523,12 @@ class TimetableService:
                         'academic_year_id': tt.academic_year_id,
                         'semester': tt.semester,
                         'is_draft': getattr(tt, 'is_draft', False),
+                        'timeSlots': [{
+                            'id': e.id,
+                            'dayOfWeek': days.index(e.day_of_week) if e.day_of_week in days else -1,
+                            'startTime': e.start_time.strftime('%H:%M'),
+                            'endTime': e.end_time.strftime('%H:%M'),
+                        } for e in slots],
                         'created_at': tt.created_at.isoformat(),
                         'updated_at': tt.updated_at.isoformat()
                     })
@@ -741,6 +802,12 @@ class TimetableService:
                 date_obj = datetime.strptime(date, '%Y-%m-%d').date()
                 day_name = date_obj.strftime('%A')
 
+                # Only the section's live timetable: published, active, that date's year, latest published
+                # (drafts, deleted timetables and other years/semesters used to be mixed in)
+                live_ids = live_timetable_ids(tenant_session, date_obj, student.section_id)
+                if not live_ids:
+                    return []
+
                 # Query timetable entries for the student's section on the given day
                 entries = tenant_session.query(
                     TimetableEntry.id,
@@ -763,7 +830,7 @@ class TimetableService:
                     SchoolUsers, Teacher.user_id == SchoolUsers.id
                 ).filter(
                     and_(
-                        Timetable.section_id == student.section_id,
+                        Timetable.id.in_(live_ids),
                         TimetableEntry.day_of_week == day_name,
                         TimetableEntry.is_active == True
                     )
@@ -800,6 +867,7 @@ class TimetableService:
             with switch_to_school_db(skid) as tenant_session:
                 from app.models.tenant.TimeTable import Timetable
                 from app.models.tenant.TimeTableEntry import TimetableEntry
+                ensure_timetable_schema(tenant_session, skid)
                 
                 # Get source timetable
                 source_timetable = tenant_session.query(Timetable).filter(
