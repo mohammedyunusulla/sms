@@ -406,17 +406,36 @@ def promote_students(skid):
             }), 400
         
         # Call service method
-        result = StudentService.promote_students(data, skid)
-        
+        result = StudentService.promote_students(data, skid, promoted_by=request.current_user.school_user_id)
+
+        # Report what really happened (it used to say "promoted successfully" even when nobody moved)
+        moved = result['promoted_count'] + result['detained_count']
+        parts = []
+        if result['promoted_count']:
+            parts.append(f"{result['promoted_count']} promoted")
+        if result['detained_count']:
+            parts.append(f"{result['detained_count']} detained (kept in the same class)")
+        if result['skipped_count']:
+            parts.append(f"{result['skipped_count']} skipped")
+        summary = f"{', '.join(parts)} of {result['total_students']}"
+        if moved == 0:
+            first = (result['errors'] or [{}])[0]
+            return jsonify({
+                'message': f"No students were promoted: {first.get('name', '')} - {first.get('error', 'unknown reason')}"
+                if len(result['errors'] or []) == 1 else f"No students were promoted ({summary}). First reason: {first.get('error')}",
+                'data': result,
+                'status': 'error',
+                'code': 400,
+            }), 400
         return jsonify({
-            'message': 'Students promoted successfully',
+            'message': summary[0].upper() + summary[1:],
             'data': result,
             'status': 'success',
             'code': 200
         }), 200
-        
+
     except ValueError as e:
-        return jsonify({'message': str(e)}), 400
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': f'Failed to promote students: {str(e)}'}), 500
 

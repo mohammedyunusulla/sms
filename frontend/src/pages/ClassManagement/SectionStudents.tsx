@@ -7,6 +7,7 @@
 import { ConfirmDialog } from '@/components';
 import { studentService } from '@/services/modules/studentService';
 import { classService } from '@/services/modules/classService';
+import { academicYearService } from '@/services/modules/academicYearService';
 import { useAuthStore } from '@/stores/authStore';
 import { FC, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
@@ -52,6 +53,42 @@ const SectionStudents: FC<SectionStudentsProps> = ({
     // Individual actions
     const navigate = useNavigate();
     const academicYearVersion = useAuthStore((state) => state.academicYearVersion);
+    // The class the viewed section belongs to = the students' current class (sent as from_class_id)
+    const currentClassId = sections.find((s) => s.id === activeSection)?.class_id;
+
+    // Academic years fresh from the server (the login copy misses years created later).
+    // Default target = the next year after the current one, if it exists.
+    const loadPromotionYears = async (setTarget: (id: string) => void) => {
+        const current = useAuthStore.getState().user?.current_academic_year;
+        let years: Array<{ id: number; start_date: string }> = [];
+        try {
+            years = await academicYearService.listAcademicYears();
+        } catch {
+            years = useAuthStore.getState().user?.academic_years || [];
+        }
+        setAllAcademicYears(years);
+        const later = years
+            .filter((y) => current && y.id !== current.id && String(y.start_date) > String(current.start_date))
+            .sort((a, b) => String(a.start_date).localeCompare(String(b.start_date)));
+        setTarget(later[0] ? String(later[0].id) : '');
+    };
+
+    // Turn the promotion result into one message (it used to always say "promoted successfully")
+    type PromotionResult = {
+        promoted_count?: number;
+        detained_count?: number;
+        total_students?: number;
+        errors?: Array<{ name?: string; error: string }> | null;
+    };
+    const promotionToast = (result: PromotionResult) => {
+        const parts: string[] = [];
+        if (result?.promoted_count) parts.push(`${result.promoted_count} promoted`);
+        if (result?.detained_count) parts.push(`${result.detained_count} detained (same class next year)`);
+        const skipped = result?.errors || [];
+        if (parts.length) toast.success(`${parts.join(', ')} of ${result.total_students}`);
+        skipped.slice(0, 3).forEach((e) => toast.error(`${e.name || 'Student'}: ${e.error}`));
+        if (skipped.length > 3) toast.error(`…and ${skipped.length - 3} more skipped`);
+    };
     // State for students
     const [sectionStudents, setSectionStudents] = useState<any[]>([]);
     const [loadingStudents, setLoadingStudents] = useState(false);
@@ -232,15 +269,8 @@ const SectionStudents: FC<SectionStudentsProps> = ({
             const classesResponse = await classService.list();
             setAllClasses(Array.isArray(classesResponse) ? classesResponse : classesResponse?.data || []);
 
-            // Get academic years from auth store
-            const authUser = useAuthStore.getState().user;
-            if (authUser?.academic_years && Array.isArray(authUser.academic_years)) {
-                setAllAcademicYears(authUser.academic_years);
-                // Set current academic year as default
-                if (authUser.current_academic_year?.id) {
-                    setPromoteToAcademicYear(authUser.current_academic_year.id.toString());
-                }
-            }
+            // Academic years fresh from the server; default target = next year
+            await loadPromotionYears(setPromoteToAcademicYear);
         } catch (err: any) {
             console.error('Failed to fetch classes:', err);
             toast.error('Failed to load classes');
@@ -301,9 +331,9 @@ const SectionStudents: FC<SectionStudentsProps> = ({
         try {
             setLoadingStudents(true);
             const currentAcademicYear = useAuthStore.getState().user?.current_academic_year;
-            await studentService.promoteStudent({
+            const result = await studentService.promoteStudent({
                 student_ids: [selectedStudent.id],
-                from_class_id: allClasses.find(c => c.id === parseInt(promoteToClass))?.id,
+                from_class_id: currentClassId,
                 from_section_id: activeSection,
                 from_academic_year_id: currentAcademicYear?.id,
                 to_class_id: promoteToClass,
@@ -313,7 +343,7 @@ const SectionStudents: FC<SectionStudentsProps> = ({
                 default_status: promoteStatus,
                 remarks: promoteRemarks
             });
-            toast.success('Student promoted successfully!');
+            promotionToast(result);
             setShowPromoteModal(false);
             fetchSectionStudents(currentPage, pageSize);
         } catch (err: any) {
@@ -362,15 +392,8 @@ const SectionStudents: FC<SectionStudentsProps> = ({
             const classesResponse = await classService.list();
             setAllClasses(Array.isArray(classesResponse) ? classesResponse : classesResponse?.data || []);
 
-            // Get academic years from auth store
-            const authUser = useAuthStore.getState().user;
-            if (authUser?.academic_years && Array.isArray(authUser.academic_years)) {
-                setAllAcademicYears(authUser.academic_years);
-                // Set current academic year as default
-                if (authUser.current_academic_year?.id) {
-                    setBulkPromoteToAcademicYear(authUser.current_academic_year.id.toString());
-                }
-            }
+            // Academic years fresh from the server; default target = next year
+            await loadPromotionYears(setBulkPromoteToAcademicYear);
 
             setShowBulkPromoteModal(true);
             setBulkPromoteToClass('');
@@ -417,9 +440,9 @@ const SectionStudents: FC<SectionStudentsProps> = ({
         try {
             setLoadingStudents(true);
             const currentAcademicYear = useAuthStore.getState().user?.current_academic_year;
-            await studentService.promoteStudent({
+            const result = await studentService.promoteStudent({
                 student_ids: Array.from(selectedStudents).map(id => parseInt(id, 10)),
-                from_class_id: allClasses.find(c => c.id === parseInt(bulkPromoteToClass))?.id,
+                from_class_id: currentClassId,
                 from_section_id: activeSection,
                 from_academic_year_id: currentAcademicYear?.id,
                 to_class_id: bulkPromoteToClass,
@@ -429,7 +452,7 @@ const SectionStudents: FC<SectionStudentsProps> = ({
                 default_status: bulkPromoteStatus,
                 remarks: bulkPromoteRemarks
             });
-            toast.success(`${selectedStudents.size} student(s) promoted successfully!`);
+            promotionToast(result);
             setShowBulkPromoteModal(false);
             setSelectedStudents(new Set());
             fetchSectionStudents(currentPage, pageSize);
@@ -854,7 +877,7 @@ const SectionStudents: FC<SectionStudentsProps> = ({
                         placeholder="Select status"
                         options={[
                             { label: 'Passed', value: 'PASSED' },
-                            { label: 'Failed', value: 'FAILED' },
+                            { label: 'Failed (stays in the same class next year)', value: 'FAILED' },
                         ]}
                     />
 
@@ -995,7 +1018,7 @@ const SectionStudents: FC<SectionStudentsProps> = ({
                         placeholder="Select status"
                         options={[
                             { label: 'Passed', value: 'PASSED' },
-                            { label: 'Failed', value: 'FAILED' },
+                            { label: 'Failed (stays in the same class next year)', value: 'FAILED' },
                         ]}
                     />
 

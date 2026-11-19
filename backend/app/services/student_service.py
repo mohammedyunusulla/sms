@@ -4,6 +4,7 @@ from app.models.tenant import Student, SchoolUsers, StudentEnrollment, Class, St
 from app.models.tenant.Sections import Section
 from app import db
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import func
 from flask import jsonify
 from app.utils.db_manager import switch_to_school_db
 from app.services.userRole_service import UserRolesService
@@ -938,128 +939,144 @@ class StudentService:
 
     
     @staticmethod
-    def promote_students(data, skid):
+    def promote_students(data, skid, promoted_by=None):
+        """
+        Move students from one class/section/year to the next year.
+
+        PASSED -> new enrollment in the target class/section for the target year (REGULAR).
+        FAILED -> detained: new enrollment in their *current* class/section for the target year (DETAINED).
+        Every move is written to promotion_history. A student is skipped (with a reason) when the
+        target already exists, before anything about them is changed.
+        """
+        from app.models.tenant.PromotionHistory import PromotionHistory
+
+        def as_int(value, label):
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                raise ValueError(f"{label} is not valid")
+
+        student_ids = [as_int(sid, "Student") for sid in (data.get("student_ids") or [])]
+        from_class_id = as_int(data.get("from_class_id"), "Current class")
+        from_section_id = as_int(data.get("from_section_id"), "Current section")
+        from_year_id = as_int(data.get("from_academic_year_id"), "Current academic year")
+        to_class_id = as_int(data.get("to_class_id"), "Target class")
+        to_section_id = as_int(data.get("to_section_id"), "Target section")
+        to_year_id = as_int(data.get("to_academic_year_id"), "Target academic year")
+        raw_date = data.get("promotion_date")
         try:
-            # Extract data
-            student_ids = data.get("student_ids", [])
-            from_class_id = data.get("from_class_id")
-            from_section_id = data.get("from_section_id")
-            from_academic_year_id = data.get("from_academic_year_id")
-            to_class_id = data.get("to_class_id")
-            to_section_id = data.get("to_section_id")
-            to_academic_year_id = data.get("to_academic_year_id")
-            promotion_date = data.get("promotion_date") or datetime.now().date()
-            default_status = data.get("default_status", "PROMOTED")
-            per_student_status = data.get("per_student_status", {})
-            remarks = data.get("remarks")
-            
-            # Validate school exists
-            school = School.query.filter_by(skid=skid).first()
-            if not school:
-                raise ValueError("School not found")
-            
-            promoted_count = 0
-            errors = []
-            
-            with switch_to_school_db(skid) as tenant_session:
-                # Validate target class, section, and academic year exist
-                target_class = tenant_session.query(Class).filter_by(id=to_class_id).first()
-                if not target_class:
-                    raise ValueError(f"Target class with ID {to_class_id} not found")
-                
-                target_section = tenant_session.query(Section).filter_by(id=to_section_id).first()
-                if not target_section:
-                    raise ValueError(f"Target section with ID {to_section_id} not found")
-                
-                target_year = tenant_session.query(AcademicYear).filter_by(id=to_academic_year_id).first()
-                if not target_year:
-                    raise ValueError(f"Target academic year with ID {to_academic_year_id} not found")
-                
-                # Process each student
-                for sid in student_ids:
-                    try:
-                        # 1. Find current/active enrollment
-                        enrollment = (
-                            tenant_session.query(StudentEnrollment)
-                            .filter(
-                                StudentEnrollment.student_id == sid,
-                                StudentEnrollment.class_id == from_class_id,
-                                StudentEnrollment.section_id == from_section_id,
-                                StudentEnrollment.academic_year_id == from_academic_year_id,
-                                StudentEnrollment.status == "active"
-                            )
-                            .order_by(StudentEnrollment.id.desc())
-                            .first()
-                        )
-                        
-                        if not enrollment:
-                            errors.append({
-                                "student_id": sid,
-                                "error": "No active enrollment found for specified class/section/year"
-                            })
-                            continue
-                        
-                        # 2. Mark previous enrollment with status
-                        new_status = per_student_status.get(str(sid), default_status)
-                        enrollment.status = new_status
-                        enrollment.promotion_date = promotion_date
-                        if remarks:
-                            enrollment.remarks = remarks
-                        
-                        # 3. Check if enrollment already exists for target
-                        existing_enrollment = (
-                            tenant_session.query(StudentEnrollment)
-                            .filter(
-                                StudentEnrollment.student_id == sid,
-                                StudentEnrollment.class_id == to_class_id,
-                                StudentEnrollment.section_id == to_section_id,
-                                StudentEnrollment.academic_year_id == to_academic_year_id
-                            )
-                            .first()
-                        )
-                        
-                        if existing_enrollment:
-                            errors.append({
-                                "student_id": sid,
-                                "error": "Student already enrolled in target class/section/year"
-                            })
-                            continue
-                        
-                        # 4. Create new enrollment for promoted class
-                        new_enrollment = StudentEnrollment(
-                            student_id=sid,
-                            class_id=to_class_id,
-                            section_id=to_section_id,
-                            academic_year_id=to_academic_year_id,
-                            enrollment_date=promotion_date,
-                            status="active",
-                            remarks=f"Promoted from Class {from_class_id}, Section {from_section_id}"
-                        )
-                        tenant_session.add(new_enrollment)
-                        
-                        # 5. Update student profile with new class/section
-                        student_profile = tenant_session.query(Student).filter_by(user_id=sid).first()
-                        if student_profile:
-                            student_profile.class_id = to_class_id
-                            student_profile.section_id = to_section_id
-                        
-                        promoted_count += 1
-                        
-                    except Exception as e:
-                        errors.append({
-                            "student_id": sid,
-                            "error": str(e)
-                        })
-                        continue
-                
-                # Commit all changes
-                tenant_session.commit()
-            
-            return {
-                "promoted_count": promoted_count,
-                "total_students": len(student_ids),
-                "errors": errors if errors else None
-            }
-            
-        except Exception as e:
-            raise Exception(f"Error promoting students: {str(e)}")
+            promotion_date = datetime.strptime(str(raw_date)[:10], "%Y-%m-%d").date() if raw_date else date.today()
+        except ValueError:
+            raise ValueError("Promotion date is not valid")
+        default_status = str(data.get("default_status") or "PASSED").upper()
+        per_student_status = {str(k): str(v).upper() for k, v in (data.get("per_student_status") or {}).items()}
+        remarks = (data.get("remarks") or "").strip() or None
+
+        if not School.query.filter_by(skid=skid).first():
+            raise ValueError("School not found")
+        if to_year_id == from_year_id:
+            raise ValueError("Choose a different academic year to promote into (use Move to change a section within the year)")
+
+        promoted, detained, skipped = [], [], []
+        with switch_to_school_db(skid) as tenant_session:
+            target_class = tenant_session.query(Class).filter_by(id=to_class_id).first()
+            if not target_class:
+                raise ValueError("Target class not found")
+            target_section = tenant_session.query(Section).filter_by(id=to_section_id).first()
+            if not target_section:
+                raise ValueError("Target section not found")
+            if target_section.class_id != to_class_id:
+                raise ValueError("The target section doesn't belong to the target class")
+            if not tenant_session.query(AcademicYear).filter_by(id=to_year_id).first():
+                raise ValueError("Target academic year not found")
+            from_section = tenant_session.query(Section).filter_by(id=from_section_id).first()
+            if not from_section or from_section.class_id != from_class_id:
+                raise ValueError("The current section doesn't belong to the current class")
+
+            for sid in student_ids:
+                student = tenant_session.query(Student).filter_by(user_id=sid).first()
+                name = f"{student.user.first_name} {student.user.last_name}" if student and student.user else f"Student {sid}"
+                if not student:
+                    skipped.append({"student_id": sid, "name": name, "error": "Student not found"})
+                    continue
+
+                # Current enrollment (case-insensitive 'active'). Older students may only have the
+                # class/section on their profile and no enrollment at all: accept that placement.
+                current = (
+                    tenant_session.query(StudentEnrollment)
+                    .filter(
+                        StudentEnrollment.student_id == sid,
+                        StudentEnrollment.class_id == from_class_id,
+                        StudentEnrollment.section_id == from_section_id,
+                        StudentEnrollment.academic_year_id == from_year_id,
+                        func.lower(StudentEnrollment.status) == "active",
+                    )
+                    .order_by(StudentEnrollment.id.desc())
+                    .first()
+                )
+                has_any_enrollment = tenant_session.query(StudentEnrollment).filter(StudentEnrollment.student_id == sid).first() is not None
+                profile_matches = student.class_id == from_class_id and student.section_id == from_section_id
+                if not current and (has_any_enrollment or not profile_matches):
+                    skipped.append({"student_id": sid, "name": name, "error": "Not currently enrolled in this class/section for the current year"})
+                    continue
+
+                status = per_student_status.get(str(sid), default_status)
+                is_detained = status == "FAILED"
+                dest_class_id, dest_section_id = (from_class_id, from_section_id) if is_detained else (to_class_id, to_section_id)
+
+                # Check the target BEFORE changing anything about this student
+                already = (
+                    tenant_session.query(StudentEnrollment)
+                    .filter(
+                        StudentEnrollment.student_id == sid,
+                        StudentEnrollment.academic_year_id == to_year_id,
+                        func.lower(StudentEnrollment.status) == "active",
+                    )
+                    .first()
+                )
+                if already:
+                    skipped.append({"student_id": sid, "name": name, "error": "Already has an active enrollment in the target academic year"})
+                    continue
+
+                if current:
+                    current.status = "DETAINED" if is_detained else "PROMOTED"
+                    current.promotion_date = promotion_date
+                    if remarks:
+                        current.remarks = remarks
+                tenant_session.add(StudentEnrollment(
+                    student_id=sid,
+                    class_id=dest_class_id,
+                    section_id=dest_section_id,
+                    academic_year_id=to_year_id,
+                    enrollment_date=promotion_date,
+                    status="active",
+                    remarks=("Detained" if is_detained else "Promoted") + (f": {remarks}" if remarks else ""),
+                ))
+                student.class_id = dest_class_id
+                student.section_id = dest_section_id
+                tenant_session.add(PromotionHistory(
+                    student_user_id=sid,
+                    from_academic_year_id=from_year_id,
+                    to_academic_year_id=to_year_id,
+                    from_class_id=from_class_id,
+                    to_class_id=dest_class_id,
+                    from_section_id=from_section_id,
+                    to_section_id=dest_section_id,
+                    promotion_date=promotion_date,
+                    promotion_type="DETAINED" if is_detained else "REGULAR",
+                    promoted_by=promoted_by,
+                    remarks=remarks,
+                ))
+                (detained if is_detained else promoted).append({"student_id": sid, "name": name})
+
+            tenant_session.commit()
+
+        return {
+            "promoted_count": len(promoted),
+            "detained_count": len(detained),
+            "skipped_count": len(skipped),
+            "total_students": len(student_ids),
+            "promoted": promoted,
+            "detained": detained,
+            "errors": skipped or None,
+        }

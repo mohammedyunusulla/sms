@@ -17,6 +17,23 @@ export interface AcademicYearFormData {
 
 class AcademicYearService {
     /**
+     * All academic years of the school, fresh from the server (the copy cached at login misses
+     * years created later).
+     */
+    async listAcademicYears(): Promise<AcademicYear[]> {
+        const skid = getSchoolId();
+        if (!skid) {
+            throw new Error('School ID not found');
+        }
+        const response = (await getApiClient().get(`/academic-years/get/${skid}`)) as unknown as
+            | { data?: AcademicYear[]; message?: string }
+            | AcademicYear[];
+        if (Array.isArray(response)) return response;
+        if (Array.isArray(response?.data)) return response.data;
+        throw new Error(response?.message || 'Failed to load academic years');
+    }
+
+    /**
      * Create a new academic year
      */
     async createAcademicYear(data: AcademicYearFormData): Promise<AcademicYear> {

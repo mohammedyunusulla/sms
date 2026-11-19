@@ -211,7 +211,7 @@ class StudentService {
         if (response.code === 200 && response.status === 'success') {
             return response?.data;
         }
-        throw new Error(response.data?.message || 'Failed to promote student');
+        throw new Error(response?.message || response.data?.message || 'Failed to promote student');
     }
 }
 
