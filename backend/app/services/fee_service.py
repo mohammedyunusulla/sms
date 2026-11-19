@@ -10,6 +10,160 @@ from sqlalchemy import func, and_, or_, extract
 from decimal import Decimal
 import json
 
+
+# ------------------------------------------------------------------ shared fee helpers
+def _money(value):
+    return round(float(value or 0), 2)
+
+
+def fee_balance(student_fee):
+    """What is still owed on a fee: total - discount + late fee - paid."""
+    return round(_money(student_fee.total_amount) - _money(student_fee.discount_amount)
+                 + _money(student_fee.late_fee) - _money(student_fee.paid_amount), 2)
+
+
+def refresh_fee_status(student_fee):
+    if fee_balance(student_fee) <= 0:
+        student_fee.status = PaymentStatus.PAID
+    elif _money(student_fee.paid_amount) > 0:
+        student_fee.status = PaymentStatus.PARTIAL
+    else:
+        student_fee.status = PaymentStatus.PENDING
+
+
+def refresh_installment_status(installment):
+    if installment.status == PaymentStatus.CANCELLED:
+        return
+    left = _money(installment.amount) - _money(installment.paid_amount)
+    if left <= 0:
+        installment.status = PaymentStatus.PAID
+    elif _money(installment.paid_amount) > 0:
+        installment.status = PaymentStatus.PARTIAL
+    else:
+        installment.status = PaymentStatus.PENDING
+
+
+def _add_months(day, months):
+    import calendar
+    y, m = divmod(day.month - 1 + months, 12)
+    y += day.year
+    m += 1
+    return date(y, m, min(day.day, calendar.monthrange(y, m)[1]))
+
+
+def _year_range(session, student_fee):
+    from app.models.tenant.AcademicYear import AcademicYear
+    if not student_fee.academic_year_id:
+        return None
+    year = session.query(AcademicYear).filter_by(id=student_fee.academic_year_id).first()
+    return (year.start_date, year.end_date) if year else None
+
+
+def _shrink_from_end(amounts, reduce_by, floors=None):
+    """Take reduce_by off the list, last entries first, never below each floor. Returns what couldn't be taken."""
+    floors = floors or [0] * len(amounts)
+    for i in range(len(amounts) - 1, -1, -1):
+        if reduce_by <= 0:
+            break
+        take = min(reduce_by, round(amounts[i] - floors[i], 2))
+        if take > 0:
+            amounts[i] = round(amounts[i] - take, 2)
+            reduce_by = round(reduce_by - take, 2)
+    return reduce_by
+
+
+def _replace_installments(session, student_fee, plan):
+    """
+    Validate an installment plan and make it the fee's plan. The plan splits what is still owed;
+    a plan that already has payments against it can't be replaced.
+    """
+    from app.utils.validators import positive_amount, to_date
+    if not plan:
+        raise ValueError("Add at least one installment")
+    if len(plan) > 24:
+        raise ValueError("A fee can have at most 24 installments")
+    balance = fee_balance(student_fee)
+    if balance <= 0:
+        raise ValueError("This fee is already fully paid")
+
+    existing = session.query(FeeInstallment).filter_by(student_fee_id=student_fee.id).all()
+    if existing:
+        paid_against = session.query(FeePayment).filter(
+            FeePayment.installment_id.in_([i.id for i in existing])).count()
+        if paid_against:
+            raise ValueError("Payments were already made against this fee's installments, so the plan can't be "
+                             "replaced. Pay the remaining balance in full instead.")
+
+    year = _year_range(session, student_fee)
+    rows = []
+    for idx, item in enumerate(plan, start=1):
+        amount = positive_amount(item.get('amount'), f"Amount of installment {idx}")
+        due = to_date(item.get('due_date'), f"Due date of installment {idx}")
+        if year and not (year[0] <= due <= year[1]):
+            raise ValueError(f"Due date of installment {idx} ({due.strftime('%d %b %Y')}) must be inside the academic "
+                             f"year ({year[0].strftime('%d %b %Y')} - {year[1].strftime('%d %b %Y')})")
+        name = (str(item.get('installment_name') or '').strip() or f"Installment {idx}")[:100]
+        rows.append((name, amount, due))
+    total = round(sum(r[1] for r in rows), 2)
+    if abs(total - balance) > 0.01:
+        raise ValueError(f"Installments add up to {total:.2f}, but the balance to split is {balance:.2f}")
+
+    for old in existing:
+        session.delete(old)
+    session.flush()
+    created = []
+    for idx, (name, amount, due) in enumerate(rows, start=1):
+        inst = FeeInstallment(student_fee_id=student_fee.id, installment_number=idx, installment_name=name,
+                              amount=amount, due_date=due, paid_amount=0, status=PaymentStatus.PENDING)
+        session.add(inst)
+        created.append(inst)
+    student_fee.has_installments = True
+    session.flush()
+    return created
+
+
+def _recurring_plan(session, student_fee, fee_structure):
+    """Installments for a recurring fee: one per period, covering only what is still owed."""
+    rtype = getattr(fee_structure.recurrence_type, 'value', fee_structure.recurrence_type) or 'MONTHLY'
+    payable = round(_money(student_fee.total_amount) - _money(student_fee.discount_amount)
+                    + _money(student_fee.late_fee), 2)
+    if rtype == 'ONE_TIME':
+        amounts, step, label = [payable], 0, "Payment"
+    else:
+        step = {'MONTHLY': 1, 'QUARTERLY': 3, 'YEARLY': 12}.get(rtype)
+        if not step:
+            raise ValueError(f"Unknown recurrence type '{rtype}'")
+        label = {'MONTHLY': 'Month', 'QUARTERLY': 'Quarter', 'YEARLY': 'Year'}[rtype]
+        periods = int(fee_structure.recurrence_months or 0)
+        per = _money(fee_structure.recurrence_amount)
+        if periods < 1 or per <= 0:
+            raise ValueError("This fee's recurring amount or number of periods isn't set. Edit the fee structure first.")
+        amounts = [per] * periods
+        diff = round(payable - sum(amounts), 2)
+        if diff >= 0:
+            amounts[-1] = round(amounts[-1] + diff, 2)
+        else:
+            _shrink_from_end(amounts, -diff)  # e.g. a discount: the last periods get smaller
+    # what is already paid covers the earliest periods
+    paid = _money(student_fee.paid_amount)
+    for i in range(len(amounts)):
+        take = min(amounts[i], paid)
+        amounts[i] = round(amounts[i] - take, 2)
+        paid = round(paid - take, 2)
+
+    base = student_fee.due_date or date.today()
+    year = _year_range(session, student_fee)
+    plan = []
+    for i, amount in enumerate(amounts):
+        if amount <= 0:
+            continue
+        due = _add_months(base, step * i)
+        if year:  # dues never run past the academic year
+            due = min(max(due, year[0]), year[1])
+        plan.append({'installment_name': f"{label} {i + 1}" if label != "Payment" else "Full Payment",
+                     'amount': amount, 'due_date': due.isoformat()})
+    return plan
+
 class FeeService:
     
     @staticmethod
@@ -311,6 +465,8 @@ class FeeService:
                 
                 if not student_fee:
                     raise ValueError("Student fee record not found")
+                if student_fee.has_installments:
+                    raise ValueError("This fee is paid in installments. Pay an installment, or use Pay Full Balance first.")
 
                 # Validate amount, date and mode (zero / negative / future-dated payments used to be accepted,
                 # and the balance ignored discounts and late fees)
@@ -350,17 +506,11 @@ class FeeService:
                 tenant_session.add(payment)
                 
                 # Update student fee
-                student_fee.paid_amount = float(student_fee.paid_amount or 0) + float(data['amount_paid'])
-                
-                # Update status
-                total_payable = float(student_fee.total_amount) - float(student_fee.discount_amount or 0)
-                if student_fee.paid_amount >= total_payable:
-                    student_fee.status = PaymentStatus.PAID
-                elif student_fee.paid_amount > 0:
-                    student_fee.status = PaymentStatus.PARTIAL
-                
+                student_fee.paid_amount = _money(student_fee.paid_amount) + amount
+                refresh_fee_status(student_fee)
+
                 tenant_session.commit()
-                
+
                 return {
                     'payment': payment.to_dict(),
                     'student_fee': student_fee.to_dict(),
@@ -374,169 +524,73 @@ class FeeService:
     
     @staticmethod
     def cancel_payment(payment_id, skid, cancelled_by_id, reason):
-        """Cancel a payment"""
+        """Cancel a payment: reverses it on the fee and on its installment."""
+        reason = (reason or '').strip()
+        if not reason:
+            raise ValueError("Give a reason for cancelling the payment")
         try:
             with switch_to_school_db(skid) as tenant_session:
                 payment = tenant_session.query(FeePayment).filter_by(id=payment_id).first()
                 if not payment:
                     raise ValueError("Payment not found")
-                
                 if payment.is_cancelled:
-                    raise ValueError("Payment already cancelled")
-                
-                # Mark payment as cancelled
+                    raise ValueError("This payment is already cancelled")
+
                 payment.is_cancelled = True
                 payment.cancelled_by = cancelled_by_id
                 payment.cancelled_at = datetime.now()
-                payment.cancellation_reason = reason
-                
-                # Update student fee
-                student_fee = tenant_session.query(StudentFee).filter_by(
-                    id=payment.student_fee_id
-                ).first()
-                student_fee.paid_amount = float(student_fee.paid_amount) - float(payment.amount_paid)
-                
-                # Update status
-                if student_fee.paid_amount == 0:
-                    student_fee.status = PaymentStatus.PENDING
-                elif student_fee.paid_amount < student_fee.total_amount:
-                    student_fee.status = PaymentStatus.PARTIAL
-                
+                payment.cancellation_reason = reason[:500]
+
+                amount = _money(payment.amount_paid)
+                student_fee = tenant_session.query(StudentFee).filter_by(id=payment.student_fee_id).first()
+                student_fee.paid_amount = max(0, round(_money(student_fee.paid_amount) - amount, 2))
+                if payment.installment_id:
+                    installment = tenant_session.query(FeeInstallment).filter_by(id=payment.installment_id).first()
+                    if installment:
+                        installment.paid_amount = max(0, round(_money(installment.paid_amount) - amount, 2))
+                        refresh_installment_status(installment)
+                refresh_fee_status(student_fee)
+
                 tenant_session.commit()
-                return payment.to_dict()
+                return {'payment': payment.to_dict(), 'student_fee': student_fee.to_dict()}
+        except ValueError:
+            raise
         except Exception as e:
-            tenant_session.rollback()
             raise Exception(f"Failed to cancel payment: {str(e)}")
-    
+
     @staticmethod
     def record_full_payment_after_installments(data, skid, collected_by_id):
-        """
-        Record full payment for remaining amount after some installments paid
-        """
-        try:
-            with switch_to_school_db(skid) as tenant_session:
-                student_fee = tenant_session.query(StudentFee).filter_by(
-                    id=data['student_fee_id']
-                ).first()
-                
-                if not student_fee:
-                    raise ValueError("Student fee record not found")
-                
-                # Calculate actual balance (considering discounts)
-                balance = float(student_fee.total_amount) - float(student_fee.paid_amount or 0) - float(student_fee.discount_amount or 0)
-                
-                if float(data['amount_paid']) > balance:
-                    raise ValueError(f"Payment amount exceeds balance. Balance: ₹{balance:.2f}")
-                
-                # Generate receipt number
-                last_payment = tenant_session.query(FeePayment).order_by(
-                    FeePayment.id.desc()
-                ).first()
-                receipt_num = f"RCP{datetime.now().strftime('%Y%m%d')}{(last_payment.id + 1 if last_payment else 1):05d}"
-                
-                # Create payment record (without installment_id for full payment)
-                payment = FeePayment(
-                    student_fee_id=data['student_fee_id'],
-                    installment_id=None,  # Full payment, not linked to installment
-                    receipt_number=receipt_num,
-                    payment_date=datetime.strptime(data.get('payment_date', str(date.today())), '%Y-%m-%d').date(),
-                    amount_paid=data['amount_paid'],
-                    payment_mode=PaymentMode[data['payment_mode']],
-                    transaction_id=data.get('transaction_id'),
-                    cheque_number=data.get('cheque_number'),
-                    bank_name=data.get('bank_name'),
-                    collected_by=collected_by_id,
-                    remarks=data.get('remarks', 'Full payment for remaining balance')
-                )
-                
-                tenant_session.add(payment)
-                
-                # Update student fee
-                student_fee.paid_amount = float(student_fee.paid_amount or 0) + float(data['amount_paid'])
-                
-                # Update status
-                total_payable = float(student_fee.total_amount) - float(student_fee.discount_amount or 0)
-                if student_fee.paid_amount >= total_payable:
-                    student_fee.status = 'PAID'
-                    student_fee.has_installments = False  # Mark as complete
-                elif student_fee.paid_amount > 0:
-                    student_fee.status = 'PARTIAL'
-                
-                tenant_session.commit()
-                
-                return {
-                    'payment': payment.to_dict(),
-                    'student_fee': student_fee.to_dict(),
-                    'receipt_number': receipt_num
-                }
-        
-        except Exception as e:
-            tenant_session.rollback()
-            raise Exception(f"Failed to record payment: {str(e)}")
-    
+        """Pay the remaining balance in one go (after Pay Full Balance ended the installment plan)."""
+        data = dict(data or {})
+        if not data.get('remarks'):
+            data['remarks'] = 'Full payment for remaining balance'
+        return FeeService.record_payment(data, skid, collected_by_id)
+
 
 #================================ PAYMENT INSTALLMENT MANAGEMENT ===================================
 
     @staticmethod
     def create_installments(student_fee_id, installments, skid):
         """
-        Create installment plan for a student fee
-        
-        Args:
-            student_fee_id: Student fee ID
-            installments: List of installments
-                [{
-                    "installment_name": "Term 1",
-                    "amount": 5000,
-                    "due_date": "2024-07-31"
-                }, ...]
-            skid: School identifier
-        
-        Returns:
-            List of created installments
+        Create the installment plan for a student fee. The installments must add up to what is still owed.
+            installments: [{"installment_name": "Term 1", "amount": 5000, "due_date": "2024-07-31"}, ...]
         """
         try:
             with switch_to_school_db(skid) as tenant_session:
                 student_fee = tenant_session.query(StudentFee).filter_by(id=student_fee_id).first()
-                
                 if not student_fee:
                     raise ValueError("Student fee not found")
-                
-                # Validate total installment amount matches fee amount
-                total_installment = sum(float(inst['amount']) for inst in installments)
-                if total_installment != float(student_fee.total_amount):
-                    raise ValueError(
-                        f"Total installment amount ({total_installment}) must equal fee amount ({student_fee.total_amount})"
-                    )
-                
-                # Delete existing installments if any
-                tenant_session.query(FeeInstallment).filter_by(student_fee_id=student_fee_id).delete()
-                
-                # Create new installments
-                installments = []
-                for idx, inst_data in enumerate(installments, start=1):
-                    installment = FeeInstallment(
-                        student_fee_id=student_fee_id,
-                        installment_number=idx,
-                        installment_name=inst_data['installment_name'],
-                        amount=inst_data['amount'],
-                        due_date=datetime.strptime(inst_data['due_date'], '%Y-%m-%d').date()
-                    )
-                    tenant_session.add(installment)
-                    installments.append(installment)
-                
-                # Mark student fee as having installments
-                student_fee.has_installments = True
-                
+                if not isinstance(installments, list):
+                    raise ValueError("installments must be a list")
+                created = _replace_installments(tenant_session, student_fee, installments)
                 tenant_session.commit()
-                
-                return [inst.to_dict() for inst in installments]
-                
+                return [inst.to_dict() for inst in created]
+        except ValueError:
+            raise
         except Exception as e:
-            tenant_session.rollback()
             raise Exception(f"Failed to create installments: {str(e)}")
-    
-    
+
+
     @staticmethod
     def get_fee_installments(student_fee_id, skid):
         """Get all installments for a student fee"""
@@ -545,58 +599,48 @@ class FeeService:
                 installments = tenant_session.query(FeeInstallment).filter_by(
                     student_fee_id=student_fee_id
                 ).order_by(FeeInstallment.installment_number).all()
-                
+
                 return [inst.to_dict() for inst in installments]
         except Exception as e:
             raise Exception(f"Failed to get installments: {str(e)}")
-    
-    
+
+
     @staticmethod
     def record_installment_payment(installment_id, data, skid, collected_by_id):
-        """
-        Record payment for a specific installment
-        
-        Args:
-            installment_id: Installment ID
-            data: Payment data
-            skid: School identifier
-            collected_by_id: User ID who collected payment
-        
-        Returns:
-            Payment and installment details
-        """
+        """Record payment for a specific installment"""
         try:
             with switch_to_school_db(skid) as tenant_session:
                 installment = tenant_session.query(FeeInstallment).filter_by(id=installment_id).first()
-                
                 if not installment:
                     raise ValueError("Installment not found")
+                if installment.status == PaymentStatus.CANCELLED:
+                    raise ValueError("This installment was cancelled. Pay the remaining balance in full instead.")
+                student_fee = tenant_session.query(StudentFee).filter_by(id=installment.student_fee_id).first()
 
                 # Validate amount, date and mode
                 from app.utils.validators import not_in_future, positive_amount
                 amount = positive_amount(data.get('amount_paid'), "Payment amount")
                 payment_day = not_in_future(data.get('payment_date') or date.today(), "Payment date")
-                balance = round(float(installment.amount) - float(installment.paid_amount or 0), 2)
+                balance = round(_money(installment.amount) - _money(installment.paid_amount), 2)
                 if balance <= 0:
                     raise ValueError("This installment is already fully paid")
                 if amount > balance:
                     raise ValueError(f"Payment amount exceeds the installment balance of {balance:.2f}")
+                fee_left = fee_balance(student_fee)
+                if amount > fee_left:  # installments can never overpay the fee
+                    raise ValueError(f"Payment amount exceeds the fee balance of {fee_left:.2f}")
                 if data.get('payment_mode') not in PaymentMode.__members__:
                     raise ValueError(f"Payment mode must be one of: {', '.join(PaymentMode.__members__)}")
-                data['amount_paid'] = amount
-                data['payment_date'] = payment_day.isoformat()
-                
-                # Generate receipt number
+
                 last_payment = tenant_session.query(FeePayment).order_by(FeePayment.id.desc()).first()
                 receipt_num = f"RCP{datetime.now().strftime('%Y%m%d')}{(last_payment.id + 1 if last_payment else 1):05d}"
-                
-                # Create payment record
+
                 payment = FeePayment(
                     student_fee_id=installment.student_fee_id,
-                    installment_id=installment_id,  # Link to installment
+                    installment_id=installment_id,
                     receipt_number=receipt_num,
-                    payment_date=datetime.strptime(data.get('payment_date', str(date.today())), '%Y-%m-%d').date(),
-                    amount_paid=data['amount_paid'],
+                    payment_date=payment_day,
+                    amount_paid=amount,
                     payment_mode=PaymentMode[data['payment_mode']],
                     transaction_id=data.get('transaction_id'),
                     cheque_number=data.get('cheque_number'),
@@ -605,29 +649,14 @@ class FeeService:
                     remarks=data.get('remarks')
                 )
                 tenant_session.add(payment)
-                
-                # Update installment
-                installment.paid_amount = float(installment.paid_amount or 0) + float(data['amount_paid'])
-                
-                # Update installment status
-                if installment.paid_amount >= installment.amount:
-                    installment.status = PaymentStatus.PAID
-                elif installment.paid_amount > 0:
-                    installment.status = PaymentStatus.PARTIAL
-                
-                # Update parent student fee
-                student_fee = tenant_session.query(StudentFee).filter_by(id=installment.student_fee_id).first()
-                student_fee.paid_amount = float(student_fee.paid_amount or 0) + float(data['amount_paid'])
-                
-                # Update student fee status
-                total_payable = float(student_fee.total_amount) - float(student_fee.discount_amount or 0)
-                if student_fee.paid_amount >= total_payable:
-                    student_fee.status = PaymentStatus.PAID
-                elif student_fee.paid_amount > 0:
-                    student_fee.status = PaymentStatus.PARTIAL
-                
+
+                installment.paid_amount = _money(installment.paid_amount) + amount
+                refresh_installment_status(installment)
+                student_fee.paid_amount = _money(student_fee.paid_amount) + amount
+                refresh_fee_status(student_fee)
+
                 tenant_session.commit()
-                
+
                 return {
                     'payment': payment.to_dict(),
                     'installment': installment.to_dict(),
@@ -637,226 +666,109 @@ class FeeService:
         except ValueError:
             raise
         except Exception as e:
-            tenant_session.rollback()
             raise Exception(f"Failed to record installment payment: {str(e)}")
-    
-    
-    @staticmethod
-    def auto_generate_installments(student_fee_id, num_installments, skid):
-        """
-        Auto-generate equal installments
-        
-        Args:
-            student_fee_id: Student fee ID
-            num_installments: Number of installments (2, 3, 4...)
-            skid: School identifier
-        
-        Returns:
-            List of created installments
-        """
-        try:
-            with switch_to_school_db(skid) as tenant_session:
-                student_fee = tenant_session.query(StudentFee).filter_by(id=student_fee_id).first()
-                
-                if not student_fee:
-                    raise ValueError("Student fee not found")
-                
-                # Calculate installment amount
-                total_amount = float(student_fee.total_amount)
-                installment_amount = total_amount / num_installments
-                
-                # Generate due dates (every 3 months from admission date or today)
-                base_date = student_fee.due_date or date.today()
-                
-                installment_plan = []
-                for i in range(num_installments):
-                    # Calculate due date (every 3 months)
-                    due_date = base_date + timedelta(days=90 * i)
-                    
-                    installment_plan.append({
-                        'installment_name': f"Installment {i+1}",
-                        'amount': round(installment_amount, 2),
-                        'due_date': due_date.isoformat()
-                    })
-                
-                # Adjust last installment for rounding differences
-                total_planned = sum(inst['amount'] for inst in installment_plan)
-                if total_planned != total_amount:
-                    installment_plan[-1]['amount'] += (total_amount - total_planned)
-                
-                return FeeService.create_installments(student_fee_id, installment_plan, skid)
-                
-        except Exception as e:
-            raise Exception(f"Failed to auto-generate installments: {str(e)}")
-    
-    
-    # Replace the auto_generate_recurring_installments function in fee_service.py
+
 
     @staticmethod
-    def auto_generate_recurring_installments(student_fee_id, skid):
+    def auto_generate_installments(student_fee_id, num_installments, skid):
+        """Split what is still owed into equal installments, every 3 months, inside the academic year."""
+        try:
+            with switch_to_school_db(skid) as tenant_session:
+                student_fee = tenant_session.query(StudentFee).filter_by(id=student_fee_id).first()
+                if not student_fee:
+                    raise ValueError("Student fee not found")
+                count = int(num_installments)
+                balance = fee_balance(student_fee)
+                each = round(balance / count, 2)
+                amounts = [each] * count
+                amounts[-1] = round(balance - each * (count - 1), 2)
+                base = student_fee.due_date or date.today()
+                year = _year_range(tenant_session, student_fee)
+                plan = []
+                for i, amount in enumerate(amounts):
+                    due = _add_months(base, 3 * i)
+                    if year:
+                        due = min(max(due, year[0]), year[1])
+                    plan.append({'installment_name': f"Installment {i + 1}", 'amount': amount, 'due_date': due.isoformat()})
+                created = _replace_installments(tenant_session, student_fee, plan)
+                tenant_session.commit()
+                return [inst.to_dict() for inst in created]
+        except ValueError:
+            raise
+        except Exception as e:
+            raise Exception(f"Failed to auto-generate installments: {str(e)}")
+
+
+    @staticmethod
+    def auto_generate_recurring_installments(student_fee_id, skid, preview=False):
         """
-        Auto-generate installments based on recurrence type
-        For recurring fees like monthly tuition
+        Installments for a recurring fee (e.g. monthly tuition): one per period by the calendar, covering
+        only what is still owed, with no due date past the academic year. preview=True returns the plan unsaved.
         """
         try:
             with switch_to_school_db(skid) as tenant_session:
                 student_fee = tenant_session.query(StudentFee).filter_by(id=student_fee_id).first()
                 if not student_fee:
                     raise ValueError("Student fee not found")
-                
-                fee_structure = tenant_session.query(FeeStructure).filter_by(
-                    id=student_fee.fee_structure_id
-                ).first()
-                
+                fee_structure = tenant_session.query(FeeStructure).filter_by(id=student_fee.fee_structure_id).first()
                 if not fee_structure:
                     raise ValueError("Fee structure not found")
-                
                 if not fee_structure.is_recurring:
                     raise ValueError("This is not a recurring fee")
-                
                 if not fee_structure.allows_installments:
                     raise ValueError("This fee does not allow installments")
-                
-                # Delete existing installments
-                tenant_session.query(FeeInstallment).filter_by(student_fee_id=student_fee_id).delete()
-                tenant_session.commit()  # ✅ Commit the deletion first
-                
-                # Generate installments based on recurrence type
-                base_date = student_fee.due_date or date.today()
-                installments_to_create = []
-                
-                # Get recurrence details
-                recurrence_amount = float(fee_structure.recurrence_amount or 0)
-                recurrence_months = int(fee_structure.recurrence_months or 0)
-                recurrence_type = fee_structure.recurrence_type
-                
-                if recurrence_type == 'MONTHLY':
-                    for i in range(recurrence_months):
-                        due_date = base_date + timedelta(days=30 * i)
-                        installments_to_create.append(
-                            FeeInstallment(
-                                student_fee_id=student_fee_id,
-                                installment_number=i + 1,
-                                installment_name=f"Month {i+1}",
-                                amount=recurrence_amount,
-                                due_date=due_date
-                            )
-                        )
-                
-                elif recurrence_type == 'QUARTERLY':
-                    for i in range(recurrence_months):
-                        due_date = base_date + timedelta(days=90 * i)
-                        installments_to_create.append(
-                            FeeInstallment(
-                                student_fee_id=student_fee_id,
-                                installment_number=i + 1,
-                                installment_name=f"Quarter {i+1}",
-                                amount=recurrence_amount,
-                                due_date=due_date
-                            )
-                        )
-                
-                elif recurrence_type == 'YEARLY':
-                    for i in range(recurrence_months):
-                        due_date = base_date + timedelta(days=365 * i)
-                        installments_to_create.append(
-                            FeeInstallment(
-                                student_fee_id=student_fee_id,
-                                installment_number=i + 1,
-                                installment_name=f"Year {i+1}",
-                                amount=recurrence_amount,
-                                due_date=due_date
-                            )
-                        )
-                
-                elif recurrence_type == 'ONE_TIME':
-                    # For one-time fees, create a single installment
-                    installments_to_create.append(
-                        FeeInstallment(
-                            student_fee_id=student_fee_id,
-                            installment_number=1,
-                            installment_name="Full Payment",
-                            amount=float(fee_structure.amount),
-                            due_date=base_date
-                        )
-                    )
-                
-                # Validate total before creating
-                total_installment = sum(float(inst.amount) for inst in installments_to_create)
-                expected_total = float(student_fee.total_amount)
-                
-                # Handle floating point rounding issues
-                if abs(total_installment - expected_total) > 0.01:
-                    # Adjust last installment to match total exactly
-                    difference = expected_total - total_installment
-                    if installments_to_create:
-                        installments_to_create[-1].amount += difference
-                
-                # Add all installments to session
-                for installment in installments_to_create:
-                    tenant_session.add(installment)
-                
-                # Mark student fee as having installments
-                student_fee.has_installments = True
-                
-                # Commit everything
+                if fee_balance(student_fee) <= 0:
+                    raise ValueError("This fee is already fully paid")
+
+                plan = _recurring_plan(tenant_session, student_fee, fee_structure)
+                if preview:
+                    return plan
+                created = _replace_installments(tenant_session, student_fee, plan)
                 tenant_session.commit()
-                
-                # Return the created installments
-                return [inst.to_dict() for inst in installments_to_create]
-        
+                return [inst.to_dict() for inst in created]
+        except ValueError:
+            raise
         except Exception as e:
-            tenant_session.rollback()
             raise Exception(f"Failed to auto-generate recurring installments: {str(e)}")
 
 
     @staticmethod
     def convert_remaining_to_full_payment(student_fee_id, skid):
         """
-        Convert remaining installments to full payment
-        Scenario: Student paid 3 months in installments, wants to pay rest in full
+        End the installment plan: unpaid installments are cancelled and the rest can be paid in one go.
+        Scenario: student paid 3 months in installments, wants to pay the rest in full.
         """
         try:
             with switch_to_school_db(skid) as tenant_session:
                 student_fee = tenant_session.query(StudentFee).filter_by(id=student_fee_id).first()
                 if not student_fee:
                     raise ValueError("Student fee not found")
-                
-                # Get all installments
-                installments = tenant_session.query(FeeInstallment).filter_by(
-                    student_fee_id=student_fee_id
+
+                open_installments = tenant_session.query(FeeInstallment).filter(
+                    FeeInstallment.student_fee_id == student_fee_id,
+                    FeeInstallment.status.in_([PaymentStatus.PENDING, PaymentStatus.PARTIAL]),
                 ).all()
-                
-                if not installments:
-                    raise ValueError("No installments found for this fee")
-                
-                # Calculate remaining balance from unpaid/partial installments
-                remaining_balance = 0
-                cancelled_count = 0
-                
-                for inst in installments:
-                    if inst.status in ['PENDING', 'PARTIAL']:
-                        remaining_balance += float(inst.amount) - float(inst.paid_amount or 0)
-                        inst.status = 'CANCELLED'
-                        cancelled_count += 1
-                
-                # Mark fee as no longer having installments
-                student_fee.has_installments = False
-                
+                if not student_fee.has_installments and not open_installments:
+                    raise ValueError("This fee isn't on an installment plan")
+
+                for inst in open_installments:
+                    inst.status = PaymentStatus.CANCELLED
+                student_fee.has_installments = False  # also un-sticks a fee flagged with no installments
+                remaining = fee_balance(student_fee)
+
                 tenant_session.commit()
-                
+
                 return {
-                    'remaining_balance': remaining_balance,
-                    'message': f'Installments cancelled. Student can now pay remaining ₹{remaining_balance:.2f} in full.',
-                    'cancelled_installments': cancelled_count
+                    'remaining_balance': remaining,
+                    'message': f'Installments cancelled. Student can now pay remaining \u20b9{remaining:.2f} in full.',
+                    'cancelled_installments': len(open_installments)
                 }
-        
+        except ValueError:
+            raise
         except Exception as e:
-            tenant_session.rollback()
             raise Exception(f"Failed to convert to full payment: {str(e)}")
 
 
-    
 #================================ FEE REPORTS & ANALYTICS =========================================
     
     @staticmethod
@@ -964,100 +876,185 @@ class FeeService:
     
     @staticmethod
     def get_defaulters_list(skid, academic_year_id, as_of_date=None):
-        """Get list of students with pending fees"""
+        """
+        Students with overdue fees: a fee past its due date with a balance, or an installment plan with
+        unpaid installments past their due date. One row per overdue fee.
+        """
+        from app.models.tenant.StudentParent import StudentParent
         try:
             with switch_to_school_db(skid) as tenant_session:
-                if not as_of_date:
-                    as_of_date = date.today()
-                
-                query = tenant_session.query(
-                    StudentFee,
-                    Student,
-                    SchoolUsers,
-                    Class
+                as_of = as_of_date or date.today()
+                rows = tenant_session.query(StudentFee, SchoolUsers, Student, FeeStructure).join(
+                    SchoolUsers, StudentFee.student_id == SchoolUsers.id
                 ).join(
-                    Student, StudentFee.student_id == Student.user_id
-                ).join(
-                    SchoolUsers, Student.user_id == SchoolUsers.id
-                ).join(
-                    Class, Student.class_id == Class.id
-                ).filter(
-                    StudentFee.academic_year_id == academic_year_id,
-                    StudentFee.status.in_([PaymentStatus.PENDING, PaymentStatus.PARTIAL]),
-                    StudentFee.due_date < as_of_date
-                )
-                
-                results = query.all()
-                
+                    Student, Student.user_id == StudentFee.student_id
+                ).outerjoin(
+                    FeeStructure, FeeStructure.id == StudentFee.fee_structure_id
+                ).filter(StudentFee.academic_year_id == academic_year_id).all()
+
+                classes = {c.id: c.class_name for c in tenant_session.query(Class).all()}
+                sections = {sec.id: sec.section_name for sec in tenant_session.query(Section).all()}
                 defaulters = []
-                for student_fee, student, user, class_info in results:
-                    balance = float(student_fee.total_amount) - float(student_fee.paid_amount) - float(student_fee.discount_amount or 0)
-                    days_overdue = (as_of_date - student_fee.due_date).days
-                    
+                for student_fee, user, student, structure in rows:
+                    balance = fee_balance(student_fee)
+                    if balance <= 0:
+                        continue
+                    if student_fee.has_installments:
+                        late = tenant_session.query(FeeInstallment).filter(
+                            FeeInstallment.student_fee_id == student_fee.id,
+                            FeeInstallment.status.in_([PaymentStatus.PENDING, PaymentStatus.PARTIAL]),
+                            FeeInstallment.due_date < as_of,
+                        ).all()
+                        if not late:
+                            continue
+                        overdue = round(sum(_money(i.amount) - _money(i.paid_amount) for i in late), 2)
+                        first_due = min(i.due_date for i in late)
+                    else:
+                        if not student_fee.due_date or student_fee.due_date >= as_of:
+                            continue
+                        overdue, first_due = balance, student_fee.due_date
+
+                    parent_phone = None
+                    link = tenant_session.query(StudentParent).filter_by(student_user_id=student.user_id).first()
+                    if link:
+                        parent = tenant_session.query(SchoolUsers).filter_by(id=link.parent_user_id).first()
+                        parent_phone = parent.phone if parent else None
+
                     defaulters.append({
                         'student_id': student.user_id,
-                        'student_name': f"{user.first_name} {user.last_name}",
-                        'class': class_info.class_name,
+                        'student_fee_id': student_fee.id,
+                        'student_name': f"{user.first_name} {user.last_name or ''}".strip(),
+                        'admission_number': student.admission_number,
+                        'class': classes.get(student.class_id),
+                        'section': sections.get(student.section_id),
                         'phone': user.phone,
-                        'total_amount': float(student_fee.total_amount),
-                        'paid_amount': float(student_fee.paid_amount),
+                        'parent_phone': parent_phone,
+                        'fee_name': structure.fee_name if structure else None,
+                        'total_amount': _money(student_fee.total_amount),
+                        'paid_amount': _money(student_fee.paid_amount),
+                        'discount_amount': _money(student_fee.discount_amount),
                         'balance': balance,
-                        'due_date': student_fee.due_date.isoformat(),
-                        'days_overdue': days_overdue,
-                        'status': student_fee.status.value
+                        'overdue_amount': overdue,
+                        'due_date': first_due.isoformat(),
+                        'days_overdue': (as_of - first_due).days,
+                        'status': getattr(student_fee.status, 'value', student_fee.status),
                     })
-                
+
+                defaulters.sort(key=lambda d: (-d['days_overdue'], d['student_name']))
                 return {
-                    'total_defaulters': len(defaulters),
-                    'total_pending_amount': sum(d['balance'] for d in defaulters),
+                    'as_of_date': as_of.isoformat(),
+                    'total_defaulters': len({d['student_id'] for d in defaulters}),
+                    'total_overdue_amount': round(sum(d['overdue_amount'] for d in defaulters), 2),
+                    'total_pending_amount': round(sum(d['balance'] for d in defaulters), 2),
                     'defaulters': defaulters
                 }
         except Exception as e:
             raise Exception(f"Failed to get defaulters list: {str(e)}")
-    
-    
+
 
 #=================================== DISCOUNT MANAGEMENT ===================================
     
     @staticmethod
     def apply_discount(data, skid, approved_by_id):
-        """Apply discount/concession to a student"""
+        """
+        Give a student a discount on chosen fees (default: all their fees for the year).
+        PERCENTAGE takes that share of each fee; FIXED is one amount spread over the fees (earliest due first).
+        A discount never exceeds what is still owed; installment plans shrink from their last installments.
+        """
+        from app.utils.validators import positive_amount, to_date
+        from app.models.tenant.AcademicYear import AcademicYear
         try:
             with switch_to_school_db(skid) as tenant_session:
+                student_id = int(data.get('student_id') or 0)
+                if not tenant_session.query(Student).filter_by(user_id=student_id).first():
+                    raise ValueError("Student not found")
+                name = (str(data.get('discount_name') or '')).strip()
+                if not name:
+                    raise ValueError("Give the discount a name")
+                kind = str(data.get('discount_type') or '').upper()
+                if kind not in ('PERCENTAGE', 'FIXED'):
+                    raise ValueError("Discount type must be PERCENTAGE or FIXED")
+                value = positive_amount(data.get('discount_value'), "Discount value")
+                if kind == 'PERCENTAGE' and value > 100:
+                    raise ValueError("A percentage discount can't be more than 100")
+
+                year_id = data.get('academic_year_id')
+                if not year_id:
+                    current = tenant_session.query(AcademicYear).filter_by(is_current=True).first()
+                    year_id = current.id if current else None
+                if not year_id:
+                    raise ValueError("Choose the academic year")
+                valid_from = to_date(data.get('valid_from') or date.today(), "Valid from")
+                valid_to = to_date(data['valid_to'], "Valid to") if data.get('valid_to') else None
+                if valid_to and valid_to < valid_from:
+                    raise ValueError("'Valid to' can't be before 'Valid from'")
+
+                query = tenant_session.query(StudentFee).filter_by(student_id=student_id, academic_year_id=year_id)
+                fee_ids = data.get('student_fee_ids') or data.get('applicable_fees') or []
+                if fee_ids:
+                    fee_ids = [int(i) for i in fee_ids]
+                    query = query.filter(StudentFee.id.in_(fee_ids))
+                fees = query.order_by(StudentFee.due_date, StudentFee.id).all()
+                if fee_ids and len(fees) != len(set(fee_ids)):
+                    raise ValueError("Some of the chosen fees don't belong to this student for that year")
+                fees = [f for f in fees if fee_balance(f) > 0]
+                if not fees:
+                    raise ValueError("Nothing is left to pay on the chosen fees")
+
+                if kind == 'PERCENTAGE':
+                    shares = [round(min(_money(f.total_amount) * value / 100, fee_balance(f)), 2) for f in fees]
+                else:
+                    owed = round(sum(fee_balance(f) for f in fees), 2)
+                    if value > owed:
+                        raise ValueError(f"The discount ({value:.2f}) is more than what is still owed on the chosen fees ({owed:.2f})")
+                    shares, left = [], value
+                    for f in fees:
+                        take = round(min(left, fee_balance(f)), 2)
+                        shares.append(take)
+                        left = round(left - take, 2)
+
+                applied = []
+                for f, share in zip(fees, shares):
+                    if share <= 0:
+                        continue
+                    f.discount_amount = round(_money(f.discount_amount) + share, 2)
+                    if f.has_installments:  # keep the plan equal to what is owed
+                        open_insts = tenant_session.query(FeeInstallment).filter(
+                            FeeInstallment.student_fee_id == f.id,
+                            FeeInstallment.status.in_([PaymentStatus.PENDING, PaymentStatus.PARTIAL]),
+                        ).order_by(FeeInstallment.installment_number).all()
+                        amounts = [_money(i.amount) for i in open_insts]
+                        _shrink_from_end(amounts, share, [_money(i.paid_amount) for i in open_insts])
+                        for inst, amount in zip(open_insts, amounts):
+                            inst.amount = amount
+                            refresh_installment_status(inst)
+                    refresh_fee_status(f)
+                    structure = tenant_session.query(FeeStructure).filter_by(id=f.fee_structure_id).first()
+                    applied.append({'student_fee_id': f.id, 'fee_name': structure.fee_name if structure else None,
+                                    'discount_added': share, 'balance_now': fee_balance(f)})
+
                 discount = FeeDiscount(
-                    student_id=data['student_id'],
-                    discount_name=data['discount_name'],
-                    discount_type=data['discount_type'],  # PERCENTAGE or FIXED
-                    discount_value=data['discount_value'],
-                    applicable_fees=json.dumps(data.get('applicable_fees', [])),
-                    valid_from=datetime.strptime(data['valid_from'], '%Y-%m-%d').date(),
-                    valid_to=datetime.strptime(data['valid_to'], '%Y-%m-%d').date() if data.get('valid_to') else None,
+                    student_id=student_id,
+                    academic_year_id=year_id,
+                    discount_name=name[:100],
+                    discount_type=kind,
+                    discount_value=value,
+                    applicable_fees=json.dumps([a['student_fee_id'] for a in applied]),
+                    valid_from=valid_from,
+                    valid_to=valid_to,
                     approved_by=approved_by_id,
                     reason=data.get('reason')
                 )
                 tenant_session.add(discount)
-                
-                # Apply discount to applicable student fees
-                student_fees = tenant_session.query(StudentFee).filter_by(
-                    student_id=data['student_id'],
-                    academic_year_id=data.get('academic_year_id')
-                ).all()
-                
-                for student_fee in student_fees:
-                    if data['discount_type'] == 'PERCENTAGE':
-                        discount_amount = float(student_fee.total_amount) * float(data['discount_value']) / 100
-                    else:
-                        discount_amount = float(data['discount_value'])
-                    
-                    student_fee.discount_amount = discount_amount
-                
                 tenant_session.commit()
-                return discount.to_dict()
+                return {'discount': discount.to_dict(), 'applied': applied,
+                        'total_discount_added': round(sum(a['discount_added'] for a in applied), 2)}
+        except ValueError:
+            raise
         except Exception as e:
-            tenant_session.rollback()
             raise Exception(f"Failed to apply discount: {str(e)}")
-    
-    
+
+
     @staticmethod
     def delete_all_class_fees(class_id, academic_year_id, skid):
         """

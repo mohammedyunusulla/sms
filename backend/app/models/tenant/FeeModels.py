@@ -132,7 +132,9 @@ class StudentFee(BaseModelTenant, BaseModelTenantMixin):
     
     @property
     def balance_amount(self):
-        return float(self.total_amount) - float(self.paid_amount)
+        # what is still owed: total - discount + late fee - paid
+        return round(float(self.total_amount or 0) - float(self.discount_amount or 0)
+                     + float(self.late_fee or 0) - float(self.paid_amount or 0), 2)
     
     def to_dict(self):
         return {

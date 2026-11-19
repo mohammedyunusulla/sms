@@ -122,12 +122,18 @@ class FinanceService {
         return response;
     }
 
-    async autoGenerateInstallments(data: any): Promise<any> {
+    async autoGenerateInstallments(data: { student_fee_id: number | string; preview?: boolean }): Promise<any> {
         const api = getApiClient();
         const skid = getSchoolId();
         if (!skid) throw new Error('School ID not found. Please log in again.');
-        const response = await api.post(`/fee/installments/auto-generate-recurring`, data);
+        const response = await api.post(`/fee/installments/auto-generate-recurring/${skid}`, data);
         return response;
+    }
+
+    /** The server's recurring plan for a fee (what Generate would create), without saving it. */
+    async previewRecurringInstallments(studentFeeId: number | string): Promise<{ installment_name: string; amount: number; due_date: string }[]> {
+        const result: any = await this.autoGenerateInstallments({ student_fee_id: studentFeeId, preview: true });
+        return result?.data || [];
     }
 
     async createManualInstallments(data: any): Promise<any> {

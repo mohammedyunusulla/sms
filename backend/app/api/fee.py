@@ -187,13 +187,11 @@ def cancel_payment(skid, payment_id):
     try:
         data = request.get_json()
         
-        if 'reason' not in data:
-            raise ValueError("Cancellation reason is required")
-        
-        from flask import g
-        cancelled_by_id = g.current_user.get('school_user_id')
-        
-        result = FeeService.cancel_payment(payment_id, skid, cancelled_by_id, data['reason'])
+        data = data or {}
+        # the logged-in user is request.current_user (g.current_user.get() crashed with a 500)
+        cancelled_by_id = getattr(request.current_user, 'school_user_id', None)
+
+        result = FeeService.cancel_payment(payment_id, skid, cancelled_by_id, data.get('reason'))
         
         return jsonify({
             'message': 'Payment cancelled successfully',
@@ -232,7 +230,7 @@ def record_full_remaining_payment(skid):
     try:
         from flask import g
         data = request.get_json()
-        collected_by_id = g.current_user.school_user_id if hasattr(g, 'current_user') else None
+        collected_by_id = getattr(request.current_user, 'school_user_id', None)
         result = FeeService.record_full_payment_after_installments(data, skid, collected_by_id)
         return jsonify({
             'message': 'Full payment recorded successfully',
@@ -337,17 +335,18 @@ def auto_generate_installments(skid):
         return jsonify({'message': str(e), 'status': 'error', 'code': 500}), 500
 
 # RECURRING INSTALLMENTS
-@fee_bp.route('/installments/auto-generate-recurring', methods=['POST'])
+# skid is in the URL like every other route, so login_required checks the user belongs to that school
+@fee_bp.route('/installments/auto-generate-recurring/<skid>', methods=['POST'])
 @login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
-def auto_generate_recurring_installments():
-    """Auto-generate installments for recurring fees"""
+def auto_generate_recurring_installments(skid):
+    """Auto-generate installments for recurring fees. Body: {student_fee_id, preview?}"""
     try:
-        data = request.get_json()
-        skid = data.get("skid")
+        data = request.get_json() or {}
         student_fee_id = data.get("student_fee_id")
-        result = FeeService.auto_generate_recurring_installments(student_fee_id, skid)
+        preview = bool(data.get("preview"))
+        result = FeeService.auto_generate_recurring_installments(student_fee_id, skid, preview=preview)
         return jsonify({
-            'message': f'{len(result)} recurring installments generated',
+            'message': f'{len(result)} recurring installments {"planned" if preview else "generated"}',
             'data': result,
             'status': 'success',
             'code': 200
@@ -531,13 +530,12 @@ def apply_discount(skid):
     try:
         data = request.get_json()
         
-        required_fields = ['student_id', 'discount_name', 'discount_type', 'discount_value', 'valid_from']
-        for field in required_fields:
+        data = data or {}
+        for field in ['student_id', 'discount_name', 'discount_type', 'discount_value']:
             if field not in data:
                 raise ValueError(f"Missing required field: {field}")
-        
-        from flask import g
-        approved_by_id = g.current_user.get('school_user_id')
+
+        approved_by_id = getattr(request.current_user, 'school_user_id', None)
         
         result = FeeService.apply_discount(data, skid, approved_by_id)
         

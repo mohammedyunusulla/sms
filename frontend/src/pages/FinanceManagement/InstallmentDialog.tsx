@@ -8,7 +8,6 @@ import { FC, useEffect, useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { Modal, Badge, Button, FormInput } from '../../components';
 import { financeService } from '../../services/modules/financeService';
-import { useAuthStore } from '../../stores/authStore';
 
 interface InstallmentDialogProps {
     isOpen: boolean;
@@ -35,7 +34,6 @@ function formatDate(dateStr: string): string {
 }
 
 const InstallmentDialog: FC<InstallmentDialogProps> = ({ isOpen, onClose, studentFee, onSuccess }) => {
-    const { user } = useAuthStore();
     const [loading, setLoading] = useState(false);
     const [mode, setMode] = useState<'auto-recurring' | 'manual'>('manual');
     const [installments, setInstallments] = useState<InstallmentRow[]>([]);
@@ -53,38 +51,30 @@ const InstallmentDialog: FC<InstallmentDialogProps> = ({ isOpen, onClose, studen
         }
     }, [isOpen, studentFee]);
 
-    const generateRecurringPreview = () => {
-        if (!studentFee?.fee_structure) return;
-        const { recurrence_type, recurrence_amount, recurrence_months } = studentFee.fee_structure;
-        const baseDate = studentFee.due_date || new Date().toISOString().split('T')[0];
-        const amount = parseFloat(recurrence_amount || 0);
-        const periods = parseInt(recurrence_months || 0);
-        const preview: { name: string; amount: number; dueDate: string }[] = [];
-
-        const daysMap: Record<string, number> = { MONTHLY: 30, QUARTERLY: 90, YEARLY: 365 };
-        const labelMap: Record<string, string> = { MONTHLY: 'Month', QUARTERLY: 'Quarter', YEARLY: 'Year' };
-        const intervalDays = daysMap[recurrence_type] || 30;
-        const label = labelMap[recurrence_type] || 'Period';
-
-        for (let i = 0; i < periods; i++) {
-            preview.push({
-                name: `${label} ${i + 1}`,
-                amount,
-                dueDate: addDays(baseDate, i * intervalDays),
-            });
+    // The schedule comes from the server, so the preview is exactly what Generate creates
+    // (calendar months, only what is still owed, no due date past the academic year).
+    const generateRecurringPreview = async () => {
+        if (!studentFee?.id) return;
+        setRecurringPreview([]);
+        try {
+            const plan = await financeService.previewRecurringInstallments(studentFee.id);
+            setRecurringPreview(plan.map((p) => ({ name: p.installment_name, amount: Number(p.amount), dueDate: p.due_date })));
+        } catch (error: any) {
+            toast.error(error.message || 'Could not build the installment schedule');
         }
-        setRecurringPreview(preview);
     };
 
     const initializeManualInstallments = (count: number) => {
         const balance = parseFloat(studentFee?.balance_amount || 0);
-        const amountPer = (balance / count).toFixed(2);
+        const each = Math.floor((balance / count) * 100) / 100;
+        // the last installment takes the rounding remainder, so the split always equals the balance
+        const last = (balance - each * (count - 1)).toFixed(2);
         const baseDate = studentFee?.due_date || new Date().toISOString().split('T')[0];
 
         setInstallments(Array.from({ length: count }, (_, i) => ({
             id: Date.now() + i,
             installment_name: `Installment ${i + 1}`,
-            amount: amountPer,
+            amount: i === count - 1 ? last : each.toFixed(2),
             due_date: addDays(baseDate, i * 30),
         })));
     };
@@ -133,7 +123,6 @@ const InstallmentDialog: FC<InstallmentDialogProps> = ({ isOpen, onClose, studen
             if (mode === 'auto-recurring') {
                 await financeService.autoGenerateInstallments({
                     student_fee_id: studentFee.id,
-                    skid: user?.skid,
                 });
                 toast.success('Installments generated successfully');
             } else {
