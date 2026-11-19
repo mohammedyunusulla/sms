@@ -176,15 +176,18 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         const currentUser = get().user;
         if (currentUser) {
             const currentYear = years.find(y => y.is_current) || currentUser.current_academic_year;
+            const currentChanged = currentYear?.id !== currentUser.current_academic_year?.id;
             const updatedUser = {
                 ...currentUser,
                 academic_years: years,
                 current_academic_year: currentYear,
             };
             authService.storeUser(updatedUser);
-            set({
+            // Bump the version when the current year changes so pages/dashboards refetch.
+            set((state) => ({
                 user: updatedUser,
-            });
+                academicYearVersion: currentChanged ? state.academicYearVersion + 1 : state.academicYearVersion,
+            }));
         }
     },
 }));

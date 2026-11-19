@@ -9,6 +9,8 @@ import { useNavigate } from 'react-router';
 import { PageHeader, Button } from '../../components';
 import QuickActionButton from '../../components/dashboard/QuickActionButton';
 import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../stores/authStore';
+import AcademicYearManagementModal from '../../components/header/AcademicYearManagementModal';
 
 // Dashboard sections - each has its own API call and loader
 import StatsCardsSection from './components/StatsCardsSection';
@@ -23,6 +25,10 @@ const AdministratorDashboard: FC = () => {
     const navigate = useNavigate();
     const hasAcademicYear = Boolean(user?.current_academic_year?.id);
     const [refreshKey, setRefreshKey] = useState(0);
+    const [showYearModal, setShowYearModal] = useState(false);
+    // Cards remount (and refetch) on manual refresh or when the current academic year changes.
+    const academicYearVersion = useAuthStore((s) => s.academicYearVersion);
+    const cardKey = `${refreshKey}-${academicYearVersion}`;
 
     const greeting = () => {
         const hour = new Date().getHours();
@@ -52,32 +58,39 @@ const AdministratorDashboard: FC = () => {
             />
 
             {!hasAcademicYear && (
-                <div className="p-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
-                    Dashboard data is unavailable until an academic year is assigned to your account.
+                <div className="flex flex-col gap-3 p-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 sm:flex-row sm:items-center sm:justify-between dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                    <span>
+                        {user?.academic_years?.length
+                            ? 'Dashboard data is unavailable until a current academic year is set.'
+                            : 'Set up your first academic year to start using the dashboard and school features.'}
+                    </span>
+                    <Button variant="primary" size="sm" onClick={() => setShowYearModal(true)}>
+                        {user?.academic_years?.length ? 'Manage academic years' : 'Create academic year'}
+                    </Button>
                 </div>
             )}
 
             {/* Stats Cards - Independent API: /schoolAdminDashboard/stats */}
-            <StatsCardsSection key={`stats-${refreshKey}`} />
+            <StatsCardsSection key={`stats-${cardKey}`} />
 
             {/* Attendance + Finance Row - Two independent API calls */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Attendance Overview - API: /schoolAdminDashboard/attendance-overview */}
-                <AttendanceOverviewCard key={`attendance-${refreshKey}`} />
+                <AttendanceOverviewCard key={`attendance-${cardKey}`} />
 
                 {/* Finance Summary - API: /schoolAdminDashboard/finance-summary */}
-                <FinanceSummaryCard key={`finance-${refreshKey}`} />
+                <FinanceSummaryCard key={`finance-${cardKey}`} />
             </div>
 
             {/* Expense Trend + Announcements - Two independent API calls */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Expense Trend Chart - API: /schoolAdminDashboard/breakdown/monthly */}
                 <div className="lg:col-span-2">
-                    <ExpenseTrendCard key={`expense-${refreshKey}`} />
+                    <ExpenseTrendCard key={`expense-${cardKey}`} />
                 </div>
 
                 {/* Announcements - API: /announcements/list */}
-                <AnnouncementsCard key={`announcements-${refreshKey}`} />
+                <AnnouncementsCard key={`announcements-${cardKey}`} />
             </div>
 
             {/* Quick Actions */}
@@ -210,7 +223,9 @@ const AdministratorDashboard: FC = () => {
             </div>
 
             {/* Class Timetable - Independent API: /schoolAdminDashboard/timetable + /classes/list + /classes/sections */}
-            <TimetableCard key={`timetable-${refreshKey}`} />
+            <TimetableCard key={`timetable-${cardKey}`} />
+
+            <AcademicYearManagementModal isOpen={showYearModal} onClose={() => setShowYearModal(false)} />
         </div>
     );
 };

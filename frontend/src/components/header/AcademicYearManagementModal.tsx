@@ -145,8 +145,12 @@ const AcademicYearManagementModal: FC<AcademicYearManagementModalProps> = ({
 
         try {
             setLoading(true);
-            const newYear = await academicYearService.createAcademicYear(formData);
-            toast.success('Academic year added successfully');
+            // The very first academic year becomes the current one automatically.
+            const isFirstYear = academicYears.length === 0;
+            const newYear = await academicYearService.createAcademicYear(
+                isFirstYear ? { ...formData, is_current: true } : formData
+            );
+            toast.success(isFirstYear ? 'Academic year created and set as current' : 'Academic year added successfully');
 
             const updatedYears = [...academicYears, newYear];
             setAcademicYears(updatedYears);
