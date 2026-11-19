@@ -33,9 +33,8 @@ const formatDateTime = (value?: string | null) => {
     return Number.isNaN(d.getTime()) ? '—' : d.toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
 };
 
-// The change-password endpoint also requires a special character (backend: utils/security.py)
-const newPasswordProblem = (password: string): string | null =>
-    passwordProblem(password) ?? (/[!@#$%^&*(),.?":{}|<>_\-+=[\]\\/~`]/.test(password) ? null : 'Password must contain a special character');
+// Same password rule as every other form (backend: app/utils/helpers.validate_password)
+const newPasswordProblem = passwordProblem;
 
 const errorMessage = (err: unknown, fallback: string) => (err as { message?: string })?.message || fallback;
 
@@ -253,7 +252,7 @@ const UserProfiles: FC = () => {
                     <div className="p-6 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Change password</h3>
                         <p className="mb-5 text-sm text-gray-500 dark:text-gray-400">
-                            At least 8 characters, with an uppercase letter, a lowercase letter, a digit and a special character.
+                            At least 8 characters, with an uppercase letter, a lowercase letter and a digit.
                         </p>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {passwordField('current', 'Current password', 'current-password')}

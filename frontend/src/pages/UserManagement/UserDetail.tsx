@@ -6,6 +6,7 @@
 import { FC, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import toast from 'react-hot-toast';
+import { passwordProblem } from '../../utils/formValidation';
 import {
   PageHeader,
   Button,
@@ -84,8 +85,9 @@ const UserDetail: FC = () => {
       return;
     }
 
-    if (newPassword.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    const problem = passwordProblem(newPassword);
+    if (problem) {
+      toast.error(problem);
       return;
     }
 

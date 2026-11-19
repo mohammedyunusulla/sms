@@ -5,6 +5,7 @@
 
 import { FC, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { passwordProblem } from '../../utils/formValidation';
 import { PageHeader, LoadingSpinner, DataTable, Button, Modal, Badge } from '../../components';
 import { schoolService } from '../../services/modules/schoolService';
 
@@ -66,8 +67,8 @@ const SystemAdminsList: FC = () => {
 
     if (!formData.password.trim()) {
       errors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
-      errors.password = 'Password must be at least 8 characters';
+    } else if (passwordProblem(formData.password)) {
+      errors.password = passwordProblem(formData.password)!;
     }
 
     setFormErrors(errors);
@@ -232,7 +233,7 @@ const SystemAdminsList: FC = () => {
                     setFormErrors((prev) => { const n = { ...prev }; delete n.password; return n; });
                   }
                 }}
-                placeholder="Enter password (min 8 characters)"
+                placeholder="8+ characters, with upper and lower case letters and a digit"
                 className={`w-full px-4 py-2 pr-10 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600 ${
                   formErrors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                 }`}

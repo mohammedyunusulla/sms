@@ -15,27 +15,12 @@ def validate_password_strength(password):
     - At least one uppercase letter
     - At least one lowercase letter
     - At least one digit
-    - At least one special character
     """
-    if not password or len(password) < 8:
-        return False, "Password must be at least 8 characters long"
-
-    if len(password) > 128:
-        return False, "Password must not exceed 128 characters"
-
-    if not re.search(r'[A-Z]', password):
-        return False, "Password must contain at least one uppercase letter"
-
-    if not re.search(r'[a-z]', password):
-        return False, "Password must contain at least one lowercase letter"
-
-    if not re.search(r'\d', password):
-        return False, "Password must contain at least one digit"
-
-    if not re.search(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/~`]', password):
-        return False, "Password must contain at least one special character"
-
-    return True, None
+    # Same rule as everywhere else (app.utils.helpers.validate_password); a special character is no
+    # longer required only here, so changing your own password follows the rule used to create it.
+    from app.utils.helpers import validate_password
+    ok, message = validate_password(password)
+    return (True, None) if ok else (False, message)
 
 
 def get_client_ip():

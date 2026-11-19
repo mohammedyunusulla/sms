@@ -5,6 +5,7 @@
 
 import { FC, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { passwordProblem } from '../../utils/formValidation';
 import { PageHeader, LoadingSpinner, DataTable, Button, Modal, ConfirmDialog, Badge } from '../../components';
 import { schoolService } from '../../services/modules/schoolService';
 import SchoolAdminForm from './schoolAdminForm';
@@ -92,8 +93,9 @@ const SchoolAdminsList: FC = () => {
   };
 
   const handleConfirmPasswordChange = async () => {
-    if (!newPassword || newPassword.length < 8) {
-      toast.error('Password must be at least 8 characters long');
+    const problem = passwordProblem(newPassword);
+    if (problem) {
+      toast.error(problem);
       return;
     }
 
@@ -340,7 +342,7 @@ const SchoolAdminsList: FC = () => {
                 type={showPassword ? 'text' : 'password'}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Enter new password (min 8 characters)"
+                placeholder="Enter new password"
                 className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white pr-10"
               />
               <button
@@ -360,7 +362,7 @@ const SchoolAdminsList: FC = () => {
               </button>
             </div>
             <p className="text-gray-600 dark:text-gray-400 text-xs mt-1">
-              Must be at least 8 characters long
+              8+ characters, with upper and lower case letters and a digit
             </p>
           </div>
 
@@ -383,7 +385,7 @@ const SchoolAdminsList: FC = () => {
             <Button
               variant="primary"
               onClick={handleConfirmPasswordChange}
-              disabled={!newPassword || newPassword.length < 8 || loading}
+              disabled={!!passwordProblem(newPassword) || loading}
               isLoading={loading}
             >
               Change Password

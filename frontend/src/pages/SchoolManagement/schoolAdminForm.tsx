@@ -5,6 +5,7 @@
 
 import { FC, useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import { passwordProblem } from '../../utils/formValidation';
 import { schoolService } from '../../services/modules/schoolService';
 
 interface SchoolAdminFormProps {
@@ -116,8 +117,8 @@ const SchoolAdminForm: FC<SchoolAdminFormProps> = ({ school, onClose }) => {
 
     if (!isEditMode && !formData.password.trim()) {
       newErrors.password = 'Password is required';
-    } else if (formData.password && formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
+    } else if (formData.password && passwordProblem(formData.password)) {
+      newErrors.password = passwordProblem(formData.password)!;
     }
 
     setErrors(newErrors);
@@ -269,7 +270,7 @@ const SchoolAdminForm: FC<SchoolAdminFormProps> = ({ school, onClose }) => {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="Enter password (min 8 characters)"
+                placeholder="8+ characters, with upper and lower case letters and a digit"
                 className={`w-full px-4 py-2 pr-10 rounded-lg border transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white dark:border-gray-600 ${
                   errors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
                 }`}

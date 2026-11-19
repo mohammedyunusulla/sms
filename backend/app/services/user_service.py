@@ -391,8 +391,10 @@ class UserService:
 
             if not password:
                 raise ValueError("Password is required")
-            if len(password) < 8:
-                raise ValueError("Password must be at least 8 characters")
+            from app.utils.helpers import validate_password
+            ok, problem = validate_password(password)
+            if not ok:
+                raise ValueError(problem)
             if not username and not email:
                 raise ValueError("Either username or email is required")
 
@@ -467,8 +469,10 @@ class UserService:
         Used when upgrading from BASIC plan or manually granting login access.
         """
         try:
-            if not password or len(password) < 8:
-                raise ValueError("Password must be at least 8 characters")
+            from app.utils.helpers import validate_password
+            ok, problem = validate_password(password)
+            if not ok:
+                raise ValueError(problem)
 
             # Check if already provisioned
             existing = User.query.filter_by(school_user_id=school_user_id, skid=skid).first()
@@ -555,8 +559,10 @@ class UserService:
         Returns a detailed report of results.
         """
         try:
-            if not default_password or len(default_password) < 8:
-                raise ValueError("Default password must be at least 8 characters")
+            from app.utils.helpers import validate_password
+            ok, problem = validate_password(default_password)
+            if not ok:
+                raise ValueError(f"Default password: {problem}")
 
             # Get school for school_code
             school = School.query.get(school_id)

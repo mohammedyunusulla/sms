@@ -39,7 +39,11 @@ class User(BaseModel):
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
 
     def set_password(self, password):
-        """Set password hash using pbkdf2:sha256 with high iterations"""
+        """Set password hash using pbkdf2:sha256 with high iterations. Weak passwords are refused on every path."""
+        from app.utils.helpers import validate_password
+        ok, problem = validate_password(password or '')
+        if not ok:
+            raise ValueError(problem)
         self.password_hash = generate_password_hash(password, method='pbkdf2:sha256:600000')
 
     def check_password(self, password):

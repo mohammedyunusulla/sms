@@ -525,11 +525,13 @@ class SchoolService:
                     'message': 'School admin not found'
                 }
             
-            # Validate password strength (optional)
-            if len(new_password) < 8:
+            # Same password rule as every other account
+            from app.utils.helpers import validate_password
+            ok, problem = validate_password(new_password or '')
+            if not ok:
                 return {
                     'success': False,
-                    'message': 'Password must be at least 8 characters long'
+                    'message': problem
                 }
             
             # Update password

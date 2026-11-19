@@ -42,8 +42,12 @@ def validate_password(password):
     Validate password strength
     Returns tuple (is_valid, error_message)
     """
-    if len(password) < 8:
+    # The one password rule for every account (create, reset, change your own, bulk logins).
+    if not password or len(password) < 8:
         return False, "Password must be at least 8 characters long"
+
+    if len(password) > 128:
+        return False, "Password must not exceed 128 characters"
     
     if not re.search(r'[A-Z]', password):
         return False, "Password must contain at least one uppercase letter"

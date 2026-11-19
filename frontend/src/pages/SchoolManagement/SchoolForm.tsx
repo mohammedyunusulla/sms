@@ -6,6 +6,7 @@
 import { FC, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import toast from 'react-hot-toast';
+import { passwordProblem } from '../../utils/formValidation';
 import {
     PageHeader,
     Button,
@@ -223,8 +224,9 @@ const SchoolForm: FC = () => {
 
     // Handle bulk provisioning
     const handleBulkProvision = async () => {
-        if (!provisionPassword || provisionPassword.length < 8) {
-            toast.error('Password must be at least 8 characters');
+        const problem = passwordProblem(provisionPassword);
+        if (problem) {
+            toast.error(problem);
             return;
         }
         if (!selectedSchool) return;
@@ -592,7 +594,7 @@ const SchoolForm: FC = () => {
                             <Button
                                 variant="primary"
                                 onClick={handleBulkProvision}
-                                disabled={provisionLoading || provisionPassword.length < 8}
+                                disabled={provisionLoading || !!passwordProblem(provisionPassword)}
                                 isLoading={provisionLoading}
                                 loadingText="Provisioning..."
                             >
@@ -633,7 +635,7 @@ const SchoolForm: FC = () => {
                                         type={provisionShowPassword ? 'text' : 'password'}
                                         value={provisionPassword}
                                         onChange={(e) => setProvisionPassword(e.target.value)}
-                                        placeholder="Minimum 8 characters"
+                                        placeholder="8+ characters, with upper and lower case letters and a digit"
                                         className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                                     />
                                     <button
