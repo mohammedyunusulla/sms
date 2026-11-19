@@ -1,6 +1,7 @@
 from datetime import date as date_type
 from flask import Blueprint, request, jsonify
 from app.decorators.auth import login_required
+from app.decorators.auth import student_access_required
 from app.services.bus_scan_service import BusScanService, search_students_for_bus
 
 bus_scan_bp = Blueprint('bus_scan', __name__)
@@ -82,6 +83,7 @@ def get_status(skid):
 
 @bus_scan_bp.route('/student/<skid>/<int:student_user_id>', methods=['GET'])
 @login_required(allowed_roles=['SCHOOL_ADMIN', 'PRINCIPAL', 'BUS_STAFF', 'PARENT', 'TEACHER'])
+@student_access_required('student_user_id')
 def get_student_history(skid, student_user_id):
     """Get bus scan history for a specific student."""
     limit = request.args.get('limit', 50, type=int)

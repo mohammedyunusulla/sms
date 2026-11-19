@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app.decorators.auth import login_required
+from app.decorators.auth import student_access_required
 from app.services.bus_location_service import BusLocationService
 
 bus_location_bp = Blueprint('bus_location', __name__)
@@ -45,6 +46,7 @@ def get_live(skid, bus_staff_user_id):
 
 @bus_location_bp.route('/my-child-bus/<skid>/<int:student_user_id>', methods=['GET'])
 @login_required(allowed_roles=['PARENT'])
+@student_access_required('student_user_id')
 def get_child_bus(skid, student_user_id):
     """Parent endpoint: get the bus location for their child."""
     result = BusLocationService.get_child_bus_location(skid, student_user_id)

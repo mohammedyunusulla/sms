@@ -2,6 +2,7 @@
 from flask import Blueprint, request, jsonify
 from app.services.syllabus_service import SyllabusService
 from app.decorators import login_required
+from app.decorators.auth import student_access_required
 from flask_jwt_extended import get_jwt_identity
 
 syllabus_bp = Blueprint('syllabus', __name__)
@@ -564,6 +565,7 @@ def mark_progress(skid):
 
 @syllabus_bp.route('/student-view/<skid>', methods=['GET'])
 @login_required(['STUDENT', 'SCHOOL_ADMIN', 'PRINCIPAL', 'PARENT', 'TEACHER'])
+@student_access_required('student_user_id', source='query')
 def get_student_syllabus_view(skid):
     """Get syllabus progress view. Teachers see their own syllabi; students resolve via timetable."""
     try:

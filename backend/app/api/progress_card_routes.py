@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app.decorators import login_required
+from app.decorators.auth import student_access_required
 from app.services.progress_card_service import ProgressCardService
 
 progress_card_bp = Blueprint('progress-card', __name__)
@@ -96,6 +97,7 @@ def bulk_generate_report_cards(skid):
 # VIEW INDIVIDUAL PROGRESS CARD
 @progress_card_bp.route('/view/<skid>/<int:student_id>/<int:exam_id>', methods=['GET'])
 @login_required(['TEACHER', 'TEACHER', 'SCHOOL_ADMIN', 'STUDENT', 'PARENT'])
+@student_access_required('student_id')
 def view_progress_card(skid, student_id, exam_id):
     """View individual student's progress card"""
     try:
@@ -114,6 +116,7 @@ def view_progress_card(skid, student_id, exam_id):
 # VIEW ANNUAL PROGRESS REPORT
 @progress_card_bp.route('/annual/<skid>/<int:student_id>', methods=['GET'])
 @login_required(['TEACHER', 'SCHOOL_ADMIN', 'STUDENT', 'PARENT'])
+@student_access_required('student_id')
 def view_annual_report(skid, student_id):
     """View student's annual progress report (all exams)"""
     try:

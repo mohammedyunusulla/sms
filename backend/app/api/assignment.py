@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.services.assignment_service import AssignmentService
 from app.decorators import log_actions, login_required
+from app.decorators.auth import student_access_required
 
 assignment_bp = Blueprint('assignment', __name__)
 
@@ -160,6 +161,7 @@ def update_submissions(assignment_id, skid):
 
 @assignment_bp.route('/student/<skid>', methods=['GET'])
 @login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT'])
+@student_access_required('student_id', source='query')
 def get_student_assignments(skid):
     """Get assignments for a student based on their class/section."""
     try:

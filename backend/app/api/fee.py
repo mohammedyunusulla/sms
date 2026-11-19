@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.services.fee_service import FeeService
 from app.decorators import login_required
+from app.decorators.auth import student_access_required, student_fee_owner
 from app.decorators import log_actions
 from datetime import datetime
 
@@ -359,6 +360,7 @@ def auto_generate_recurring_installments():
 # GET INSTALLMENTS
 @fee_bp.route('/installments/get/<skid>/<int:student_fee_id>', methods=['GET'])
 @login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT', 'PARENT', 'STUDENT'])
+@student_access_required('student_fee_id', resolver=student_fee_owner)
 def get_installments(skid, student_fee_id):
     """Get all installments for a student fee"""
     try:
@@ -430,6 +432,7 @@ def record_installment_payment(skid, installment_id):
 # GET STUDENT FEE SUMMARY
 @fee_bp.route('/summary/student/<skid>/<int:student_id>', methods=['GET'])
 @login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'PARENT', 'STUDENT'])
+@student_access_required('student_id')
 def get_student_fee_summary(skid, student_id):
     """Get complete fee summary for a student"""
     try:

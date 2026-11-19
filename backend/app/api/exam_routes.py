@@ -2,6 +2,7 @@
 
 from flask import Blueprint, request, jsonify
 from app.decorators import login_required
+from app.decorators.auth import student_access_required
 from app.services.exam_service import ExamService
 
 exam_bp = Blueprint('exams', __name__)
@@ -449,6 +450,7 @@ def get_invigilator_schedule(skid, teacher_id):
 # STUDENT EXAM TIMETABLE (exam schedule + room/seat/invigilator from seating arrangement)
 @exam_bp.route('/student-exam-timetable/<skid>/<int:student_id>', methods=['GET'])
 @login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT'])
+@student_access_required('student_id')
 def get_student_exam_timetable(skid, student_id):
     """
     Get a student's exam timetable with room, seat, and invigilator details

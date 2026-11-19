@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.services.teacher_service import TeacherService
 from app.decorators import log_actions, login_required
+from app.decorators.auth import student_access_required
 from app.models.main.User import UserRole
 from app.services.timeTable_service import TimetableService
 from datetime import datetime
@@ -447,6 +448,7 @@ def delete_timetable(timetable_id):
 
 @timeTable_bp.route('/student/<skid>/<student_id>/<date>', methods=['GET'])
 @login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT'])
+@student_access_required('student_id')
 def get_student_timetable(skid, student_id, date):
     """
     Get student's class timetable for a specific day.

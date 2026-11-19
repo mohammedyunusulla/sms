@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.services.attendance_service import AttendanceService
 from app.decorators import log_actions, login_required
+from app.decorators.auth import student_access_required
 from app.models.main.User import UserRole
 from datetime import datetime
 
@@ -296,6 +297,7 @@ def view_date_range_attendance(skid):
 
 @attendance_bp.route('/student/<int:skid>/<int:student_id>', methods=['GET'])
 @login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'PARENT'])
+@student_access_required('student_id')
 @log_actions('VIEW-STUDENT-ATTENDANCE')
 def view_student_attendance(skid, student_id):
     """
