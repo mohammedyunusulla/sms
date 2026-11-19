@@ -6,3 +6,4 @@
 export { default as Assignments } from './Assignments';
 export { default as AssignmentReview } from './AssignmentReview';
 export { default as StudentAssignments } from './StudentAssignments';
+export { default as ParentAssignments } from './ParentAssignments';

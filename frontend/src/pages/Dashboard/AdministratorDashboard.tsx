@@ -4,7 +4,7 @@
  * All data comes from independent API calls with their own loaders
  */
 
-import { FC } from 'react';
+import { FC, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { PageHeader, Button } from '../../components';
 import QuickActionButton from '../../components/dashboard/QuickActionButton';
@@ -21,6 +21,8 @@ import TimetableCard from './components/TimetableCard';
 const AdministratorDashboard: FC = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const hasAcademicYear = Boolean(user?.current_academic_year?.id);
+    const [refreshKey, setRefreshKey] = useState(0);
 
     const greeting = () => {
         const hour = new Date().getHours();
@@ -34,12 +36,12 @@ const AdministratorDashboard: FC = () => {
             {/* Page Header */}
             <PageHeader
                 title="Institution Dashboard"
-                subtitle={`${greeting()}, ${user?.first_name || 'Admin'}. Academic Year: ${user?.current_academic_year?.year_name || ''}`}
+                subtitle={`${greeting()}, ${user?.first_name || 'Admin'}. Academic Year: ${user?.current_academic_year?.year_name || 'Not set'}`}
                 actions={
                     <Button
                         variant="primary"
                         size="sm"
-                        onClick={() => window.location.reload()}
+                        onClick={() => setRefreshKey((k) => k + 1)}
                     >
                         <svg className="w-4 h-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182" />
@@ -49,27 +51,33 @@ const AdministratorDashboard: FC = () => {
                 }
             />
 
+            {!hasAcademicYear && (
+                <div className="p-4 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
+                    Dashboard data is unavailable until an academic year is assigned to your account.
+                </div>
+            )}
+
             {/* Stats Cards - Independent API: /schoolAdminDashboard/stats */}
-            <StatsCardsSection />
+            <StatsCardsSection key={`stats-${refreshKey}`} />
 
             {/* Attendance + Finance Row - Two independent API calls */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Attendance Overview - API: /schoolAdminDashboard/attendance-overview */}
-                <AttendanceOverviewCard />
+                <AttendanceOverviewCard key={`attendance-${refreshKey}`} />
 
                 {/* Finance Summary - API: /schoolAdminDashboard/finance-summary */}
-                <FinanceSummaryCard />
+                <FinanceSummaryCard key={`finance-${refreshKey}`} />
             </div>
 
             {/* Expense Trend + Announcements - Two independent API calls */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Expense Trend Chart - API: /schoolAdminDashboard/breakdown/monthly */}
                 <div className="lg:col-span-2">
-                    <ExpenseTrendCard />
+                    <ExpenseTrendCard key={`expense-${refreshKey}`} />
                 </div>
 
                 {/* Announcements - API: /announcements/list */}
-                <AnnouncementsCard />
+                <AnnouncementsCard key={`announcements-${refreshKey}`} />
             </div>
 
             {/* Quick Actions */}
@@ -202,7 +210,7 @@ const AdministratorDashboard: FC = () => {
             </div>
 
             {/* Class Timetable - Independent API: /schoolAdminDashboard/timetable + /classes/list + /classes/sections */}
-            <TimetableCard />
+            <TimetableCard key={`timetable-${refreshKey}`} />
         </div>
     );
 };

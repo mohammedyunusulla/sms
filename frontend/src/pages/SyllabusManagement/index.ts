@@ -7,3 +7,4 @@ export { default as TopicFormModal } from './TopicFormModal';
 export { default as SubtopicFormModal } from './SubtopicFormModal';
 export { default as StudentSyllabusView } from './StudentSyllabusView';
 export { default as StudentSyllabusDetail } from './StudentSyllabusDetail';
+export { default as ParentSyllabusView } from './ParentSyllabusView';

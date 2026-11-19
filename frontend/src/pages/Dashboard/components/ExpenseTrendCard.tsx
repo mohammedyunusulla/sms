@@ -43,12 +43,15 @@ const ExpenseTrendCard: FC = () => {
 
     const skid = user?.skid || '';
     const academicYearId = user?.current_academic_year?.id;
+    const canFetch = Boolean(skid && academicYearId);
 
     useEffect(() => {
-        if (skid && academicYearId) {
+        if (canFetch) {
             fetchExpenseBreakdown();
+            return;
         }
-    }, [skid, academicYearId, selectedMonth]);
+        setLoading(false);
+    }, [canFetch, skid, academicYearId, selectedMonth]);
 
     const fetchExpenseBreakdown = async () => {
         try {
@@ -62,6 +65,17 @@ const ExpenseTrendCard: FC = () => {
             setLoading(false);
         }
     };
+
+    if (!canFetch) {
+        return (
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Expense Trend</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Assign an academic year to load expense analytics.
+                </p>
+            </div>
+        );
+    }
 
     if (loading) {
         return (

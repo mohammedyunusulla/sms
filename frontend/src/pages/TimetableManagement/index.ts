@@ -7,3 +7,5 @@ export { default as TimetableList } from './TimetableList';
 export { default as TimetableDetail } from './TimetableDetail';
 export { default as TimetableEdit } from './TimetableEdit';
 export { default as TimetableCreate } from './TimetableCreate';
+export { default as StudentTimetable } from './StudentTimetable';
+export { default as ParentTimetable } from './ParentTimetable';
