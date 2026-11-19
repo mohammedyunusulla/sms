@@ -21,6 +21,7 @@ export interface DashboardStats {
         overall_users_count: number;
         today_attendance_present: number;
         today_attendance_total_students: number;
+        today_attendance_marked?: number;
     };
 }
 

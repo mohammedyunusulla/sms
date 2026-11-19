@@ -98,7 +98,13 @@ class SchoolAdminDashboardService:
                 status_column(Attendance.status).in_(['PRESENT', 'LATE'])
             )
         ).scalar() or 0
-        
+        # Students marked today (any status): the % is out of these, like the attendance overview card,
+        # so unmarked sections don't count as absent
+        marked_count = tenant_session.query(func.count(Attendance.id)).filter(
+            Attendance.academic_year_id == academic_year_id,
+            Attendance.date == today,
+        ).scalar() or 0
+
         return {
             'students_count': total_students,
             'male_students': male_count,
@@ -107,6 +113,7 @@ class SchoolAdminDashboardService:
             'parents_count': total_parents,
             'overall_users_count': overall_users,
             'today_attendance_present': present_count,
+            'today_attendance_marked': marked_count,
             'today_attendance_total_students': total_students
         }
 

@@ -40,8 +40,11 @@ const StatsCardsSection: FC<StatsCardsSectionProps> = ({ onStatsLoaded }) => {
         }
     };
 
-    const attendancePercentage = stats?.today_attendance_total_students
-        ? Math.round((stats.today_attendance_present / stats.today_attendance_total_students) * 100)
+    // Out of the students marked today (unmarked sections aren't absent), matching the attendance overview card
+    const markedToday = stats?.today_attendance_marked ?? 0;
+    const notMarkedToday = Math.max(0, (stats?.today_attendance_total_students ?? 0) - markedToday);
+    const attendancePercentage = markedToday
+        ? Math.round((stats!.today_attendance_present / markedToday) * 100)
         : 0;
 
     const cards = [
@@ -93,10 +96,12 @@ const StatsCardsSection: FC<StatsCardsSectionProps> = ({ onStatsLoaded }) => {
         {
             label: "Today's Attendance",
             value: stats
-                ? `${stats.today_attendance_present} / ${stats.today_attendance_total_students}`
+                ? `${stats.today_attendance_present} / ${markedToday}`
                 : '-',
-            subtitle: stats?.today_attendance_total_students
-                ? `${attendancePercentage}% Present`
+            subtitle: stats
+                ? markedToday
+                    ? `${attendancePercentage}% present of marked${notMarkedToday ? ` · ${notMarkedToday} not marked yet` : ''}`
+                    : 'Not marked yet today'
                 : 'No data',
             color: 'green' as const,
             link: '/attendance/mark',

@@ -488,11 +488,14 @@ class AttendanceService:
                         }
                     })
                 
-                # Calculate overall attendance rate
-                total_possible = overall_stats['total_students'] * overall_stats['total_days']
+                # Overall rate: (present + late) out of the attendance actually marked, the same rule as each
+                # student's % (it used to divide by students x every calendar day, weekends and unmarked days included)
+                total_marked = (overall_stats['total_present'] + overall_stats['total_absent']
+                                + overall_stats['total_late'] + overall_stats['total_leave'])
                 overall_attendance_rate = round(
-                    (overall_stats['total_present'] / total_possible * 100), 2
-                ) if total_possible > 0 else 0
+                    ((overall_stats['total_present'] + overall_stats['total_late']) / total_marked * 100), 2
+                ) if total_marked > 0 else 0
+                overall_stats['total_marked'] = total_marked
                 
                 overall_stats['overall_attendance_rate'] = overall_attendance_rate
                 
