@@ -42,7 +42,7 @@ def create_teacher(skid):
 
 
 @teacher_bp.route('/update/<skid>/<teacher_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
 @log_actions('UPDATE_TEACHER_USER')
 def update_teacher(skid, teacher_id):
     """

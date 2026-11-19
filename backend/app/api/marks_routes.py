@@ -3,6 +3,9 @@
 from flask import Blueprint, request, jsonify
 from app.decorators import login_required
 from app.services.marks_service import MarksService
+from app.utils.db_manager import switch_to_school_db
+from app.utils.teaching_scope import current_teacher_id, forbidden, teaches, student_section_id
+from app.models.tenant.ExamModels import ExamSubjectConfig
 
 marks_bp = Blueprint('marks', __name__)
 
@@ -53,7 +56,20 @@ def enter_marks(skid, academic_year_id):
     """
     try:
         data = request.get_json()
-        
+
+        own_id = current_teacher_id()
+        if own_id is not None:
+            data['teacher_id'] = own_id  # never trust a teacher_id sent by a teacher
+            with switch_to_school_db(skid) as session:
+                config = session.query(ExamSubjectConfig).filter_by(id=data.get('exam_config_id')).first()
+                if not config:
+                    return jsonify({'message': 'Exam configuration not found', 'status': 'error', 'code': 404}), 404
+                sections = {student_section_id(session, m.get('student_id')) for m in data.get('marks_data', [])}
+                if config.section_id:
+                    sections.add(config.section_id)
+                if any(sec is None or not teaches(session, own_id, sec, config.subject_id) for sec in sections):
+                    return forbidden('You can only enter marks for subjects you teach in that section')
+
         result = MarksService.bulk_enter_marks(
             data['exam_config_id'],
             data['marks_data'],

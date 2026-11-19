@@ -2,6 +2,24 @@ from flask import Blueprint, request, jsonify
 from app.services.attendance_service import AttendanceService
 from app.decorators import log_actions, login_required
 from app.decorators.auth import student_access_required
+from app.utils.db_manager import switch_to_school_db
+from app.utils.teaching_scope import current_teacher_id, forbidden, is_class_teacher, student_section_id
+
+
+def _class_teacher_guard(skid, records, default_section_id=None):
+    """Teachers may only mark attendance for their own class-teacher section(s), and only its students."""
+    teacher_id = current_teacher_id()
+    if teacher_id is None:
+        return None
+    with switch_to_school_db(skid) as session:
+        for r in records or []:
+            # record/bulk sends section_id per record; update/bulk sends it once at the top level
+            section_id = r.get('section_id', default_section_id)
+            if section_id is None or not is_class_teacher(session, teacher_id, section_id):
+                return forbidden('Only the class teacher can mark attendance for this section')
+            if str(student_section_id(session, r.get('student_id'))) != str(section_id):
+                return forbidden('A student in this attendance list is not in the selected section')
+    return None
 from app.models.main.User import UserRole
 from datetime import datetime
 
@@ -22,6 +40,9 @@ def record_attendance_bulk(skid):
         if not skid:
             raise ValueError("School ID (skid) is required")
             
+        denied = _class_teacher_guard(skid, data.get('records'), data.get('section_id'))
+        if denied:
+            return denied
         attendance = AttendanceService.record_attendance_bulk(data, skid)
         
         return jsonify({
@@ -57,6 +78,9 @@ def update_attendance_bulk(skid):
         if not skid:
             raise ValueError("School ID (skid) is required")
         
+        denied = _class_teacher_guard(skid, data.get('records'), data.get('section_id'))
+        if denied:
+            return denied
         updated_records = AttendanceService.update_attendance_bulk(data, skid)
         
         return jsonify({

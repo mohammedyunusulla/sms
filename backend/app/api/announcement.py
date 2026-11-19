@@ -1,6 +1,9 @@
 from flask import Blueprint, request, jsonify
 from app.services.announcement_service import AnnouncementService
 from app.decorators import login_required
+from app.utils.db_manager import switch_to_school_db
+from app.utils.teaching_scope import current_teacher_id, forbidden
+from app.models.tenant.Announcement import Announcement as AnnouncementModel
 
 announcement_bp = Blueprint('announcements', __name__)
 
@@ -20,6 +23,10 @@ def create_announcement(skid):
                     'message': f'Missing required field: {field}'
                 }), 400
         
+        # The author is always the logged-in user (super admins have no school user and keep the sent value).
+        if data is not None and getattr(request.current_user, 'school_user_id', None):
+            data['created_by'] = request.current_user.school_user_id
+
         Announcement = AnnouncementService.create_announcement(skid, data)
         
         return jsonify({
@@ -131,7 +138,16 @@ def update_announcement(skid, announcement_id):
     """Update a Announcement"""
     try:
         data = request.get_json()
-        
+
+        if data is not None and getattr(request.current_user, 'school_user_id', None):
+            data.pop('created_by', None)  # authorship can't be changed
+        teacher_id = current_teacher_id()
+        if teacher_id is not None:
+            with switch_to_school_db(skid) as session:
+                existing = session.query(AnnouncementModel).filter_by(id=announcement_id).first()
+                if existing and existing.created_by != teacher_id:
+                    return forbidden('You can only edit your own announcements')
+
         Announcement = AnnouncementService.update_announcement(skid, announcement_id, data)
         
         return jsonify({
