@@ -12,6 +12,77 @@ from datetime import datetime, date
 from decimal import Decimal
 
 
+def _next_position(session, model, parent_field, parent_id, requested=None):
+    """
+    Position for a new lesson / topic / subtopic. Deleted items give up their position (see _retire), so the
+    next free number is max(active) + 1; a requested position already in use is refused (it used to be a 500).
+    """
+    from sqlalchemy import func
+    parent_col = getattr(model, parent_field)
+    if requested not in (None, ''):
+        requested = int(requested)
+        if requested < 1:
+            raise ValueError("Position must be 1 or more")
+        taken = session.query(model).filter(parent_col == parent_id, model.sequence_order == requested).first()
+        if taken:
+            raise ValueError(f"Position {requested} is already used by '{taken.title}'. Choose another position.")
+        return requested
+    top = session.query(func.max(model.sequence_order)).filter(parent_col == parent_id, model.is_active.is_(True)).scalar()
+    candidate = (top or 0) + 1
+    while session.query(model).filter(parent_col == parent_id, model.sequence_order == candidate).first():
+        candidate += 1  # an old row could still sit on it
+    return candidate
+
+
+def _retire(item):
+    """Soft delete an item and free its position (a deleted item kept its number and blocked the next one)."""
+    item.is_active = False
+    item.sequence_order = -item.id
+    item.updated_at = datetime.utcnow()
+
+
+def _retire_progress(session, item_type, item_ids):
+    if item_ids:
+        session.query(SyllabusProgressTracking).filter(
+            SyllabusProgressTracking.item_type == item_type,
+            SyllabusProgressTracking.item_id.in_(list(item_ids)),
+        ).update({"is_active": False}, synchronize_session=False)
+
+
+def _retire_lesson_tree(session, lessons):
+    """Delete lessons with all their topics and subtopics (and their teacher progress)."""
+    lesson_ids, topic_ids, subtopic_ids = set(), set(), set()
+    for lesson in lessons:
+        for topic in list(lesson.all_topics):
+            for sub in list(topic.all_subtopics):
+                if sub.is_active:
+                    _retire(sub)
+                    subtopic_ids.add(sub.id)
+            if topic.is_active:
+                _retire(topic)
+                topic_ids.add(topic.id)
+        if lesson.is_active:
+            _retire(lesson)
+            lesson_ids.add(lesson.id)
+    _retire_progress(session, 'subtopic', subtopic_ids)
+    _retire_progress(session, 'topic', topic_ids)
+    _retire_progress(session, 'lesson', lesson_ids)
+
+
+def _with_status_defaults(syllabus_dict):
+    """Every item gets a status and %, also with no progress yet (analytics read them and raised KeyError)."""
+    for key, default in (('status', 'planned'), ('completion_percentage', 0)):
+        syllabus_dict.setdefault(key, default)
+    for lesson in syllabus_dict.setdefault('lessons', []):
+        lesson.setdefault('status', 'planned'); lesson.setdefault('completion_percentage', 0)
+        for topic in lesson.setdefault('topics', []):
+            topic.setdefault('status', 'planned'); topic.setdefault('completion_percentage', 0)
+            for sub in topic.setdefault('subtopics', []):
+                sub.setdefault('status', 'completed' if sub.get('is_completed') else 'planned')
+                sub.setdefault('is_completed', False)
+    return syllabus_dict
+
+
 class SyllabusService:
 
     # ============== HELPER METHODS ==============
@@ -578,30 +649,44 @@ class SyllabusService:
                 if not academic_year:
                     raise ValueError("Academic year not found")
 
-                # Check for duplicate syllabus
+                # One syllabus per subject and year (a database rule). A deleted one used to block creating a
+                # new one; it now comes back as a fresh, empty syllabus (old content stays deleted).
                 existing = session.query(Syllabus).filter_by(
                     subject_id=data['subject_id'],
                     academic_year_id=data['academic_year_id'],
-                    is_active=True
                 ).first()
-                if existing:
+                if existing and existing.is_active:
                     raise ValueError("Syllabus already exists for this subject and academic year")
 
-                syllabus = Syllabus(
-                    subject_id=data['subject_id'],
-                    academic_year_id=data['academic_year_id'],
-                    created_by=teacher_id,
-                    title=data['title'],
-                    description=data.get('description'),
-                    estimated_duration_hours=data.get('estimated_duration_hours', 0)
-                )
-
-                session.add(syllabus)
+                if existing:
+                    _retire_lesson_tree(session, existing.all_lessons)
+                    syllabus = existing
+                    syllabus.is_active = True
+                    syllabus.title = data['title']
+                    syllabus.description = data.get('description')
+                    syllabus.estimated_duration_hours = data.get('estimated_duration_hours', 0)
+                    syllabus.created_by = teacher_id or syllabus.created_by
+                    syllabus.updated_at = datetime.utcnow()
+                    session.query(SyllabusProgressTracking).filter_by(
+                        item_type='syllabus', item_id=syllabus.id
+                    ).update({"is_active": False})
+                else:
+                    syllabus = Syllabus(
+                        subject_id=data['subject_id'],
+                        academic_year_id=data['academic_year_id'],
+                        created_by=teacher_id,
+                        title=data['title'],
+                        description=data.get('description'),
+                        estimated_duration_hours=data.get('estimated_duration_hours', 0)
+                    )
+                    session.add(syllabus)
                 session.commit()
                 session.refresh(syllabus)
 
                 return syllabus.to_dict()
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to create syllabus: {str(e)}")
 
@@ -893,6 +978,8 @@ class SyllabusService:
 
                 syllabus.is_active = False
                 syllabus.updated_at = datetime.utcnow()
+                # its lessons, topics and subtopics go with it (they used to stay active underneath)
+                _retire_lesson_tree(session, syllabus.all_lessons)
                 session.commit()
 
                 return {"message": "Syllabus deleted successfully"}
@@ -911,10 +998,7 @@ class SyllabusService:
                 if not syllabus:
                     raise ValueError("Syllabus not found")
 
-                # Auto-calculate sequence order if not provided
-                if 'sequence_order' not in data:
-                    max_order = session.query(Lesson).filter_by(syllabus_id=syllabus_id, is_active=True).count()
-                    data['sequence_order'] = max_order + 1
+                data['sequence_order'] = _next_position(session, Lesson, 'syllabus_id', syllabus_id, data.get('sequence_order'))
 
                 lesson = Lesson(
                     syllabus_id=syllabus_id,
@@ -933,6 +1017,8 @@ class SyllabusService:
 
                 return lesson.to_dict()
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to create lesson: {str(e)}")
 
@@ -987,8 +1073,8 @@ class SyllabusService:
                 if not lesson:
                     raise ValueError("Lesson not found")
 
-                lesson.is_active = False
-                lesson.updated_at = datetime.utcnow()
+                # the lesson, its topics and subtopics; positions are freed
+                _retire_lesson_tree(session, [lesson])
 
                 # Soft delete all teacher progress for this lesson
                 session.query(SyllabusProgressTracking).filter_by(
@@ -1014,9 +1100,7 @@ class SyllabusService:
                 if not lesson:
                     raise ValueError("Lesson not found")
 
-                if 'sequence_order' not in data:
-                    max_order = session.query(Topic).filter_by(lesson_id=lesson_id, is_active=True).count()
-                    data['sequence_order'] = max_order + 1
+                data['sequence_order'] = _next_position(session, Topic, 'lesson_id', lesson_id, data.get('sequence_order'))
 
                 topic = Topic(
                     lesson_id=lesson_id,
@@ -1032,6 +1116,8 @@ class SyllabusService:
 
                 return topic.to_dict()
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to create topic: {str(e)}")
 
@@ -1085,8 +1171,11 @@ class SyllabusService:
                 if not topic:
                     raise ValueError("Topic not found")
 
-                topic.is_active = False
-                topic.updated_at = datetime.utcnow()
+                for sub in list(topic.all_subtopics):
+                    if sub.is_active:
+                        _retire(sub)
+                        _retire_progress(session, 'subtopic', {sub.id})
+                _retire(topic)
 
                 # Soft delete all teacher progress for this topic
                 session.query(SyllabusProgressTracking).filter_by(
@@ -1112,9 +1201,7 @@ class SyllabusService:
                 if not topic:
                     raise ValueError("Topic not found")
 
-                if 'sequence_order' not in data:
-                    max_order = session.query(Subtopic).filter_by(topic_id=topic_id, is_active=True).count()
-                    data['sequence_order'] = max_order + 1
+                data['sequence_order'] = _next_position(session, Subtopic, 'topic_id', topic_id, data.get('sequence_order'))
 
                 subtopic = Subtopic(
                     topic_id=topic_id,
@@ -1131,6 +1218,8 @@ class SyllabusService:
 
                 return subtopic.to_dict()
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to create subtopic: {str(e)}")
 
@@ -1194,8 +1283,7 @@ class SyllabusService:
                 if not subtopic:
                     raise ValueError("Subtopic not found")
 
-                subtopic.is_active = False
-                subtopic.updated_at = datetime.utcnow()
+                _retire(subtopic)
 
                 # Soft delete all teacher progress for this subtopic
                 session.query(SyllabusProgressTracking).filter_by(
@@ -1781,6 +1869,8 @@ class SyllabusService:
 
                 return syllabus_dict
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to get combined progress: {str(e)}")
 
@@ -1788,8 +1878,16 @@ class SyllabusService:
 
     @staticmethod
     def get_syllabus_analytics(skid, syllabus_id, teacher_id=None):
-        """Get detailed analytics for a syllabus with optional teacher-specific progress"""
+        """
+        Analytics for a syllabus. A teacher sees their own progress; admins see the combined progress of the
+        teachers assigned to it (best status across them).
+        """
         try:
+            if not teacher_id:
+                with switch_to_school_db(skid) as session:
+                    assigned = [a.teacher_id for a in session.query(TeacherSyllabusAssignment).filter_by(
+                        syllabus_id=syllabus_id, is_active=True).all()]
+                combined = SyllabusService.get_syllabus_combined_progress(skid, syllabus_id, assigned or None)
             with switch_to_school_db(skid) as session:
                 syllabus = session.query(Syllabus).options(
                     joinedload(Syllabus.lessons).joinedload(Lesson.topics).joinedload(Topic.subtopics)
@@ -1798,7 +1896,7 @@ class SyllabusService:
                 if not syllabus:
                     raise ValueError("Syllabus not found")
 
-                syllabus_dict = syllabus.to_dict(include_lessons=True)
+                syllabus_dict = syllabus.to_dict(include_lessons=True) if teacher_id else combined
 
                 if teacher_id:
                     # Apply teacher-specific progress to the hierarchy
@@ -1826,6 +1924,7 @@ class SyllabusService:
                                 )
 
                 # Calculate stats based on potentially overridden data
+                _with_status_defaults(syllabus_dict)
                 lessons = syllabus_dict['lessons']
                 total_lessons = len(lessons)
                 completed_lessons = sum(1 for l in lessons if l['status'] == 'completed')
@@ -1884,6 +1983,8 @@ class SyllabusService:
                     'overdue_items': overdue_items
                 }
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to get analytics: {str(e)}")
 
@@ -1892,6 +1993,18 @@ class SyllabusService:
         """Get summary of all syllabi for a teacher"""
         try:
             syllabi = SyllabusService.get_syllabi_by_teacher(skid, teacher_id, academic_year_id)
+            # every syllabus showed "planned, 0%": apply this teacher's own syllabus-level progress
+            if syllabi:
+                with switch_to_school_db(skid) as session:
+                    progress = {p.item_id: p for p in session.query(SyllabusProgressTracking).filter(
+                        SyllabusProgressTracking.teacher_id == teacher_id,
+                        SyllabusProgressTracking.item_type == 'syllabus',
+                        SyllabusProgressTracking.is_active.is_(True),
+                        SyllabusProgressTracking.item_id.in_([s['id'] for s in syllabi]),
+                    ).all()}
+                    for item in syllabi:
+                        SyllabusService._apply_teacher_progress_to_dict(item, progress.get(item['id']))
+                        item['completion_percentage'] = float(item.get('completion_percentage') or 0)
 
             total_syllabi = len(syllabi)
             completed_syllabi = sum(1 for s in syllabi if s['status'] == 'completed')

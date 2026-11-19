@@ -24,7 +24,11 @@ class Syllabus(BaseModelTenant, BaseModelTenantMixin):
     subject = relationship('Subject', backref='syllabi')
     academic_year = relationship('AcademicYear', backref='syllabi')
     creator = relationship('SchoolUsers', backref='syllabi_created', foreign_keys=[created_by])
-    lessons = relationship('Lesson', back_populates='syllabus', cascade='all, delete-orphan', order_by='Lesson.sequence_order')
+    # every lesson (deleted ones too) - owns the rows
+    all_lessons = relationship('Lesson', back_populates='syllabus', cascade='all, delete-orphan', order_by='Lesson.sequence_order')
+    # what pages and reports show: active lessons only (deleted ones used to appear everywhere)
+    lessons = relationship('Lesson', primaryjoin="and_(Lesson.syllabus_id == Syllabus.id, Lesson.is_active == True)",
+                           order_by='Lesson.sequence_order', viewonly=True)
 
     # Constraints
     __table_args__ = (
@@ -61,7 +65,7 @@ class Syllabus(BaseModelTenant, BaseModelTenantMixin):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
 
-        if include_lessons and self.lessons:
+        if include_lessons:
             data['lessons'] = [lesson.to_dict(include_topics=True) for lesson in self.lessons]
             data['total_lessons'] = len(self.lessons)
 

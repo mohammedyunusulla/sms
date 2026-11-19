@@ -23,8 +23,11 @@ class Lesson(BaseModelTenant, BaseModelTenantMixin):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     # Relationships
-    syllabus = relationship('Syllabus', back_populates='lessons')
-    topics = relationship('Topic', back_populates='lesson', cascade='all, delete-orphan', order_by='Topic.sequence_order')
+    syllabus = relationship('Syllabus', back_populates='all_lessons')
+    all_topics = relationship('Topic', back_populates='lesson', cascade='all, delete-orphan', order_by='Topic.sequence_order')
+    # active topics only
+    topics = relationship('Topic', primaryjoin="and_(Topic.lesson_id == Lesson.id, Topic.is_active == True)",
+                          order_by='Topic.sequence_order', viewonly=True)
 
     # Constraints
     __table_args__ = (
@@ -48,7 +51,7 @@ class Lesson(BaseModelTenant, BaseModelTenantMixin):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
 
-        if include_topics and self.topics:
+        if include_topics:
             data['topics'] = [topic.to_dict(include_subtopics=True) for topic in self.topics]
             data['total_topics'] = len(self.topics)
 

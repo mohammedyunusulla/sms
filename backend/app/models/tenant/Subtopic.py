@@ -21,7 +21,7 @@ class Subtopic(BaseModelTenantMixin, BaseModelTenant):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     # Relationships
-    topic = relationship('Topic', back_populates='subtopics')
+    topic = relationship('Topic', back_populates='all_subtopics')
 
     # Constraints
     __table_args__ = (
