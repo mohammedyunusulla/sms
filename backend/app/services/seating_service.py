@@ -388,17 +388,25 @@ class SeatingService:
                         # (already handled by unique constraints — swap is fine)
                         pass
 
-                    # Swap
+                    # Swap in three steps: changing both seats in one flush briefly put two students on the same
+                    # seat, which uq_seating_plan_seat rejected (500 UniqueViolation). Park A on a seat that can't
+                    # exist, move B into A's seat, then put A into B's old seat.
                     a_row, a_col, a_label, a_config = plan_a.seat_row, plan_a.seat_column, plan_a.seat_label, plan_a.config_id
-                    plan_a.seat_row = plan_b.seat_row
-                    plan_a.seat_column = plan_b.seat_column
-                    plan_a.seat_label = plan_b.seat_label
-                    plan_a.config_id = plan_b.config_id
+                    b_row, b_col, b_label, b_config = plan_b.seat_row, plan_b.seat_column, plan_b.seat_label, plan_b.config_id
+                    plan_a.seat_row, plan_a.seat_column = -1, -1
+                    session.flush()
 
                     plan_b.seat_row = a_row
                     plan_b.seat_column = a_col
                     plan_b.seat_label = a_label
                     plan_b.config_id = a_config
+                    session.flush()
+
+                    plan_a.seat_row = b_row
+                    plan_a.seat_column = b_col
+                    plan_a.seat_label = b_label
+                    plan_a.config_id = b_config
+                    session.flush()
                 else:
                     # Move to empty seat
                     occupied = session.query(SeatingPlan).filter_by(
