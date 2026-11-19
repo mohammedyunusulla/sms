@@ -1,338 +1,364 @@
 ﻿/**
  * Guardian Dashboard
- * Parent/Guardian dashboard for monitoring child's progress
+ * Parent dashboard built only on real data for the parent's linked children:
+ * attendance (this academic year), fee balance, today's timetable and recent announcements.
  */
 
-import { FC, useEffect, useState } from 'react';
-import toast from 'react-hot-toast';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router';
 import { PageHeader, Button } from '../../components';
 import StatCard from '../../components/dashboard/StatCard';
-import AreaChartWidget from '../../components/dashboard/AreaChartWidget';
-import RecentActivityWidget, { IActivity } from '../../components/dashboard/RecentActivityWidget';
 import QuickActionButton from '../../components/dashboard/QuickActionButton';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuthStore } from '../../stores/authStore';
+import { useParentStore, ParentChild } from '../../stores/parentStore';
+import { attendanceService } from '../../services/modules/attendanceService';
+import { financeService } from '../../services/modules/financeService';
+import { announcementService } from '../../services/modules/announcementService';
+import dashboardService, { StudentTimetablePeriod } from '../../services/dashboardService';
 
-// TODO: Replace with API call to dashboardService.getGuardianStats()
-const mockGuardianStats = {
-  total_children: 2,
-  overall_attendance: 93,
-  pending_fees: 15000,
-  overall_performance: 'Very Good',
-  recent_communications: 5,
-  last_updated: new Date().toISOString(),
+interface ChildStats {
+    attendance: number | null; // % this academic year, null = no attendance marked yet
+    attendanceError?: boolean;
+    balance: number | null;
+    feeError?: boolean;
+}
+
+interface Announcement {
+    id: number;
+    title: string;
+    description?: string;
+    publish_date?: string;
+    created_at?: string;
+    priority?: string;
+}
+
+const todayIso = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-const mockChildrenProgress = [
-  { name: 'Child 1 - Math', value: 88 },
-  { name: 'Child 1 - English', value: 92 },
-  { name: 'Child 2 - Math', value: 85 },
-  { name: 'Child 2 - Science', value: 90 },
-];
+const formatMoney = (amount: number) => `₹${amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 
-const mockAttendanceTrend = [
-  { name: 'Week 1', value: 85 },
-  { name: 'Week 2', value: 90 },
-  { name: 'Week 3', value: 92 },
-  { name: 'Week 4', value: 93 },
-];
+const childName = (child: ParentChild) => child.full_name || `${child.first_name} ${child.last_name ?? ''}`.trim();
 
-const mockRecentActivities: IActivity[] = [
-  {
-    id: '1',
-    title: 'Assignment Submitted',
-    description: 'Child 1 submitted Mathematics assignment',
-    type: 'success',
-    timestamp: new Date(Date.now() - 2 * 3600000).toISOString(),
-    icon: '✅',
-  },
-  {
-    id: '2',
-    title: 'Report Card Released',
-    description: 'Monthly report card available for viewing',
-    type: 'success',
-    timestamp: new Date(Date.now() - 5 * 3600000).toISOString(),
-    icon: '📊',
-  },
-  {
-    id: '3',
-    title: 'Message from Teacher',
-    description: 'Teacher appreciation message about progress',
-    type: 'user',
-    timestamp: new Date(Date.now() - 24 * 3600000).toISOString(),
-    icon: '💬',
-  },
-  {
-    id: '4',
-    title: 'Fee Reminder',
-    description: 'Monthly fees are due by end of month',
-    type: 'alert',
-    timestamp: new Date(Date.now() - 48 * 3600000).toISOString(),
-    icon: '⚠️',
-  },
-];
-
-const mockChildren = [
-  {
-    id: 1,
-    name: 'John Doe',
-    class: '10-A',
-    avgGrade: 'A',
-    attendance: 94,
-  },
-  {
-    id: 2,
-    name: 'Jane Doe',
-    class: '9-B',
-    avgGrade: 'A-',
-    attendance: 92,
-  },
-];
+const classLabel = (child: ParentChild) =>
+    child.class_name ? `${child.class_name}${child.section_name ? ` – ${child.section_name}` : ''}` : 'Class not assigned';
 
 const GuardianDashboard: FC = () => {
-  useAuth();
-  const [stats, setStats] = useState(mockGuardianStats);
-  const [, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+    const navigate = useNavigate();
+    const user = useAuthStore((s) => s.user);
+    const academicYear = useAuthStore((s) => s.user?.current_academic_year);
+    const academicYearVersion = useAuthStore((s) => s.academicYearVersion);
+    const { children, loaded: childrenLoaded, loading: childrenLoading, selectedChild, selectChild } = useParentStore();
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
+    const [stats, setStats] = useState<Record<number, ChildStats>>({});
+    const [statsLoading, setStatsLoading] = useState(false);
+    const [timetable, setTimetable] = useState<StudentTimetablePeriod[]>([]);
+    const [timetableState, setTimetableState] = useState<'idle' | 'loading' | 'error'>('idle');
+    const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+    const [announcementsState, setAnnouncementsState] = useState<'idle' | 'loading' | 'error'>('idle');
 
-  const fetchStats = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      setStats(mockGuardianStats);
-    } catch (err: any) {
-      setError(err?.message || 'Failed to load stats');
-      toast.error(err?.message || 'Failed to load stats');
-    } finally {
-      setLoading(false);
-    }
-  };
+    const academicYearId = academicYear?.id;
+    const skid = user?.skid;
 
-  if (error) {
-    return (
-      <div className="p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-        <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
-        <Button variant="danger" onClick={fetchStats}>
-          Retry
-        </Button>
-      </div>
-    );
-  }
+    // Attendance + fee balance per child (each call independent: one failure doesn't blank the page)
+    const loadChildStats = useCallback(async () => {
+        if (!academicYearId || children.length === 0) return;
+        setStatsLoading(true);
+        const start = academicYear?.start_date ? String(academicYear.start_date).slice(0, 10) : undefined;
+        const end = todayIso();
+        const entries = await Promise.all(
+            children.map(async (child): Promise<[number, ChildStats]> => {
+                const [attendance, fees] = await Promise.allSettled([
+                    attendanceService.getStudentAttendance(child.student_id, start, end),
+                    financeService.getStudentFeeSummary(child.student_id, academicYearId),
+                ]);
+                const statistics = attendance.status === 'fulfilled' ? attendance.value?.statistics : undefined;
+                // financeService returns either the summary itself or { data: summary }
+                const feeValue = fees.status === 'fulfilled'
+                    ? (fees.value as { data?: { balance?: number }; balance?: number } | undefined)
+                    : undefined;
+                const feeData = feeValue?.data ?? feeValue;
+                return [child.student_id, {
+                    attendance: statistics && statistics.total_days > 0 ? statistics.attendance_percentage : null,
+                    attendanceError: attendance.status === 'rejected',
+                    balance: feeData && typeof feeData.balance === 'number' ? feeData.balance : null,
+                    feeError: fees.status === 'rejected',
+                }];
+            })
+        );
+        setStats(Object.fromEntries(entries));
+        setStatsLoading(false);
+    }, [children, academicYearId, academicYear?.start_date]);
 
-  return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <PageHeader
-        title="Guardian Dashboard"
-        subtitle="Monitor your child's progress and communications"
-        actions={
-          <Button variant="primary" onClick={fetchStats}>
-            🔄 Refresh
-          </Button>
+    const loadTimetable = useCallback(async () => {
+        if (!skid || !selectedChild) return;
+        setTimetableState('loading');
+        try {
+            const periods = await dashboardService.getStudentDayTimetable(skid, selectedChild.student_id, todayIso());
+            setTimetable([...periods].sort((a, b) => a.period_number - b.period_number));
+            setTimetableState('idle');
+        } catch {
+            setTimetable([]);
+            setTimetableState('error');
         }
-      />
+    }, [skid, selectedChild]);
 
-      {/* Key Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Children Enrolled"
-          value={stats.total_children}
-          change={0}
-          changeType="increase"
-          icon="👨‍👩‍👧‍👦"
-        />
-        <StatCard
-          title="Overall Attendance"
-          value={`${stats.overall_attendance}%`}
-          change={3}
-          changeType="increase"
-          icon="✅"
-        />
-        <StatCard
-          title="Pending Fees"
-          value={`₹${(stats.pending_fees / 1000).toFixed(0)}K`}
-          change={-5}
-          changeType="decrease"
-          icon="💰"
-        />
-        <StatCard
-          title="Recent Messages"
-          value={stats.recent_communications}
-          change={1}
-          changeType="increase"
-          icon="💬"
-        />
-      </div>
+    const loadAnnouncements = useCallback(async () => {
+        if (!academicYearId || !user) return;
+        setAnnouncementsState('loading');
+        try {
+            // academic year + role/user filters are what the backend list endpoint reads
+            const params = {
+                page: 1,
+                limit: 5,
+                academic_year_id: String(academicYearId),
+                user_role: 'PARENT',
+                school_user_id: user.school_user_id,
+            };
+            const response = await announcementService.list(params as Parameters<typeof announcementService.list>[0]);
+            setAnnouncements((response.data as unknown as Announcement[]) || []);
+            setAnnouncementsState('idle');
+        } catch {
+            setAnnouncements([]);
+            setAnnouncementsState('error');
+        }
+    }, [academicYearId, user]);
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <AreaChartWidget
-          title="Children's Academic Performance"
-          subtitle="Latest subject scores"
-          data={mockChildrenProgress}
-          color="blue"
-        />
-        <AreaChartWidget
-          title="Attendance Trend"
-          subtitle="Combined attendance over 4 weeks"
-          data={mockAttendanceTrend}
-          color="green"
-        />
-      </div>
+    useEffect(() => { loadChildStats(); }, [loadChildStats, academicYearVersion]);
+    useEffect(() => { loadTimetable(); }, [loadTimetable]);
+    useEffect(() => { loadAnnouncements(); }, [loadAnnouncements, academicYearVersion]);
 
-      {/* Children Cards */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Your Children
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {mockChildren.map((child) => (
-            <div
-              key={child.id}
-              className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {child.name}
-                  </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Class: {child.class}
-                  </p>
+    const refreshAll = () => { loadChildStats(); loadTimetable(); loadAnnouncements(); };
+
+    // Summary numbers from the per-child stats
+    const summary = useMemo(() => {
+        const values = Object.values(stats);
+        const attendanceValues = values.map((s) => s.attendance).filter((v): v is number => v !== null);
+        const balances = values.map((s) => s.balance).filter((v): v is number => v !== null);
+        const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
+        return {
+            avgAttendance: attendanceValues.length ? Math.round(attendanceValues.reduce((a, b) => a + b, 0) / attendanceValues.length) : null,
+            totalBalance: balances.length ? balances.reduce((a, b) => a + b, 0) : null,
+            recentAnnouncements: announcements.filter((a) => {
+                const when = Date.parse(a.publish_date || a.created_at || '');
+                return !Number.isNaN(when) && when >= weekAgo;
+            }).length,
+        };
+    }, [stats, announcements]);
+
+    const quickActions = [
+        { icon: '📝', label: 'Assignments', path: '/parent/assignments', variant: 'primary' as const },
+        { icon: '📅', label: 'Timetable', path: '/parent/timetable', variant: 'success' as const },
+        { icon: '💰', label: 'Fees', path: '/parent/fees', variant: 'warning' as const },
+        { icon: '📚', label: 'Syllabus', path: '/parent/syllabus', variant: 'info' as const },
+    ];
+
+    // ---------- empty states
+    if (!childrenLoaded || childrenLoading) {
+        return (
+            <div className="space-y-6">
+                <PageHeader title="Guardian Dashboard" subtitle="Your children's attendance, fees and schedule" />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {[0, 1, 2, 3].map((i) => <StatCard key={i} title="Loading" value="" loading />)}
                 </div>
-                <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">
-                  {child.avgGrade}
+            </div>
+        );
+    }
+
+    if (children.length === 0) {
+        return (
+            <div className="space-y-6">
+                <PageHeader title="Guardian Dashboard" subtitle="Your children's attendance, fees and schedule" />
+                <div className="p-8 text-center bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <p className="text-4xl mb-3">👨‍👩‍👧</p>
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">No children linked yet</h2>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        Your account isn't linked to a student. Please contact the school office.
+                    </p>
                 </div>
-              </div>
+            </div>
+        );
+    }
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    Attendance
-                  </span>
-                  <span className="font-semibold text-gray-900 dark:text-white">
-                    {child.attendance}%
-                  </span>
+    return (
+        <div className="space-y-6">
+            <PageHeader
+                title="Guardian Dashboard"
+                subtitle={`Your children's attendance, fees and schedule${academicYear?.year_name ? ` — ${academicYear.year_name}` : ''}`}
+                actions={<Button variant="secondary" onClick={refreshAll}>Refresh</Button>}
+            />
+
+            {!academicYearId && (
+                <div className="p-4 rounded-lg border border-yellow-200 bg-yellow-50 text-yellow-800 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300">
+                    The school hasn't set a current academic year yet, so attendance, fees and announcements can't be shown.
                 </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <div
-                    className="h-2 bg-green-500 rounded-full"
-                    style={{ width: `${child.attendance}%` }}
-                  />
+            )}
+
+            {/* Key statistics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard title="Children" value={children.length} icon="👨‍👩‍👧‍👦" color="blue" />
+                <StatCard
+                    title="Average Attendance (this year)"
+                    value={summary.avgAttendance === null ? 'Not marked yet' : `${summary.avgAttendance}%`}
+                    icon="✅"
+                    color="green"
+                    loading={statsLoading}
+                />
+                <StatCard
+                    title="Pending Fees"
+                    value={summary.totalBalance === null ? '—' : formatMoney(summary.totalBalance)}
+                    icon="💰"
+                    color="yellow"
+                    loading={statsLoading}
+                />
+                <StatCard
+                    title="Announcements (last 7 days)"
+                    value={summary.recentAnnouncements}
+                    icon="📢"
+                    color="purple"
+                    loading={announcementsState === 'loading'}
+                />
+            </div>
+
+            {/* Children */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Your Children</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {children.map((child) => {
+                        const s = stats[child.student_id];
+                        const attendance = s?.attendance ?? null;
+                        return (
+                            <div
+                                key={child.student_id}
+                                data-testid="child-card"
+                                className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
+                            >
+                                <div className="mb-3">
+                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{childName(child)}</h3>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                                        {classLabel(child)}{child.roll_no ? ` · Roll no. ${child.roll_no}` : ''}
+                                    </p>
+                                </div>
+                                <div className="space-y-3">
+                                    <div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm text-gray-700 dark:text-gray-300">Attendance</span>
+                                            <span className="font-semibold text-gray-900 dark:text-white" data-testid="child-attendance">
+                                                {statsLoading && !s ? '…' : s?.attendanceError ? 'Unavailable' : attendance === null ? 'Not marked yet' : `${attendance}%`}
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-1">
+                                            <div className="h-2 bg-green-500 rounded-full" style={{ width: `${attendance ?? 0}%` }} />
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-gray-700 dark:text-gray-300">Fee balance</span>
+                                        <span className="font-semibold text-gray-900 dark:text-white" data-testid="child-balance">
+                                            {statsLoading && !s ? '…' : s?.feeError ? 'Unavailable' : s?.balance === null || s?.balance === undefined ? '—' : formatMoney(s.balance)}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 mt-4">
+                                    <Button variant="secondary" size="sm" onClick={() => { selectChild(child); navigate('/parent/timetable'); }}>
+                                        Timetable
+                                    </Button>
+                                    <Button variant="primary" size="sm" onClick={() => { selectChild(child); navigate('/parent/fees'); }}>
+                                        Fees
+                                    </Button>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
-              </div>
-
-              <Button
-                variant="primary"
-                size="sm"
-                className="w-full mt-4"
-                onClick={() => toast.success(`View ${child.name}'s progress`)}
-              >
-                View Progress
-              </Button>
             </div>
-          ))}
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Today's schedule */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-between gap-3 mb-4">
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Today's Schedule</h2>
+                        {children.length > 1 && (
+                            <select
+                                aria-label="Choose child"
+                                value={selectedChild?.student_id ?? ''}
+                                onChange={(e) => {
+                                    const next = children.find((c) => String(c.student_id) === e.target.value);
+                                    if (next) selectChild(next);
+                                }}
+                                className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                            >
+                                {children.map((c) => <option key={c.student_id} value={c.student_id}>{childName(c)}</option>)}
+                            </select>
+                        )}
+                    </div>
+                    {timetableState === 'loading' ? (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>
+                    ) : timetableState === 'error' ? (
+                        <p className="text-sm text-red-600 dark:text-red-400">Couldn't load today's timetable.</p>
+                    ) : timetable.length === 0 ? (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">No classes scheduled today.</p>
+                    ) : (
+                        <ul className="divide-y divide-gray-100 dark:divide-gray-700" data-testid="today-schedule">
+                            {timetable.map((period) => (
+                                <li key={`${period.period_number}-${period.start_time}`} className="py-2 flex items-center justify-between gap-3">
+                                    <div>
+                                        <p className="font-medium text-gray-900 dark:text-white">{period.subject_name}</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">{period.teacher_name}{period.room ? ` · Room ${period.room}` : ''}</p>
+                                    </div>
+                                    <span className="text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
+                                        {period.start_time}–{period.end_time}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+
+                {/* Recent announcements */}
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Announcements</h2>
+                    {announcementsState === 'loading' ? (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>
+                    ) : announcementsState === 'error' ? (
+                        <p className="text-sm text-red-600 dark:text-red-400">Couldn't load announcements.</p>
+                    ) : announcements.length === 0 ? (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">No announcements yet.</p>
+                    ) : (
+                        <ul className="space-y-3" data-testid="announcements">
+                            {announcements.slice(0, 5).map((a) => (
+                                <li key={a.id} className="p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <p className="font-medium text-gray-900 dark:text-white">{a.title}</p>
+                                        <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                                            {new Date(a.publish_date || a.created_at || '').toLocaleDateString()}
+                                        </span>
+                                    </div>
+                                    {a.description && <p className="mt-1 text-sm text-gray-600 dark:text-gray-300 line-clamp-2">{a.description}</p>}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            </div>
+
+            {/* Quick actions: only pages that exist */}
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {quickActions.map((action) => (
+                        <QuickActionButton
+                            key={action.path}
+                            icon={action.icon}
+                            label={action.label}
+                            variant={action.variant}
+                            onClick={() => navigate(action.path)}
+                        />
+                    ))}
+                </div>
+            </div>
         </div>
-      </div>
-
-      {/* Quick Actions */}
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-          Quick Actions
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          <QuickActionButton
-            icon="📊"
-            label="View Progress"
-            variant="primary"
-            onClick={() => toast.success('Navigate to Progress Report')}
-          />
-          <QuickActionButton
-            icon="📅"
-            label="Attendance"
-            variant="success"
-            onClick={() => toast.success('Navigate to Attendance')}
-          />
-          <QuickActionButton
-            icon="💬"
-            label="Message Teacher"
-            variant="info"
-            onClick={() => toast.success('Navigate to Messages')}
-          />
-          <QuickActionButton
-            icon="💰"
-            label="Manage Fees"
-            variant="warning"
-            onClick={() => toast.success('Navigate to Fees')}
-          />
-          <QuickActionButton
-            icon="📚"
-            label="Course Materials"
-            variant="primary"
-            onClick={() => toast.success('Navigate to Materials')}
-          />
-          <QuickActionButton
-            icon="📋"
-            label="Documents"
-            variant="success"
-            onClick={() => toast.success('Navigate to Documents')}
-          />
-        </div>
-      </div>
-
-      {/* Recent Activities */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <RecentActivityWidget activities={mockRecentActivities} maxItems={4} />
-        </div>
-
-        {/* Guardian Summary */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Summary
-          </h2>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <span className="text-gray-700 dark:text-gray-300">Avg Attendance</span>
-              <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                {stats.overall_attendance}%
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <span className="text-gray-700 dark:text-gray-300">Overall Performance</span>
-              <span className="text-lg font-bold text-green-600 dark:text-green-400">
-                {stats.overall_performance}
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-              <span className="text-gray-700 dark:text-gray-300">Pending Fees</span>
-              <span className="text-lg font-bold text-yellow-600 dark:text-yellow-400">
-                ₹{(stats.pending_fees / 1000).toFixed(0)}K
-              </span>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-              <span className="text-gray-700 dark:text-gray-300">New Messages</span>
-              <span className="text-lg font-bold text-purple-600 dark:text-purple-400">
-                {stats.recent_communications}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-        <p>Last updated: {new Date(stats.last_updated).toLocaleString()}</p>
-        <Button variant="ghost" size="sm" onClick={fetchStats}>
-          Auto-refresh in 30s
-        </Button>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default GuardianDashboard;

@@ -169,6 +169,34 @@ class AttendanceService {
 
 
     // Get attendance summary for a student 
+    /**
+     * One student's attendance records + statistics (attendance_percentage, present/absent counts).
+     * Parents may only request their own children (backend: student_access_required).
+     */
+    async getStudentAttendance(studentId: number | string, startDate?: string, endDate?: string): Promise<{
+        statistics?: { total_days: number; present_count: number; absent_count: number; late_count: number; leave_count: number; attendance_percentage: number };
+        records?: { date: string; status: string }[];
+    }> {
+        const api = getApiClient();
+        const schoolId = getSchoolId();
+
+        if (!schoolId) {
+            throw new Error('School ID not found. Please log in again.');
+        }
+
+        const params: Record<string, string> = {};
+        if (startDate) params.start_date = startDate;
+        if (endDate) params.end_date = endDate;
+        const response = await api.get(`${this.baseUrl}/student/${schoolId}/${studentId}`, { params }) as unknown as ApiResponse;
+        if (response.code !== 200) {
+            throw new Error(response.message || 'Failed to fetch attendance');
+        }
+        return (response.data || {}) as {
+            statistics?: { total_days: number; present_count: number; absent_count: number; late_count: number; leave_count: number; attendance_percentage: number };
+            records?: { date: string; status: string }[];
+        };
+    }
+
     async getStudentSummary(
         studentId: string,
         startDate: string,

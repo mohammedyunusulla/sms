@@ -620,9 +620,9 @@ class AttendanceService:
                 section_name = None
                 
                 if student.section_obj:
-                    section_name = student.section_obj.name
+                    section_name = student.section_obj.section_name
                     if student.section_obj.class_obj:
-                        class_name = student.section_obj.class_obj.name
+                        class_name = student.section_obj.class_obj.class_name
                 
                 # Calculate statistics
                 total_days = len(records)
