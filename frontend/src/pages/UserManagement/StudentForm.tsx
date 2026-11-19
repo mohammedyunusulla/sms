@@ -12,6 +12,14 @@ import { classService } from '../../services/modules/classService';
 import { parentService } from '../../services/modules/parentService';
 import ParentForm from './ParentForm';
 import { useDebounce } from '../../hooks/useDebounce';
+import { blanksToNull, fieldInputClass, isValidEmail, isValidPhone, passwordProblem } from '../../utils/formValidation';
+
+// Optional fields: a blank value is sent as null ('' breaks class/section/roll numbers and the unique admission number)
+const STUDENT_OPTIONAL_FIELDS = [
+    'gender', 'date_of_birth', 'blood_group', 'emergency_contact', 'address', 'admission_number', 'aadhar_number',
+    'birth_certificate_number', 'nationality', 'religion', 'category', 'mother_tongue', 'roll_no', 'admission_date',
+    'class_id', 'section_id',
+] as const;
 
 interface IStudentFormProps {
     initialData?: any;
@@ -23,6 +31,7 @@ const StudentForm: FC<IStudentFormProps> = ({ initialData, mode: propMode = 'cre
     const { id } = useParams();
     const [loading, setLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
     // Auto-detect mode based on URL - if id exists, it's update mode
     const mode = id ? 'update' : propMode;
     const [student, setStudent] = useState<any>(null);
@@ -31,6 +40,17 @@ const StudentForm: FC<IStudentFormProps> = ({ initialData, mode: propMode = 'cre
     const [sections, setSections] = useState<any[]>([]);
     const [parents, setParents] = useState<any[]>([]);
     const [selectedParentId, setSelectedParentId] = useState('');
+    // Clear the "select a parent" error once one is chosen
+    useEffect(() => {
+        if (selectedParentId) {
+            setErrors((prev) => {
+                if (!prev.parent) return prev;
+                const next = { ...prev };
+                delete next.parent;
+                return next;
+            });
+        }
+    }, [selectedParentId]);
     const [parentMode, setParentMode] = useState<'link' | 'create'>('link');
     const [parentSearchInput, setParentSearchInput] = useState('');
     const [showParentDropdown, setShowParentDropdown] = useState(false);
@@ -200,7 +220,39 @@ const StudentForm: FC<IStudentFormProps> = ({ initialData, mode: propMode = 'cre
             ...prev,
             [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
         }));
+        if (errors[name]) {
+            setErrors((prev) => {
+                const next = { ...prev };
+                delete next[name];
+                return next;
+            });
+        }
     };
+
+    // Mandatory: username, password (create only), first/last name, email, phone, parent
+    const validate = (): Record<string, string> => {
+        const v = (key: string) => String((formData as Record<string, unknown>)[key] ?? '').trim();
+        const next: Record<string, string> = {};
+        if (!v('username')) next.username = 'Username is required';
+        else if (v('username').length < 3) next.username = 'Username must be at least 3 characters';
+        if (mode === 'create') {
+            const problem = passwordProblem(String(formData.password ?? ''));
+            if (problem) next.password = problem;
+        }
+        if (!v('first_name')) next.first_name = 'First name is required';
+        if (!v('last_name')) next.last_name = 'Last name is required';
+        if (!v('email')) next.email = 'Email is required';
+        else if (!isValidEmail(v('email'))) next.email = 'Enter a valid email address';
+        if (!v('phone')) next.phone = 'Phone is required';
+        else if (!isValidPhone(v('phone'))) next.phone = 'Enter a 10-digit phone number';
+        if (!selectedParentId) next.parent = 'Select a parent or create a new one';
+        return next;
+    };
+
+    const inputClass = (name: string) => fieldInputClass(!!errors[name]);
+
+    const fieldError = (name: string) =>
+        errors[name] ? <p id={`${name}-error`} role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">{errors[name]}</p> : null;
 
     const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -278,28 +330,20 @@ const StudentForm: FC<IStudentFormProps> = ({ initialData, mode: propMode = 'cre
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!formData.first_name || !formData.last_name || !formData.email || !formData.phone) {
-            toast.error('Please fill in all required fields');
+        const found = validate();
+        setErrors(found);
+        if (Object.keys(found).length > 0) {
+            const count = Object.keys(found).length;
+            toast.error(`Please fix ${count} highlighted field${count > 1 ? 's' : ''}`);
+            document.querySelector<HTMLElement>(`[name="${Object.keys(found)[0]}"]`)?.focus();
             return;
         }
-
-        // Validate parent selection
-        let parentId = formData.parent_id;
-        if (!selectedParentId) {
-            toast.error('Please select a parent or create a new one');
-            return;
-        }
-        parentId = selectedParentId;
+        const parentId = selectedParentId;
 
         try {
             setIsSubmitting(true);
 
-            const studentData = {
-                ...formData,
-                parent_id: parentId,
-                admission_date: formData.admission_date || null,
-                date_of_birth: formData.date_of_birth || null,
-            };
+            const studentData = blanksToNull({ ...formData, parent_id: parentId }, STUDENT_OPTIONAL_FIELDS);
 
             if (mode === 'update' && id) {
                 await studentService.update(id, studentData);
@@ -324,7 +368,7 @@ const StudentForm: FC<IStudentFormProps> = ({ initialData, mode: propMode = 'cre
 
     return (
         <div className="space-y-6 p-3">
-            <form onSubmit={handleSubmit} className="space-y-8">
+            <form onSubmit={handleSubmit} noValidate className="space-y-8">
                 {/* Account Information Section */}
                 <div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Account Information</h3>
@@ -340,9 +384,12 @@ const StudentForm: FC<IStudentFormProps> = ({ initialData, mode: propMode = 'cre
                                 value={formData.username}
                                 onChange={handleInputChange}
                                 disabled={isViewMode}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                                className={inputClass('username')}
+                                aria-invalid={!!errors.username}
+                                aria-describedby={errors.username ? 'username-error' : undefined}
                                 placeholder="Enter username"
                             />
+                            {fieldError('username')}
                         </div>
 
                         {/* Password */}
@@ -357,9 +404,12 @@ const StudentForm: FC<IStudentFormProps> = ({ initialData, mode: propMode = 'cre
                                     value={formData.password}
                                     onChange={handleInputChange}
                                     disabled={isViewMode}
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                                    className={inputClass('password')}
+                                aria-invalid={!!errors.password}
+                                aria-describedby={errors.password ? 'password-error' : undefined}
                                     placeholder="Enter password"
                                 />
+                            {fieldError('password')}
                             </div>
                         )}
                     </div>
@@ -380,9 +430,12 @@ const StudentForm: FC<IStudentFormProps> = ({ initialData, mode: propMode = 'cre
                                 value={formData.first_name}
                                 onChange={handleInputChange}
                                 disabled={isViewMode}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                                className={inputClass('first_name')}
+                                aria-invalid={!!errors.first_name}
+                                aria-describedby={errors.first_name ? 'first_name-error' : undefined}
                                 placeholder="Enter first name"
                             />
+                            {fieldError('first_name')}
                         </div>
 
                         {/* Last Name */}
@@ -396,9 +449,12 @@ const StudentForm: FC<IStudentFormProps> = ({ initialData, mode: propMode = 'cre
                                 value={formData.last_name}
                                 onChange={handleInputChange}
                                 disabled={isViewMode}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                                className={inputClass('last_name')}
+                                aria-invalid={!!errors.last_name}
+                                aria-describedby={errors.last_name ? 'last_name-error' : undefined}
                                 placeholder="Enter last name"
                             />
+                            {fieldError('last_name')}
                         </div>
 
                         {/* Email */}
@@ -412,9 +468,12 @@ const StudentForm: FC<IStudentFormProps> = ({ initialData, mode: propMode = 'cre
                                 value={formData.email}
                                 onChange={handleInputChange}
                                 disabled={isViewMode}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                                className={inputClass('email')}
+                                aria-invalid={!!errors.email}
+                                aria-describedby={errors.email ? 'email-error' : undefined}
                                 placeholder="Enter email"
                             />
+                            {fieldError('email')}
                         </div>
 
                         {/* Phone */}
@@ -428,9 +487,12 @@ const StudentForm: FC<IStudentFormProps> = ({ initialData, mode: propMode = 'cre
                                 value={formData.phone}
                                 onChange={handleInputChange}
                                 disabled={isViewMode}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                                className={inputClass('phone')}
+                                aria-invalid={!!errors.phone}
+                                aria-describedby={errors.phone ? 'phone-error' : undefined}
                                 placeholder="Enter phone number"
                             />
+                            {fieldError('phone')}
                         </div>
 
                         {/* Gender */}
@@ -798,7 +860,10 @@ const StudentForm: FC<IStudentFormProps> = ({ initialData, mode: propMode = 'cre
                 {/* Parent Linking */}
                 {!isViewMode && (
                     <div>
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Parent Information</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Parent Information *</h3>
+                        {errors.parent && (
+                            <p role="alert" className="-mt-2 mb-4 text-sm text-red-600 dark:text-red-400">{errors.parent}</p>
+                        )}
 
                         {/* Current Associated Parent (Edit Mode) */}
                         {mode === 'update' && student && student.parent && !showParentReassign && originalParentId && (

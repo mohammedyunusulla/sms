@@ -5,6 +5,28 @@ from app.models.main.User import UserRole
 
 student_bp = Blueprint('students', __name__)
 
+# Blank optional fields are stored as NULL ('' breaks class/section/roll numbers and unique admission_number)
+STUDENT_OPTIONAL_FIELDS = (
+    'gender', 'date_of_birth', 'blood_group', 'emergency_contact', 'address', 'admission_number',
+    'aadhar_number', 'birth_certificate_number', 'nationality', 'religion', 'category', 'mother_tongue',
+    'roll_no', 'admission_date', 'class_id', 'section_id', 'parent_id',
+)
+STUDENT_REQUIRED_FIELDS = (
+    ('username', 'Username'), ('password', 'Password'), ('first_name', 'First name'),
+    ('last_name', 'Last name'), ('email', 'Email'), ('phone', 'Phone'),
+)
+
+
+def _admission_number_taken(skid, admission_number, exclude_user_id=None):
+    """students.admission_number is unique in the tenant DB."""
+    from app.models.tenant import Student
+    from app.utils.db_manager import switch_to_school_db
+    with switch_to_school_db(skid) as tenant_session:
+        q = tenant_session.query(Student).filter(Student.admission_number == admission_number)
+        if exclude_user_id is not None:
+            q = q.filter(Student.user_id != int(exclude_user_id))
+        return q.first() is not None
+
 @student_bp.route('/create/<skid>', methods=['POST'])
 @login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
 @log_actions('CREATE_TEACHER_USER')
@@ -20,10 +42,22 @@ def create_student(skid):
             return jsonify({'message': 'No data provided'}), 400
         if not skid:
             return jsonify({'message': 'School ID is required'}), 400
-        
+
+        from app.utils.form_input import clean_payload, missing_fields_message, error
+        from app.utils.helpers import validate_password
+        data = clean_payload(data, STUDENT_OPTIONAL_FIELDS)
+        missing = missing_fields_message(data, STUDENT_REQUIRED_FIELDS)
+        if missing:
+            return error(missing, 400)
+        ok, password_error = validate_password(data['password'])
+        if not ok:
+            return error(password_error, 400)
+
         duplicate_check = StudentService.check_duplicate_user(data, skid)
         if duplicate_check:
-            return jsonify({'message': duplicate_check}), 400
+            return error(duplicate_check, 500 if duplicate_check.startswith('Error checking') else 409)
+        if data.get('admission_number') and _admission_number_taken(skid, data['admission_number']):
+            return error(f"Admission number '{data['admission_number']}' is already used by another student", 409)
 
         StudentService.create_student_user(data, skid)
 
@@ -110,6 +144,14 @@ def update_student(skid, student_id):
         if not data:
             return jsonify({'message': 'No data provided'}), 400
 
+        from app.utils.form_input import clean_payload, error
+        data = clean_payload(data, STUDENT_OPTIONAL_FIELDS)
+        for key, label in STUDENT_REQUIRED_FIELDS:
+            if key != 'password' and key in data and not data[key]:
+                return error(f'{label} is required', 400)
+        if data.get('admission_number') and _admission_number_taken(skid, data['admission_number'], exclude_user_id=student_id):
+            return error(f"Admission number '{data['admission_number']}' is already used by another student", 409)
+
         # Check for duplicates (excluding current student)
         # Only check fields that are being updated
         check_data = {}
@@ -123,7 +165,7 @@ def update_student(skid, student_id):
         if check_data:
             duplicate_check = StudentService.check_duplicate_user_for_update(check_data, skid, int(student_id))
             if duplicate_check:
-                return jsonify({'message': duplicate_check}), 400
+                return error(duplicate_check, 500 if duplicate_check.startswith('Error checking') else 409)
 
         StudentService.update_student(student_id, skid, data)
 

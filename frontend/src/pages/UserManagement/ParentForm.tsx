@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router';
 import { PageHeader, Button, LoadingSpinner } from '../../components';
 import { parentService } from '../../services/modules/parentService';
+import { fieldInputClass, isValidEmail, passwordProblem } from '../../utils/formValidation';
 
 interface IParentFormProps {
     initialData?: any;
@@ -21,6 +22,7 @@ const ParentForm: FC<IParentFormProps> = ({ initialData, mode: propMode = 'creat
     const { id } = useParams();
     const [loading, setLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
     // Auto-detect mode based on URL - if id exists and not in modal, it's update mode
     const mode = !isModal && id ? 'update' : propMode;
     const [formData, setFormData] = useState({
@@ -77,15 +79,36 @@ const ParentForm: FC<IParentFormProps> = ({ initialData, mode: propMode = 'creat
             ...prev,
             [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
         }));
+        if (errors[name]) {
+            setErrors((prev) => {
+                const next = { ...prev };
+                delete next[name];
+                return next;
+            });
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // if (!formData.email || !formData.phone) {
-        //     toast.error('Please fill in all required fields');
-        //     return;
-        // }
+        // Mandatory: username (used as the login email) + password when creating; father's name
+        // (it becomes the account's first name, which the database requires)
+        const v = (key: string) => String((formData as Record<string, unknown>)[key] ?? '').trim();
+        const found: Record<string, string> = {};
+        if (mode === 'create') {
+            if (!v('username')) found.username = 'Username is required';
+            else if (!isValidEmail(v('username'))) found.username = 'Username must be a valid email address';
+            const problem = passwordProblem(String(formData.password ?? ''));
+            if (problem) found.password = problem;
+        }
+        if (!v('father_full_name')) found.father_full_name = "Father's name is required";
+        setErrors(found);
+        if (Object.keys(found).length > 0) {
+            const count = Object.keys(found).length;
+            toast.error(`Please fix ${count} highlighted field${count > 1 ? 's' : ''}`);
+            document.querySelector<HTMLElement>(`#parent-form [name="${Object.keys(found)[0]}"]`)?.focus();
+            return;
+        }
 
         try {
             setIsSubmitting(true);
@@ -121,7 +144,7 @@ const ParentForm: FC<IParentFormProps> = ({ initialData, mode: propMode = 'creat
     const isViewMode = mode === 'view';
 
     const formContent = (
-        <form id="parent-form" onSubmit={handleSubmit} className="space-y-8">
+        <form id="parent-form" onSubmit={handleSubmit} noValidate className="space-y-8">
             {/* Account Information Section */}
             <div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Account Information</h3>
@@ -129,7 +152,7 @@ const ParentForm: FC<IParentFormProps> = ({ initialData, mode: propMode = 'creat
                     {/* Username */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Username *
+                            Username (email) *
                         </label>
                         <input
                             type="text"
@@ -137,9 +160,12 @@ const ParentForm: FC<IParentFormProps> = ({ initialData, mode: propMode = 'creat
                             value={formData.username}
                             onChange={handleInputChange}
                             disabled={isViewMode}
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
-                            placeholder="Enter username"
+                            className={fieldInputClass(!!errors.username)}
+                            aria-invalid={!!errors.username}
+                            aria-describedby={errors.username ? 'parent-username-error' : undefined}
+                            placeholder="e.g. parent@example.com"
                         />
+                        {errors.username && <p id="parent-username-error" role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.username}</p>}
                     </div>
 
                     {/* Password */}
@@ -154,9 +180,12 @@ const ParentForm: FC<IParentFormProps> = ({ initialData, mode: propMode = 'creat
                                 value={formData.password}
                                 onChange={handleInputChange}
                                 disabled={isViewMode}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                                className={fieldInputClass(!!errors.password)}
+                                aria-invalid={!!errors.password}
+                                aria-describedby={errors.password ? 'parent-password-error' : undefined}
                                 placeholder="Enter password"
                             />
+                            {errors.password && <p id="parent-password-error" role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.password}</p>}
                         </div>
                     )}
                 </div>
@@ -195,7 +224,7 @@ const ParentForm: FC<IParentFormProps> = ({ initialData, mode: propMode = 'creat
                     {/* Father Full Name */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                            Full Name
+                            Full Name *
                         </label>
                         <input
                             type="text"
@@ -203,9 +232,12 @@ const ParentForm: FC<IParentFormProps> = ({ initialData, mode: propMode = 'creat
                             value={formData.father_full_name}
                             onChange={handleInputChange}
                             disabled={isViewMode}
-                            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                            className={fieldInputClass(!!errors.father_full_name)}
+                            aria-invalid={!!errors.father_full_name}
+                            aria-describedby={errors.father_full_name ? 'parent-father_full_name-error' : undefined}
                             placeholder="Enter father's full name"
                         />
+                        {errors.father_full_name && <p id="parent-father_full_name-error" role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.father_full_name}</p>}
                     </div>
 
                     {/* Father Phone */}

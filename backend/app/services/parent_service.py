@@ -28,7 +28,8 @@ class ParentService:
                 raise ValueError("School not found")
             
             plan = data.get('plan', school.plan)
-            create_login = plan in ['STANDARD', 'PREMIUM']
+            # school.plan is a SchoolPlan enum (never equal to a plain string); compare by value
+            create_login = getattr(plan, 'value', plan) in ('STANDARD', 'PREMIUM')
             
             # Step 1: Create main user (only for STANDARD/PREMIUM)
             if create_login:

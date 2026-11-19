@@ -18,6 +18,7 @@ import { staffService } from '../../services/modules/staffService';
 import { roleService } from '../../services/modules/roleService';
 import { useAuthStore } from '../../stores/authStore';
 import { IUser } from '../../types/index';
+import { passwordProblem } from '../../utils/formValidation';
 
 interface IFormData {
     username: string;
@@ -164,11 +165,9 @@ const UserForm: FC = () => {
 
         // Password validation (required for new users)
         if (!isEditMode) {
-            if (!formData.password) {
-                newErrors.password = 'Password is required';
-            } else if (formData.password.length < 6) {
-                newErrors.password = 'Password must be at least 6 characters';
-            }
+            // Same rules as the backend (8+ characters, upper, lower, digit)
+            const problem = passwordProblem(formData.password || '');
+            if (problem) newErrors.password = problem;
 
             if (!formData.confirmPassword) {
                 newErrors.confirmPassword = 'Please confirm password';
@@ -330,9 +329,9 @@ const UserForm: FC = () => {
                                 />
                             </FormField>
                             <FormField
-                                label="last Name"
+                                label="Last Name"
                                 required
-                                error={errors.first_name}
+                                error={errors.last_name}
                             >
                                 <FormInput
                                     name="last_name"
