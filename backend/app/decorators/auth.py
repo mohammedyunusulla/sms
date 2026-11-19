@@ -4,6 +4,21 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models.main.User import User, UserRole
 
 
+def _requested_skid(view_kwargs):
+    """
+    Return the school (tenant) code a request targets, if any.
+    Checked in order: URL path parameter, ?skid= query string, "skid" in the JSON body.
+    """
+    if view_kwargs.get('skid') is not None:
+        return view_kwargs['skid']
+    if request.args.get('skid'):
+        return request.args.get('skid')
+    body = request.get_json(silent=True)
+    if isinstance(body, dict) and body.get('skid'):
+        return body['skid']
+    return None
+
+
 def login_required(allowed_roles=None):
     """
     Decorator to require login and optionally check roles.
@@ -37,6 +52,16 @@ def login_required(allowed_roles=None):
                     user_role = user.role.value if hasattr(user.role, 'value') else user.role
                     if user_role not in allowed_roles:
                         return jsonify({'message': 'Insufficient permissions'}), 403
+
+                # Tenant isolation: non-super-admins may only touch their own school's data.
+                if user.role != UserRole.SUPER_ADMIN:
+                    target_skid = _requested_skid(kwargs)
+                    if target_skid is not None and str(target_skid) != str(user.skid):
+                        current_app.logger.warning(
+                            f"Cross-school access blocked: user {user.id} (skid={user.skid}) "
+                            f"-> skid={target_skid} {request.method} {request.path}"
+                        )
+                        return jsonify({'message': 'Access denied: you can only access your own school data'}), 403
 
                 # Add user to request context
                 request.current_user = user
