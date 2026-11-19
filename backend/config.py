@@ -6,6 +6,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _parse_cors_origins(raw):
+    """Split a comma-separated origins string into a list; keep '*' as-is."""
+    raw = (raw or '*').strip()
+    if raw == '*':
+        return '*'
+    origins = [o.strip().rstrip('/') for o in raw.split(',') if o.strip()]
+    return origins or '*'
+
+
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY')
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
@@ -44,7 +53,8 @@ class Config:
     LOG_FILE = os.environ.get('LOG_FILE') or 'logs/app.log'
 
     # CORS: comma-separated list of allowed origins (e.g., "http://localhost:3000,https://app.example.com")
-    CORS_ORIGINS = os.environ.get('CORS_ORIGINS', '*')
+    # Parsed to a list (or '*') — Flask-CORS and Socket.IO treat a raw string as a single origin.
+    CORS_ORIGINS = _parse_cors_origins(os.environ.get('CORS_ORIGINS'))
 
     # Set to True when behind a trusted reverse proxy (nginx, etc.)
     TRUSTED_PROXY = os.environ.get('TRUSTED_PROXY', 'false').lower() == 'true'
