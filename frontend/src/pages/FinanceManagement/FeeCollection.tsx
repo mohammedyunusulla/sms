@@ -12,6 +12,8 @@ import { financeService } from '../../services/modules/financeService';
 import { useAuthStore } from '../../stores/authStore';
 import { IStudentFeeSummary, IStudentFee, IInstallment, IPaymentData } from '../../types/index';
 import InstallmentDialog from './InstallmentDialog';
+import PaymentHistoryDialog from './PaymentHistoryDialog';
+import DiscountDialog from './DiscountDialog';
 import { generateFeeReceiptPdf, generateFeeSummaryReceiptPdf } from '../../prints';
 import type { SchoolData, PdfAction } from '../../prints';
 
@@ -70,6 +72,12 @@ const FeeCollection: FC = () => {
 
     // Exam Timetable Modal
     const [showExamTimetableModal, setShowExamTimetableModal] = useState(false);
+
+    // Payment history (cancel a payment) and discount dialogs
+    const [historyFeeId, setHistoryFeeId] = useState<number | null>(null);
+    const [showDiscountDialog, setShowDiscountDialog] = useState(false);
+    const historyFee = (feeSummary?.fees || []).find((f) => f.id === historyFeeId) || null;
+    const refreshSummary = () => { if (selectedStudent) fetchFeeSummary(selectedStudent.user_id); };
 
     const handleSearch = async () => {
         if (!searchQuery.trim()) { toast.error('Enter a student name, phone, or roll number'); return; }
@@ -359,6 +367,16 @@ const FeeCollection: FC = () => {
             ),
         },
         {
+            key: 'discount_amount',
+            label: 'Discount',
+            className: 'text-right',
+            render: (v: number) => (
+                <span className="text-gray-700 dark:text-gray-300">
+                    {Number(v) > 0 ? `₹${parseFloat(String(v)).toLocaleString('en-IN')}` : '-'}
+                </span>
+            ),
+        },
+        {
             key: 'balance_amount',
             label: 'Balance',
             className: 'text-right',
@@ -492,13 +510,20 @@ const FeeCollection: FC = () => {
                                 {selectedStudent.phone && ` | Phone: ${selectedStudent.phone}`}
                             </p>
                         </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setShowExamTimetableModal(true)}
-                        >
-                            Exam Timetable
-                        </Button>
+                        <div className="flex flex-wrap items-center gap-2">
+                            {(feeSummary?.fees || []).some((f) => Number(f.balance_amount) > 0) && (
+                                <Button variant="outline" size="sm" onClick={() => setShowDiscountDialog(true)}>
+                                    Apply Discount
+                                </Button>
+                            )}
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowExamTimetableModal(true)}
+                            >
+                                Exam Timetable
+                            </Button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -557,6 +582,12 @@ const FeeCollection: FC = () => {
                                         onClick={() => setExpandedFeeId(expandedFeeId === row.id ? null : row.id)}
                                     >
                                         {expandedFeeId === row.id ? 'Hide' : 'View'} Installments
+                                    </Button>
+                                )}
+                                {/* Payment history: view payments and cancel one entered by mistake */}
+                                {(row.payments?.length || 0) > 0 && (
+                                    <Button variant="ghost" size="sm" onClick={() => setHistoryFeeId(row.id)}>
+                                        Payments ({row.payments!.length})
                                     </Button>
                                 )}
                                 {/* Print Full Summary - when all installments are paid */}
@@ -713,6 +744,26 @@ const FeeCollection: FC = () => {
                 onClose={() => { setShowInstallmentDialog(false); setInstallmentFee(null); }}
                 studentFee={installmentFee}
                 onSuccess={onInstallmentSuccess}
+            />
+
+            {/* Payment history / cancel payment */}
+            <PaymentHistoryDialog
+                isOpen={historyFeeId !== null}
+                onClose={() => setHistoryFeeId(null)}
+                fee={historyFee}
+                installments={historyFeeId ? feeInstallments[historyFeeId] || [] : []}
+                onCancelled={refreshSummary}
+            />
+
+            {/* Apply discount */}
+            <DiscountDialog
+                isOpen={showDiscountDialog}
+                onClose={() => setShowDiscountDialog(false)}
+                studentId={selectedStudent?.user_id ?? null}
+                studentName={selectedStudent?.name}
+                academicYearId={academicYearId}
+                fees={feeSummary?.fees || []}
+                onApplied={refreshSummary}
             />
 
             {/* Exam Timetable Modal */}

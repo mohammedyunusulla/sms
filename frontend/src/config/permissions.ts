@@ -183,6 +183,7 @@ export const ROUTE_PERMISSION_MAP: Record<string, RoutePermissionConfig> = {
   '/finance/expenses': { permission: Permission.VIEW_EXPENSES },
   '/finance/salary-setup': { permission: Permission.MANAGE_FEES },
   '/finance/salary-payments': { permission: Permission.MANAGE_FEES },
+  '/finance/defaulters': { permission: Permission.MANAGE_FEES },
 
   // Assignments
   '/assignments': { permission: Permission.MANAGE_ASSIGNMENTS },
@@ -404,6 +405,7 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, SidebarGroupPermissionConfig
       '/finance/expenses': Permission.VIEW_EXPENSES,
       '/finance/salary-setup': Permission.MANAGE_FEES,
       '/finance/salary-payments': Permission.MANAGE_FEES,
+      '/finance/defaulters': Permission.MANAGE_FEES,
     },
   },
 };

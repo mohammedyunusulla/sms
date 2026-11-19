@@ -9,4 +9,5 @@ export { default as FeeCollection } from './FeeCollection';
 export { default as ExpenseList } from './ExpenseList';
 export { default as SalarySetup } from './SalarySetup';
 export { default as SalaryPayments } from './SalaryPayments';
+export { default as FeeDefaulters } from './FeeDefaulters';
 export { default as ParentFees } from './ParentFees';

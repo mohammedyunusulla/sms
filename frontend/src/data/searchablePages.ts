@@ -380,6 +380,16 @@ export const searchablePages: SearchablePage[] = [
         icon: '💵',
         roles: [UserRole.SCHOOL_ADMIN],
     },
+    {
+        id: 'fee-defaulters',
+        name: 'Fee Defaulters',
+        description: 'Students with overdue fees',
+        route: '/finance/defaulters',
+        keywords: ['defaulters', 'overdue', 'pending fees', 'dues', 'fee report'],
+        category: 'Finance',
+        icon: '⏰',
+        roles: [UserRole.SCHOOL_ADMIN],
+    },
 
     // Profile & Settings
     {

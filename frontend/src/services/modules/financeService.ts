@@ -9,6 +9,7 @@
  */
 
 import { getApiClient, getSchoolId } from '../api/client';
+import type { IDefaultersReport } from '../../types/index';
 
 class FinanceService {
 
@@ -280,6 +281,42 @@ class FinanceService {
         if (!skid) throw new Error('School ID not found. Please log in again.');
         const response = await api.put(`/expenses/salary-payments/${skid}/mark-unpaid/${paymentId}`);
         return response;
+    }
+
+    // ============================================
+    // Cancel payment / discounts / defaulters
+    // ============================================
+
+    async cancelPayment(paymentId: number | string, reason: string): Promise<unknown> {
+        const api = getApiClient();
+        const skid = getSchoolId();
+        if (!skid) throw new Error('School ID not found. Please log in again.');
+        return api.post(`/fee/payment/cancel/${skid}/${paymentId}`, { reason });
+    }
+
+    async applyDiscount(data: {
+        student_id: number;
+        academic_year_id: number | string;
+        discount_name: string;
+        discount_type: 'PERCENTAGE' | 'FIXED';
+        discount_value: number;
+        student_fee_ids: number[];
+        reason?: string;
+    }): Promise<{ data?: { total_discount_added?: number } }> {
+        const api = getApiClient();
+        const skid = getSchoolId();
+        if (!skid) throw new Error('School ID not found. Please log in again.');
+        return api.post(`/fee/discount/apply/${skid}`, data);
+    }
+
+    async getDefaulters(academicYearId: number | string, asOfDate?: string): Promise<IDefaultersReport> {
+        const api = getApiClient();
+        const skid = getSchoolId();
+        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const response = (await api.get(`/fee/report/defaulters/${skid}`, {
+            params: { academic_year_id: academicYearId, ...(asOfDate ? { as_of_date: asOfDate } : {}) },
+        })) as unknown as { data?: IDefaultersReport } & IDefaultersReport;
+        return response?.data || response;
     }
 }
 

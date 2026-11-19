@@ -718,6 +718,9 @@ export interface IStudentFee {
     discount_amount?: number;
     status: string; // PAID, PARTIAL, PENDING, OVERDUE
     has_installments: boolean;
+    late_fee?: number;
+    due_date?: string;
+    payments?: IFeePayment[]; // active (not cancelled) payments
     receipt_number?: string; // For full payment (non-installment) receipts
     payment_date?: string;
     payment_mode?: string;
@@ -725,6 +728,48 @@ export interface IStudentFee {
     cheque_number?: string;
     bank_name?: string;
     remarks?: string;
+}
+
+export interface IFeePayment {
+    id: number;
+    student_fee_id: number;
+    installment_id?: number | null;
+    receipt_number: string;
+    payment_date: string;
+    amount_paid: number;
+    payment_mode?: string;
+    transaction_id?: string;
+    cheque_number?: string;
+    remarks?: string;
+    is_cancelled: boolean;
+}
+
+export interface IDefaulterRow {
+    student_id: number;
+    student_fee_id: number;
+    student_name: string;
+    admission_number?: string;
+    class?: string;
+    section?: string;
+    phone?: string;
+    parent_phone?: string;
+    fee_name?: string;
+    total_amount: number;
+    paid_amount: number;
+    discount_amount: number;
+    balance: number;
+    overdue_amount: number;
+    due_date: string;
+    days_overdue: number;
+    status: string;
+}
+
+export interface IDefaultersReport {
+    as_of_date: string;
+    total_defaulters: number;
+    total_overdue_amount: number;
+    total_pending_amount: number;
+    defaulters: IDefaulterRow[];
 }
 
 export interface IStudentFeeSummary {
