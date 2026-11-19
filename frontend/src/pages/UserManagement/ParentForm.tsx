@@ -6,7 +6,7 @@
 import { FC, useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router';
-import { PageHeader, Button, LoadingSpinner } from '../../components';
+import { PageHeader, Button, LoadingSpinner, PasswordToggleButton } from '../../components';
 import { parentService } from '../../services/modules/parentService';
 import { fieldInputClass, isValidEmail, passwordProblem } from '../../utils/formValidation';
 
@@ -23,6 +23,7 @@ const ParentForm: FC<IParentFormProps> = ({ initialData, mode: propMode = 'creat
     const [loading, setLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+    const [showPassword, setShowPassword] = useState(false);
     // Auto-detect mode based on URL - if id exists and not in modal, it's update mode
     const mode = !isModal && id ? 'update' : propMode;
     const [formData, setFormData] = useState({
@@ -182,17 +183,21 @@ const ParentForm: FC<IParentFormProps> = ({ initialData, mode: propMode = 'creat
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Password *
                             </label>
-                            <input
-                                type="password"
-                                name="password"
-                                value={formData.password}
-                                onChange={handleInputChange}
-                                disabled={isViewMode}
-                                className={fieldInputClass(!!errors.password)}
-                                aria-invalid={!!errors.password}
-                                aria-describedby={errors.password ? 'parent-password-error' : undefined}
-                                placeholder="Enter password"
-                            />
+                            <div className="relative">
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    name="password"
+                                    value={formData.password}
+                                    onChange={handleInputChange}
+                                    disabled={isViewMode}
+                                    className={`${fieldInputClass(!!errors.password)} pr-11`}
+                                    aria-invalid={!!errors.password}
+                                    aria-describedby={errors.password ? 'parent-password-error' : undefined}
+                                    placeholder="Enter password"
+                                    autoComplete="new-password"
+                                />
+                                <PasswordToggleButton visible={showPassword} onToggle={() => setShowPassword((v) => !v)} disabled={isViewMode} />
+                            </div>
                             {errors.password && <p id="parent-password-error" role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.password}</p>}
                         </div>
                     )}

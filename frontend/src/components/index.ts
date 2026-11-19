@@ -25,6 +25,7 @@ export { default as Badge } from './ui/Badge';
 // Form Components
 export { default as FormField } from './forms/FormField';
 export { default as FormInput } from './forms/FormInput';
+export { default as PasswordToggleButton } from './forms/PasswordToggleButton';
 export { default as FormSelect } from './forms/FormSelect';
 export { default as FormTextarea } from './forms/FormTextarea';
 export { default as MandatoryIndicator } from './forms/MandatoryIndicator';
