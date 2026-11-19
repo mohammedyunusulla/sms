@@ -86,10 +86,13 @@ def get_today_absentees_count(skid, academic_year_id, date):
                 'code': 400
             }), 400
 
+        # Teachers: only their own sections (teacher id from the login, never the URL); admins: whole school
+        from app.utils.teaching_scope import current_teacher_id
         absentees_data = TeacherDashboardService.get_today_absentees(
             skid=skid,
             academic_year_id=academic_year_id,
-            date=date
+            date=date,
+            teacher_id=current_teacher_id()
         )
 
         return jsonify({

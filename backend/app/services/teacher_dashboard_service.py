@@ -153,7 +153,7 @@ class TeacherDashboardService:
             raise Exception(f"Failed to fetch announcements: {str(e)}")
 
     @staticmethod
-    def get_today_absentees(skid, academic_year_id, date):
+    def get_today_absentees(skid, academic_year_id, date, teacher_id=None):
         """
         Get today's student absentees with count and preview
         Args:
@@ -168,12 +168,20 @@ class TeacherDashboardService:
                 attendance_date = datetime.strptime(date, '%Y-%m-%d').date()
                 
                 # Base filter conditions
-                base_filters = and_(
+                conditions = [
                     Attendance.date == attendance_date,
                     Attendance.academic_year_id == academic_year_id,
                     status_column(Attendance.status) == 'ABSENT',
                     SchoolUsers.is_active == True
-                )
+                ]
+                # A teacher only sees absentees from the sections they work in (it used to be the whole school)
+                if teacher_id is not None:
+                    from app.utils.teaching_scope import teacher_section_ids
+                    section_ids = teacher_section_ids(tenant_session, teacher_id)
+                    if not section_ids:
+                        return {'count': 0, 'preview': [], 'date': date}
+                    conditions.append(Attendance.section_id.in_(section_ids))
+                base_filters = and_(*conditions)
                 
                 # Query 1: Get total count efficiently
                 total_count = tenant_session.query(
