@@ -29,7 +29,8 @@ class ParentService:
             if not school:
                 raise ValueError("School not found")
             
-            plan = data.get('plan', school.plan)
+            # Always the school's own plan: taking it from the request let a BASIC school's parent get a login
+            plan = school.plan
             # school.plan is a SchoolPlan enum (never equal to a plain string); compare by value
             create_login = getattr(plan, 'value', plan) in ('STANDARD', 'PREMIUM')
             
