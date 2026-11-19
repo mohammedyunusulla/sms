@@ -43,8 +43,10 @@ class UserService:
             )
             user.set_password(data['password'])
             user.save()
+            saved_user_id = user.id
 
             # Set this user as admin of the school
+            previous_admin_id = school.school_admin_id
             school.school_admin_id = user.id
             db.session.commit()
 
@@ -60,10 +62,14 @@ class UserService:
                 )
                 session.add(school_user)
                 session.flush()
+                # Give the tenant record its School Admin role (it used to be left empty, QA A35)
+                from app.utils.account_create import role_for, add_role_link
+                add_role_link(session, school_user, role_for(session, 'SCHOOL_ADMIN'))
 
                 school_admin_profile = SchoolAdmin(
                     user_id=school_user.id,
-                    designation=str(data.get('designation', UserRole.SCHOOL_ADMIN))
+                    # str(UserRole.SCHOOL_ADMIN) stored the text "UserRole.SCHOOL_ADMIN"
+                    designation=(str(data.get('designation') or '').strip() or 'School Admin')[:100]
                 )
                 session.add(school_admin_profile)
                 session.commit()
@@ -76,6 +82,19 @@ class UserService:
 
         except Exception as e:
             db.session.rollback()
+            # All or nothing: the tenant step failed after the login was saved, so undo the login too
+            if 'saved_user_id' in locals():
+                try:
+                    if 'previous_admin_id' in locals():
+                        school.school_admin_id = previous_admin_id
+                    leftover = User.query.get(saved_user_id)
+                    if leftover:
+                        db.session.delete(leftover)
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+            if isinstance(e, ValueError):
+                raise
             raise Exception(f"Failed to create school admin: {str(e)}")
 
     
