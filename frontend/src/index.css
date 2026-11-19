@@ -5,6 +5,10 @@ layer(base);
 
 @custom-variant dark (&:is(.dark *));
 
+/* Short viewports (phones with browser bars, landscape) — used to compact the auth pages */
+@custom-variant short (@media (max-height: 700px));
+@custom-variant very-short (@media (max-height: 600px));
+
 @theme {
   --font-*: initial;
   --font-outfit: Outfit, sans-serif;
