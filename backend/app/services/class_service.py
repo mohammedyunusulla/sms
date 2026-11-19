@@ -220,9 +220,9 @@ class ClassService:
                             if school_user:
                                 section.teacher_name = f"{school_user.first_name} {school_user.last_name}"
                                 
-                    # Get student count for this section
-                    student_count = tenant_session.query(StudentEnrollment).filter_by(section_id=section.id).count()
-                    section.student_count = student_count
+                    # Same rule as the class list: current-year active enrollments
+                    from app.utils.enrollment import current_section_count
+                    section.student_count = current_section_count(tenant_session, section.id)
     
                 return [section.to_dict() for section in sections]  # ✅ serialize list
     
@@ -343,12 +343,11 @@ class ClassService:
                             failed_count += 1
                             continue
                         
-                        # **CRITICAL CHECK**: Verify student is not already in another section
-                        # Check if student has any current enrollment
-                        existing_enrollment = tenant_session.query(StudentEnrollment).filter_by(
-                            student_id=student_id
-                        ).first()
-                        
+                        # A student can be in only ONE section per year: check this year's active
+                        # enrollment (older years' records are history and don't block this)
+                        from app.utils.enrollment import current_enrollment, place_student
+                        existing_enrollment = current_enrollment(tenant_session, student_id)
+
                         if existing_enrollment:
                             # Student is already enrolled in a section
                             if existing_enrollment.section_id == section_id:
@@ -381,18 +380,8 @@ class ClassService:
                             failed_count += 1
                             continue
                         
-                        # Create new enrollment
-                        new_enrollment = StudentEnrollment(
-                            student_id=student_id,
-                            class_id=section.class_id,
-                            section_id=section_id,
-                            enrollment_date=date.today(),
-                        )
-                        tenant_session.add(new_enrollment)
-                        
-                        # Update student's current class and section
-                        student.class_id = section.class_id
-                        student.section_id = section_id
+                        # Enrollment for the current academic year + profile, kept in step
+                        place_student(tenant_session, student, section_id)
                         
                         added_count += 1
                         
@@ -427,27 +416,19 @@ class ClassService:
         """
         try:
             with switch_to_school_db(skid) as tenant_session:
-                # Find enrollment record
-                enrollment = tenant_session.query(StudentEnrollment).filter_by(
-                    student_id=student_id,
-                    section_id=section_id
-                ).first()
-                
-                if not enrollment:
-                    raise ValueError("Enrollment record not found for the given student and section")
-                
-                # Delete enrollment
-                tenant_session.delete(enrollment)
-                
-                # Update student's class and section to NULL (unassigned)
+                # Only the current year's enrollment in this section is removed (older years stay)
+                from app.utils.enrollment import unplace_student
                 student = tenant_session.query(Student).filter_by(user_id=student_id).first()
-                if student:
-                    student.class_id = None
-                    student.section_id = None
-                
+                if not student:
+                    raise ValueError("Student not found")
+                if not unplace_student(tenant_session, student, section_id):
+                    raise ValueError("This student isn't in this section for the current academic year")
+
                 tenant_session.commit()
                 return True
                 
+        except ValueError:
+            raise
         except Exception as e:
             tenant_session.rollback()
             raise Exception(f"Failed to remove student from section: {str(e)}")
@@ -471,34 +452,15 @@ class ClassService:
                 if not student:
                     raise ValueError("Student not found")
                 
-                # Find current enrollment
-                current_enrollment = tenant_session.query(StudentEnrollment).filter_by(
-                    student_id=student_id
-                ).first()
-                
-                if current_enrollment:
-                    # Update existing enrollment
-                    current_enrollment.section_id = new_section_id
-                    current_enrollment.class_id = new_section.class_id
-                    current_enrollment.enrollment_date = date.today()
-                else:
-                    # Create new enrollment
-                    new_enrollment = StudentEnrollment(
-                        student_id=student_id,
-                        class_id=new_section.class_id,
-                        section_id=new_section_id,
-                        enrollment_date=date.today(),
-                        skid=skid
-                    )
-                    tenant_session.add(new_enrollment)
-                
-                # Update student's current assignment
-                student.class_id = new_section.class_id
-                student.section_id = new_section_id
+                # Move this year's enrollment (create one if missing) and the profile together
+                from app.utils.enrollment import place_student
+                place_student(tenant_session, student, new_section_id)
                 
                 tenant_session.commit()
                 return True
                 
+        except ValueError:
+            raise
         except Exception as e:
             tenant_session.rollback()
             raise Exception(f"Failed to move student: {str(e)}")

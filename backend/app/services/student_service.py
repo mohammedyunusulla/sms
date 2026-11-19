@@ -259,14 +259,36 @@ class StudentService:
                 if not student_profile:
                     raise ValueError("Student profile not found in tenant database.")
 
+                # Class/section go through the placement rule (enrollment + profile together)
+                old_section_id = student_profile.section_id
+                placement_keys = {'class_id', 'section_id'}
+
                 # Update student-specific fields
                 for key, value in data.items():
                     # Skip protected fields
-                    if key in PROTECTED_FIELDS:
+                    if key in PROTECTED_FIELDS or key in placement_keys:
                         continue
 
                     if hasattr(student_profile, key):
                         setattr(student_profile, key, value)
+
+                if placement_keys & set(data.keys()):
+                    from app.utils.enrollment import place_student, unplace_student
+                    new_section_id = data.get('section_id')
+                    new_class_id = data.get('class_id')
+                    if new_section_id:
+                        section = tenant_session.query(Section).filter_by(id=int(new_section_id)).first()
+                        if not section:
+                            raise ValueError("Section not found")
+                        if new_class_id and int(new_class_id) != section.class_id:
+                            raise ValueError("The selected section doesn't belong to the selected class")
+                        if int(new_section_id) != (old_section_id or 0):
+                            place_student(tenant_session, student_profile, int(new_section_id))
+                    elif old_section_id:
+                        # class/section cleared: take them out of their current-year section
+                        unplace_student(tenant_session, student_profile)
+                        if new_class_id:
+                            student_profile.class_id = int(new_class_id)
 
                 tenant_session.commit()
 
@@ -278,6 +300,9 @@ class StudentService:
                     school_user = temp_session.query(SchoolUsers).filter_by(id=school_user_id).first()
                     return school_user.to_dict() if school_user else {}
 
+        except ValueError:
+            db.session.rollback()
+            raise
         except Exception as e:
             # Central rollback for the update function
             db.session.rollback()

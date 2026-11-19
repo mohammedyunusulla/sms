@@ -311,7 +311,9 @@ def remove_student_from_section(skid, section_id, student_id):
             'status': 'success',
             'code': 200
         }), 200
-        
+
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': f'Failed to remove student: {str(e)}', 'status': 'error', 'code': 500}), 500
 
@@ -339,11 +341,8 @@ def move_student_to_section(skid, new_section_id, student_id):
             }), 400
             
     except ValueError as e:
-        return jsonify({
-            'message': str(e),
-            'status': 'error',
-            'code': 404
-        }), 404
+        code = 404 if 'not found' in str(e).lower() else 400
+        return jsonify({'message': str(e), 'status': 'error', 'code': code}), code
     except Exception as e:
         return jsonify({
             'message': f'Failed to move student: {str(e)}',
