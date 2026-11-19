@@ -128,13 +128,17 @@ const ExamSubjectConfigList: FC = () => {
                 : (subjectsResponse.data || [])) as ISubject[];
             setSubjects(subjectsList);
 
-            // Fetch existing configurations for this exam type and class
+            // Fetch existing configurations for this exam type and class. A setup for "all sections" has no
+            // section, so don't filter by section here (it used to show those as "Not Configured"); the row
+            // below prefers the selected section's own setup, else the all-sections one.
             const configsResponse = await examService.getExamConfigs({
                 exam_type_id: selectedExamType,
                 class_id: selectedClass,
-                section_id: selectedSection || undefined,
             });
-            setConfigurations(configsResponse.data || configsResponse || []);
+            const rawConfigs = configsResponse as unknown;
+            setConfigurations(Array.isArray(rawConfigs)
+                ? rawConfigs
+                : ((rawConfigs as { data?: IExamSubjectConfig[] } | null)?.data ?? []));
 
             if (subjectsList.length === 0) {
                 toast('No subjects found for this class', { icon: 'ℹ️' });
@@ -154,14 +158,21 @@ const ExamSubjectConfigList: FC = () => {
 
         // Try to fetch existing configuration for this subject
         try {
+            // getExamConfigs already returns the list (reading response.data[0] always gave undefined, so Edit
+            // opened an empty form and saving made a duplicate). A setup for "all sections" has no section, so
+            // fetch without the section and prefer this section's own setup, else the all-sections one.
             const response = await examService.getExamConfigs({
                 exam_type_id: selectedExamType,
                 class_id: selectedClass,
-                section_id: selectedSection,
                 subject_id: subject.id,
             });
-
-            const existingConfig = response.data?.[0];
+            const raw = response as unknown;
+            const configs: IExamSubjectConfig[] = Array.isArray(raw)
+                ? raw
+                : ((raw as { data?: IExamSubjectConfig[] } | null)?.data ?? []);
+            const existingConfig =
+                configs.find((c) => selectedSection && String(c.section_id) === String(selectedSection)) ||
+                configs.find((c) => c.section_id === null || c.section_id === undefined);
             if (existingConfig) {
                 setEditingConfig(existingConfig);
             } else {
@@ -371,7 +382,11 @@ const ExamSubjectConfigList: FC = () => {
                                 columns={columns}
                                 data={subjects.map((subject) => {
                                     // Find if this subject has a configuration
-                                    const config = configurations.find(c => c.subject_id === subject.id);
+                                    const forSubject = configurations.filter(c => c.subject_id === subject.id);
+                                    const config = selectedSection
+                                        ? forSubject.find(c => String(c.section_id) === String(selectedSection))
+                                          || forSubject.find(c => c.section_id === null || c.section_id === undefined)
+                                        : forSubject.find(c => c.section_id === null || c.section_id === undefined) || forSubject[0];
                                     return {
                                         id: subject.id,
                                         subject_name: subject.subject_name,
