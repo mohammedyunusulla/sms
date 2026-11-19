@@ -64,7 +64,8 @@ class SchoolService {
         const api = getApiClient();
         const response = await api.post(`${this.baseUrl}/create`, data);
         if (response.code === 200 && response.status === 'success') {
-            return response.data.school;
+            // the client already unwraps the body: the school is at the top level (response.data was undefined)
+            return response.school;
         }
         throw new Error(response.data?.message || 'Failed to create school');
     }

@@ -17,6 +17,12 @@ import { schoolService } from '../../services/modules/schoolService';
 import { usePermissions } from '../../hooks/usePermissions';
 import { ISchool } from '../../types/index';
 
+// Schools have is_active (there is no `status` field; reading status.charAt crashed the page)
+const isSchoolActive = (school: unknown): boolean => {
+    const value = school as { is_active?: boolean; status?: string };
+    return value.is_active ?? String(value.status ?? '').toLowerCase() === 'active';
+};
+
 const SchoolDetail: FC = () => {
     const navigate = useNavigate();
     const { id } = useParams();
@@ -169,8 +175,8 @@ const SchoolDetail: FC = () => {
                                     </p>
                                 </div>
                                 <Badge
-                                    variant={selectedSchool.status === 'active' ? 'success' : 'warning'}
-                                    text={selectedSchool.status.charAt(0).toUpperCase() + selectedSchool.status.slice(1)}
+                                    variant={isSchoolActive(selectedSchool) ? 'success' : 'warning'}
+                                    text={isSchoolActive(selectedSchool) ? 'Active' : 'Inactive'}
                                 />
                             </div>
 
@@ -302,15 +308,15 @@ const SchoolDetail: FC = () => {
                     </div>
 
                     {/* Status Card */}
-                    <div className={`p-6 rounded-lg border ${selectedSchool.status === 'active'
+                    <div className={`p-6 rounded-lg border ${isSchoolActive(selectedSchool)
                         ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                         : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
                         }`}>
-                        <p className={`text-sm font-medium ${selectedSchool.status === 'active'
+                        <p className={`text-sm font-medium ${isSchoolActive(selectedSchool)
                             ? 'text-green-700 dark:text-green-400'
                             : 'text-yellow-700 dark:text-yellow-400'
                             }`}>
-                            {selectedSchool.status === 'active'
+                            {isSchoolActive(selectedSchool)
                                 ? '✅ School is active and operational'
                                 : '⚠️ School is inactive'}
                         </p>
