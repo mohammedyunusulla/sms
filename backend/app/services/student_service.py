@@ -44,7 +44,7 @@ class StudentService:
                     role=UserRole.STUDENT,  # never from the request
                     skid=skid,
                     plan=plan.value,  # Convert enum to string
-                    school_id=data.get('school_id')
+                    school_id=school.id  # from the school itself, never the request
                 )
                 user.set_password(data['password'])
                 db.session.add(user)

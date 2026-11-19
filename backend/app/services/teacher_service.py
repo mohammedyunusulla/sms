@@ -20,6 +20,10 @@ class TeacherService:
         tenant_saved = False
         try:
             # Main DB: add + flush only (saved at the end)
+            from app.models.main.School import School
+            school = School.query.filter_by(skid=skid).first()
+            if not school:
+                raise ValueError("School not found")
             user = User(
                 username=data['username'],
                 email=data['email'],
@@ -28,7 +32,9 @@ class TeacherService:
                 phone=data.get('phone'),
                 role=UserRole.TEACHER,  # never from the request
                 skid=skid,
-                school_id=data.get('school_id')
+                # from the school itself: the teacher form never sent school_id, so teacher logins had none
+                # and admins couldn't switch them on/off ("Cannot deactivate user from different school")
+                school_id=school.id
             )
             user.set_password(data['password'])
             db.session.add(user)
