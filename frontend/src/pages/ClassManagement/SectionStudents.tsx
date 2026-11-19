@@ -9,6 +9,7 @@ import { studentService } from '@/services/modules/studentService';
 import { classService } from '@/services/modules/classService';
 import { academicYearService } from '@/services/modules/academicYearService';
 import { useAuthStore } from '@/stores/authStore';
+import { UserRole } from '@/types/index';
 import { FC, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import toast from 'react-hot-toast';
@@ -53,6 +54,11 @@ const SectionStudents: FC<SectionStudentsProps> = ({
     // Individual actions
     const navigate = useNavigate();
     const academicYearVersion = useAuthStore((state) => state.academicYearVersion);
+    // Only show actions the server allows: edit / promote for admins, move / remove also for principals.
+    // Teachers see the list read-only (every action used to fail for them with a permission error).
+    const userRole = useAuthStore((state) => state.user?.role);
+    const canManageStudents = userRole === UserRole.SCHOOL_ADMIN || userRole === UserRole.SUPER_ADMIN;
+    const canMoveStudents = canManageStudents || userRole === UserRole.PRINCIPAL;
     // The class the viewed section belongs to = the students' current class (sent as from_class_id)
     const currentClassId = sections.find((s) => s.id === activeSection)?.class_id;
 
@@ -542,7 +548,7 @@ const SectionStudents: FC<SectionStudentsProps> = ({
                 </div>
 
                 {/* Bulk Actions Bar */}
-                {selectedStudents.size > 0 && (
+                {canManageStudents && selectedStudents.size > 0 && (
                     <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <input
@@ -583,13 +589,15 @@ const SectionStudents: FC<SectionStudentsProps> = ({
                     <thead>
                         <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
                             <th className="px-4 py-3 text-left">
-                                <input
-                                    type="checkbox"
-                                    checked={selectedStudents.size === sectionStudents.length && sectionStudents.length > 0}
-                                    onChange={handleSelectAll}
-                                    className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 cursor-pointer"
-                                    title="Select all students"
-                                />
+                                {canManageStudents && (
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedStudents.size === sectionStudents.length && sectionStudents.length > 0}
+                                        onChange={handleSelectAll}
+                                        className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 cursor-pointer"
+                                        title="Select all students"
+                                    />
+                                )}
                             </th>
                             {studentColumns.map((col) => (
                                 <th
@@ -601,7 +609,7 @@ const SectionStudents: FC<SectionStudentsProps> = ({
                                 </th>
                             ))}
                             <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900 dark:text-white">
-                                Actions
+                                {canMoveStudents ? 'Actions' : ''}
                             </th>
                         </tr>
                     </thead>
@@ -623,12 +631,14 @@ const SectionStudents: FC<SectionStudentsProps> = ({
                                     className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
                                 >
                                     <td className="px-4 py-3">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedStudents.has(student.id.toString())}
-                                            onChange={() => handleStudentSelection(student.id.toString())}
-                                            className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 cursor-pointer"
-                                        />
+                                        {canManageStudents && (
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedStudents.has(student.id.toString())}
+                                                onChange={() => handleStudentSelection(student.id.toString())}
+                                                className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 cursor-pointer"
+                                            />
+                                        )}
                                     </td>
                                     {studentColumns.map((col) => (
                                         <td
@@ -639,6 +649,7 @@ const SectionStudents: FC<SectionStudentsProps> = ({
                                         </td>
                                     ))}
                                     <td className="px-4 py-3 text-center">
+                                        {canMoveStudents ? (
                                         <button
                                             onClick={(e) => handleMenuClick(e, student.id)}
                                             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
@@ -650,6 +661,9 @@ const SectionStudents: FC<SectionStudentsProps> = ({
                                                 <circle cx="12" cy="19" r="2" />
                                             </svg>
                                         </button>
+                                        ) : (
+                                            <span className="text-gray-400">-</span>
+                                        )}
                                     </td>
                                 </tr>
                             ))
@@ -718,6 +732,7 @@ const SectionStudents: FC<SectionStudentsProps> = ({
                             right: `${menuPosition.right}px`,
                         }}
                     >
+                        {canManageStudents && (
                         <button
                             onClick={() => handleEditStudent(sectionStudents.find(s => s.id === showActionsMenu)!)}
                             className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 first:rounded-t-lg text-gray-900 dark:text-gray-100"
@@ -727,6 +742,7 @@ const SectionStudents: FC<SectionStudentsProps> = ({
                             </svg>
                             Edit
                         </button>
+                        )}
                         <button
                             onClick={() => handleMoveToSection(sectionStudents.find(s => s.id === showActionsMenu)!)}
                             className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 text-gray-900 dark:text-gray-100"
@@ -736,6 +752,7 @@ const SectionStudents: FC<SectionStudentsProps> = ({
                             </svg>
                             Move to Section
                         </button>
+                        {canManageStudents && (
                         <button
                             onClick={() => handlePromoteStudent(sectionStudents.find(s => s.id === showActionsMenu)!)}
                             className="w-full text-left px-4 py-2 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors flex items-center gap-2 text-green-600 dark:text-green-400"
@@ -745,6 +762,7 @@ const SectionStudents: FC<SectionStudentsProps> = ({
                             </svg>
                             Promote
                         </button>
+                        )}
                         <button
                             onClick={() => handleRemoveStudentFromSection(sectionStudents.find(s => s.id === showActionsMenu)!)}
                             className="w-full text-left px-4 py-2 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors flex items-center gap-2 text-orange-600 dark:text-orange-400 last:rounded-b-lg"
