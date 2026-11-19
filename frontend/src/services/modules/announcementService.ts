@@ -164,7 +164,7 @@ class AnnouncementService {
             throw new Error('School ID not found. Please log in again.');
         }
 
-        const response = await api.delete(`${this.baseUrl}/delete/${id}/${schoolId}`) as unknown as ApiResponse;
+        const response = await api.delete(`${this.baseUrl}/delete/${schoolId}/${id}`) as unknown as ApiResponse;
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.message || 'Failed to delete announcement');
         }
@@ -199,38 +199,6 @@ class AnnouncementService {
         const response = await api.post(`${this.baseUrl}/${id}/archive/${schoolId}`) as unknown as ApiResponse;
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.message || 'Failed to archive announcement');
-        }
-    }
-
-
-    // Get announcements for current user 
-    async getMyAnnouncements(page = 1, limit = 20): Promise<IAnnouncementListResponse> {
-        const api = getApiClient();
-        const schoolId = getSchoolId();
-
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
-        }
-
-        const response = await api.get(`${this.baseUrl}/me/${schoolId}`, {
-            params: { page, limit },
-        }) as unknown as ApiResponse<IAnnouncementListResponse>;
-        return response as unknown as IAnnouncementListResponse;
-    }
-
-
-    // Bulk delete announcements 
-    async bulkDelete(ids: string[]): Promise<void> {
-        const api = getApiClient();
-        const schoolId = getSchoolId();
-
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
-        }
-
-        const response = await api.post(`${this.baseUrl}/bulk-delete/${schoolId}`, { ids }) as unknown as ApiResponse;
-        if (response.code !== 200 || response.status !== 'success') {
-            throw new Error(response.message || 'Failed to delete announcements');
         }
     }
 

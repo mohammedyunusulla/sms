@@ -299,6 +299,16 @@ class AuthService:
 
         if changed:
             db.session.commit()
+            # Keep the school's record of the person in step (names in lists, timetables, etc.
+            # come from the tenant school_users row). Super admins have no school record.
+            if user.school_user_id and user.skid:
+                from app.models.tenant import SchoolUsers
+                from app.utils.db_manager import switch_to_school_db
+                with switch_to_school_db(user.skid) as tenant_session:
+                    school_user = tenant_session.query(SchoolUsers).filter_by(id=user.school_user_id).first()
+                    if school_user:
+                        for field in AuthService.SELF_EDITABLE_FIELDS:
+                            setattr(school_user, field, getattr(user, field))
 
         return user.to_dict()
 

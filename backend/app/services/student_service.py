@@ -143,6 +143,37 @@ class StudentService:
 
     
     @staticmethod
+    def set_student_active(skid, student_id, active):
+        """
+        Soft delete / reactivate a student.
+        Only the active flags change (tenant school_users + main-DB login); attendance, marks,
+        fees, enrollments and parent links are kept, so reactivating restores everything.
+        """
+        with switch_to_school_db(skid) as tenant_session:
+            school_user = tenant_session.query(SchoolUsers).filter_by(id=student_id).first()
+            is_student = school_user and tenant_session.query(Student).filter_by(user_id=student_id).first()
+            if not is_student:
+                return {'success': False, 'code': 404, 'message': 'Student not found'}
+            if bool(school_user.is_active) == bool(active):
+                state = 'active' if active else 'inactive'
+                return {'success': False, 'code': 400, 'message': f'Student is already {state}'}
+            school_user.is_active = bool(active)
+            name = f"{school_user.first_name} {school_user.last_name}".strip()
+
+        # Login account (only exists if a login was provisioned)
+        main_user = User.query.filter_by(school_user_id=student_id, skid=skid).first()
+        if main_user:
+            main_user.is_active = bool(active)
+            db.session.commit()
+
+        return {
+            'success': True,
+            'code': 200,
+            'message': f"{name} {'reactivated' if active else 'deactivated (records kept, can be reactivated)'}",
+            'data': {'student_id': student_id, 'is_active': bool(active), 'login_updated': bool(main_user)},
+        }
+
+    @staticmethod
     def update_student(user_id, skid, data):
         """
         Update student information across main and tenant databases
@@ -159,7 +190,8 @@ class StudentService:
         school_user_id = user_id
 
         # Define fields that should never be updated
-        PROTECTED_FIELDS = {'id', 'created_at', 'user_id'}
+        # is_active is changed only via the delete/reactivate endpoints, never as a side effect of editing.
+        PROTECTED_FIELDS = {'id', 'created_at', 'user_id', 'is_active'}
 
         try:
             # Step 1: Get school info to determine plan

@@ -4,6 +4,7 @@ from app import db
 from app.models.tenant import SectionSubject, Subject, TeacherSubject, SchoolUsers
 from app.models.tenant.Sections import Section
 from app.utils.db_manager import switch_to_school_db
+from app.utils.usage_check import usage_summary, SUBJECT_REFERENCES, blocked_message
 
 
 class SubjectService:
@@ -80,17 +81,12 @@ class SubjectService:
                 subject.credits = data.get('credits', 1)
                 subject.description = data.get('description')
                 
-                # Remove existing teacher assignments
-                tenant_session.query(TeacherSubject).filter_by(subject_id=subject.id).delete()
-    
-                # Reassign teachers
-                teacher_ids = data.get("teacher_ids", [])
-                for teacher_id in teacher_ids:
-                    assignment = TeacherSubject(
-                        teacher_id=teacher_id,
-                        subject_id=subject.id
-                    )
-                    tenant_session.add(assignment)
+                # Replace teacher assignments only when the caller sends teacher_ids.
+                # (The subject edit form doesn't, and must not wipe existing assignments.)
+                if 'teacher_ids' in data:
+                    tenant_session.query(TeacherSubject).filter_by(subject_id=subject.id).delete()
+                    for teacher_id in data.get('teacher_ids') or []:
+                        tenant_session.add(TeacherSubject(teacher_id=teacher_id, subject_id=subject.id))
     
                 tenant_session.commit()
                 tenant_session.refresh(subject)
@@ -112,12 +108,19 @@ class SubjectService:
                 
                 if not subject:
                     raise ValueError("Subject not found")
-                
+
+                # Only allow deleting a subject nothing depends on
+                usage = usage_summary(tenant_session, SUBJECT_REFERENCES, subject_id)
+                if usage:
+                    raise ValueError(blocked_message(subject.subject_name or f'#{subject_id}', 'subject', usage))
+
                 tenant_session.delete(subject)
                 tenant_session.commit()
                 
                 return True
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to delete subject: {str(e)}")
 

@@ -42,6 +42,7 @@ export interface IUser {
     updatedAt?: string;
     updated_at?: string; // Alias for updatedAt (snake_case from API)
     lastLogin?: string;
+    is_active?: boolean; // Returned by the users list API
 }
 
 export interface IAuthState {
@@ -533,6 +534,9 @@ export interface ISubject {
     credits?: number;
     status: 'ACTIVE' | 'INACTIVE';
     createdAt: string;
+    // Fields returned by the backend subject API
+    class_id?: number | string;
+    description?: string;
 }
 
 export interface IMarks {
@@ -649,6 +653,9 @@ export interface IProgressCardAttendance {
     present_days: number;
     total_days: number;
     percentage: number;
+    /** Period counted: academic year start .. last exam day (or today) */
+    from?: string;
+    to?: string;
 }
 
 export interface IProgressCard {
@@ -664,8 +671,8 @@ export interface IProgressCard {
     rank: number;
     total_students: number;
     subject_details: IProgressCardSubject[];
-    attendance?: IProgressCardAttendance;
-    class_teacher_remarks?: string;
+    attendance?: IProgressCardAttendance | null;
+    class_teacher_remarks?: string | null;
     class_teacher_name?: string;
 }
 

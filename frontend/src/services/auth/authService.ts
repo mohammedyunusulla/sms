@@ -167,6 +167,33 @@ export const authService = {
     },
 
     /**
+     * The logged-in user's own account (GET /auth/me)
+     */
+    async getMe(): Promise<Record<string, unknown>> {
+        const response = (await getApiClient().get('/auth/me')) as unknown as { user?: Record<string, unknown> };
+        return response.user || {};
+    },
+
+    /**
+     * Update the logged-in user's own first name, last name and phone (PUT /auth/me)
+     */
+    async updateMe(data: { first_name: string; last_name: string; phone: string | null }): Promise<Record<string, unknown>> {
+        const response = (await getApiClient().put('/auth/me', data)) as unknown as { user?: Record<string, unknown> };
+        return response.user || {};
+    },
+
+    /**
+     * Change the logged-in user's password (POST /auth/change-password)
+     */
+    async changePassword(oldPassword: string, newPassword: string): Promise<string> {
+        const response = (await getApiClient().post('/auth/change-password', {
+            old_password: oldPassword,
+            new_password: newPassword,
+        })) as unknown as { message?: string };
+        return response.message || 'Password changed successfully';
+    },
+
+    /**
      * Get stored user from localStorage
      */
     getStoredUser() {

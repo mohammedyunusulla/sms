@@ -10,7 +10,7 @@ class Attendance(BaseModelTenant, BaseModelTenantMixin):
     class_id = Column(Integer, ForeignKey('classes.id'))
     section_id = Column(Integer, ForeignKey('sections.id'))
     date = Column(Date, nullable=False)
-    status = Column(String(20), default='Present')
+    status = Column(String(20), default='PRESENT')
     remarks = Column(Text)
     academic_year_id = Column(Integer, ForeignKey('academic_years.id'))
     created_at = Column(DateTime, default=func.current_timestamp())

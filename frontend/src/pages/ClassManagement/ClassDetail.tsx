@@ -51,6 +51,20 @@ const ClassDetail: FC = () => {
     });
     const [teachers, setTeachers] = useState<any[]>([]);
     const [isSavingSection, setIsSavingSection] = useState(false);
+    const [sectionToDelete, setSectionToDelete] = useState<{ id: number; section_name: string } | null>(null);
+
+    const handleDeleteSection = async () => {
+        if (!sectionToDelete) return;
+        try {
+            await classService.deleteSection(sectionToDelete.id);
+            toast.success(`Section ${sectionToDelete.section_name} deleted`);
+            setSectionToDelete(null);
+            fetchClassData();
+        } catch (err) {
+            toast.error((err as { message?: string })?.message || 'Failed to delete section');
+            setSectionToDelete(null);
+        }
+    };
 
     // Fetch class and sections on mount
     useEffect(() => {
@@ -103,7 +117,7 @@ const ClassDetail: FC = () => {
             setSectionData({
                 id: section.id,
                 section_name: section.section_name,
-                teacher_id: section.teacher_id,
+                teacher_id: section.teacher_id ?? '',
             });
         } else {
             setSectionData({
@@ -122,17 +136,19 @@ const ClassDetail: FC = () => {
     };
 
     const handleSaveSection = async () => {
-        if (!sectionData.section_name || !sectionData.teacher_id) {
-            toast.error('Please fill in all fields');
+        // Only the name is required; the class teacher can be assigned later
+        if (!sectionData.section_name.trim()) {
+            toast.error('Section name is required');
             return;
         }
+        const teacherId = sectionData.teacher_id ? String(sectionData.teacher_id) : null;
         setIsSavingSection(true);
         try {
             if (isEditMode) {
-                await classService.updateSection(id!, sectionData.id!.toString(), sectionData.section_name, sectionData.teacher_id.toString());
+                await classService.updateSection(id!, sectionData.id!.toString(), sectionData.section_name.trim(), teacherId);
                 toast.success('Section updated successfully');
             } else {
-                await classService.createSection(id!, sectionData.section_name, sectionData.teacher_id.toString());
+                await classService.createSection(id!, sectionData.section_name.trim(), teacherId);
                 toast.success('Section created successfully');
             }
             setShowSectionModal(false);
@@ -216,6 +232,18 @@ const ClassDetail: FC = () => {
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 3.732z" />
+                                            </svg>
+                                        </button>
+                                    )}
+                                    {hasPermission(Permission.MANAGE_CLASSES) && (
+                                        <button
+                                            onClick={() => setSectionToDelete({ id: section.id, section_name: section.section_name })}
+                                            className="p-2 text-gray-400 hover:text-red-600 dark:text-gray-500 dark:hover:text-red-400"
+                                            title="Delete Section"
+                                            aria-label={`Delete section ${section.section_name}`}
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                             </svg>
                                         </button>
                                     )}
@@ -307,6 +335,16 @@ const ClassDetail: FC = () => {
                 type="danger"
             />
 
+            <ConfirmDialog
+                isOpen={!!sectionToDelete}
+                onCancel={() => setSectionToDelete(null)}
+                onConfirm={handleDeleteSection}
+                title="Delete Section?"
+                message={`Delete section "${sectionToDelete?.section_name}"? This is only allowed when the section has no students, attendance, timetables, assignments or exams. Its subject links are removed with it.`}
+                confirmText="Delete"
+                type="danger"
+            />
+
             {/* Section Modal (Create/Edit) */}
             {showSectionModal && (
                 <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setShowSectionModal(false)}>
@@ -317,7 +355,7 @@ const ClassDetail: FC = () => {
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Section Name
+                                    Section Name <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="text"
@@ -329,14 +367,14 @@ const ClassDetail: FC = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Class Teacher
+                                    Class Teacher <span className="font-normal text-gray-500 dark:text-gray-400">(optional)</span>
                                 </label>
                                 <select
-                                    value={sectionData.teacher_id}
-                                    onChange={(e) => setSectionData({ ...sectionData, teacher_id: parseInt(e.target.value) })}
+                                    value={sectionData.teacher_id ?? ''}
+                                    onChange={(e) => setSectionData({ ...sectionData, teacher_id: e.target.value ? parseInt(e.target.value) : '' })}
                                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 >
-                                    <option value="">Select a teacher</option>
+                                    <option value="">No class teacher (assign later)</option>
                                     {teachers.map((teacher) => (
                                         <option key={teacher.id} value={teacher.id}>
                                             {teacher.first_name} {teacher.last_name}

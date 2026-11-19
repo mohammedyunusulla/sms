@@ -6,6 +6,19 @@ from app.decorators import login_required
 subject_bp = Blueprint('subjects', __name__)
 
 # CREATE SUBJECT
+@subject_bp.route('/get/<skid>/<int:subject_id>', methods=['GET'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+def get_subject(skid, subject_id):
+    """Get a single subject (used by the subject edit page)."""
+    try:
+        subject = SubjectService.get_subject_by_id(subject_id, skid)
+        return jsonify({'message': 'Subject retrieved successfully', 'data': subject, 'status': 'success', 'code': 200}), 200
+    except Exception as e:
+        if 'not found' in str(e).lower():
+            return jsonify({'message': 'Subject not found', 'status': 'error', 'code': 404}), 404
+        return jsonify({'message': f'Failed to get subject: {str(e)}', 'status': 'error', 'code': 500}), 500
+
+
 @subject_bp.route('/create/subject/<skid>', methods=['POST'])
 @login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
 def create_subject(skid):

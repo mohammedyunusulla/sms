@@ -2,6 +2,8 @@
 from flask import Blueprint, request, jsonify
 from app.services.syllabus_service import SyllabusService
 from app.decorators import login_required
+from app.decorators.auth import student_access_required
+from app.utils.teaching_scope import check_syllabus_item
 from flask_jwt_extended import get_jwt_identity
 
 syllabus_bp = Blueprint('syllabus', __name__)
@@ -202,6 +204,9 @@ def get_syllabi_by_teacher(skid, teacher_id):
 def update_syllabus(skid, syllabus_id):
     """Update syllabus"""
     try:
+        denied = check_syllabus_item(skid, 'syllabus', syllabus_id)
+        if denied:
+            return denied
         data = request.get_json()
         result = SyllabusService.update_syllabus(skid, syllabus_id, data)
         return jsonify({
@@ -237,6 +242,9 @@ def delete_syllabus(skid, syllabus_id):
 def create_lesson_or_chapter(skid, syllabus_id):
     """Create new lesson"""
     try:
+        denied = check_syllabus_item(skid, 'syllabus', syllabus_id)
+        if denied:
+            return denied
         data = request.get_json()
 
         if not data.get('title'):
@@ -260,6 +268,9 @@ def create_lesson_or_chapter(skid, syllabus_id):
 def update_lesson(skid, lesson_id):
     """Update lesson (Shared content or teacher-specific progress)"""
     try:
+        denied = check_syllabus_item(skid, 'lesson', lesson_id)
+        if denied:
+            return denied
         user = getattr(request, 'current_user', None)
         if not user:
             raise ValueError("User not authenticated")
@@ -302,6 +313,9 @@ def delete_lesson(skid, lesson_id):
 def create_topic(skid, lesson_id):
     """Create new topic"""
     try:
+        denied = check_syllabus_item(skid, 'lesson', lesson_id)
+        if denied:
+            return denied
         data = request.get_json()
 
         if not data.get('title'):
@@ -325,6 +339,9 @@ def create_topic(skid, lesson_id):
 def update_topic(skid, topic_id):
     """Update topic (Shared content or teacher-specific progress)"""
     try:
+        denied = check_syllabus_item(skid, 'topic', topic_id)
+        if denied:
+            return denied
         user = getattr(request, 'current_user', None)
         if not user:
             raise ValueError("User not authenticated")
@@ -367,6 +384,9 @@ def delete_topic(skid, topic_id):
 def create_subtopic(skid, topic_id):
     """Create new subtopic"""
     try:
+        denied = check_syllabus_item(skid, 'topic', topic_id)
+        if denied:
+            return denied
         data = request.get_json()
 
         if not data.get('title'):
@@ -390,6 +410,9 @@ def create_subtopic(skid, topic_id):
 def update_subtopic(skid, subtopic_id):
     """Update subtopic (Shared content or teacher-specific progress)"""
     try:
+        denied = check_syllabus_item(skid, 'subtopic', subtopic_id)
+        if denied:
+            return denied
         user = getattr(request, 'current_user', None)
         if not user:
             raise ValueError("User not authenticated")
@@ -470,6 +493,9 @@ def get_teacher_progress_summary(skid, teacher_id):
 def configure_timeline(skid):
     """Configure planned dates and notes for a syllabus item"""
     try:
+        denied = check_syllabus_item(skid, (request.get_json(silent=True) or {}).get('item_type'), (request.get_json(silent=True) or {}).get('item_id'))
+        if denied:
+            return denied
         user = getattr(request, 'current_user', None)
         if not user:
             raise ValueError("User not authenticated")
@@ -502,6 +528,9 @@ def configure_timeline(skid):
 def start_item(skid):
     """Start teaching a syllabus item (must be configured first)"""
     try:
+        denied = check_syllabus_item(skid, (request.get_json(silent=True) or {}).get('item_type'), (request.get_json(silent=True) or {}).get('item_id'))
+        if denied:
+            return denied
         user = getattr(request, 'current_user', None)
         if not user:
             raise ValueError("User not authenticated")
@@ -534,6 +563,9 @@ def start_item(skid):
 def mark_progress(skid):
     """Mark a syllabus item as complete/incomplete with bidirectional cascade"""
     try:
+        denied = check_syllabus_item(skid, (request.get_json(silent=True) or {}).get('item_type'), (request.get_json(silent=True) or {}).get('item_id'))
+        if denied:
+            return denied
         user = getattr(request, 'current_user', None)
         if not user:
             raise ValueError("User not authenticated")
@@ -564,6 +596,7 @@ def mark_progress(skid):
 
 @syllabus_bp.route('/student-view/<skid>', methods=['GET'])
 @login_required(['STUDENT', 'SCHOOL_ADMIN', 'PRINCIPAL', 'PARENT', 'TEACHER'])
+@student_access_required('student_user_id', source='query')
 def get_student_syllabus_view(skid):
     """Get syllabus progress view. Teachers see their own syllabi; students resolve via timetable."""
     try:

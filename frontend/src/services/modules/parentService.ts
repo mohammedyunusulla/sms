@@ -131,9 +131,24 @@ class ParentService {
             throw new Error('School ID not found. Please log in again.');
         }
 
-        const response = (await api.delete(`${this.baseUrl}/delete/${id}/${schoolId}`)) as ApiResponse;
+        const response = (await api.delete(`${this.baseUrl}/delete/${schoolId}/${id}`)) as ApiResponse;
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.message || 'Failed to delete parent');
+        }
+    }
+
+    // Reactivate a (soft-)deleted parent: active again and login re-enabled.
+    async reactivate(id: string): Promise<void> {
+        const api = getApiClient();
+        const schoolId = getSchoolId();
+
+        if (!schoolId) {
+            throw new Error('School ID not found. Please log in again.');
+        }
+
+        const response = (await api.patch(`${this.baseUrl}/reactivate/${schoolId}/${id}`)) as ApiResponse;
+        if (response.code !== 200 || response.status !== 'success') {
+            throw new Error(response.message || 'Failed to reactivate parent');
         }
     }
 

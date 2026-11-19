@@ -438,3 +438,112 @@ def get_provisioning_report(skid, school_id):
     except Exception as e:
         return jsonify({'message': f'Failed to get provisioning report: {str(e)}'}), 500
 
+
+
+# ----------------------------------------------------------------------
+# Users list actions keyed by the tenant school user id (what the list shows)
+# ----------------------------------------------------------------------
+def _school_user_guard(skid, school_user_id, action):
+    """
+    Rules: only super admins manage School Admin accounts (school admins/principals may still
+    edit their *own* details); nobody can deactivate their own account. Returns (target, error_response).
+    """
+    from app.utils.teaching_scope import forbidden
+    target = UserService.get_school_user(skid, school_user_id)
+    if not target:
+        return None, (jsonify({'message': 'User not found', 'status': 'error', 'code': 404}), 404)
+    caller = request.current_user
+    caller_role = caller.role.value if hasattr(caller.role, 'value') else str(caller.role)
+    is_self = caller.school_user_id is not None and int(caller.school_user_id) == int(school_user_id) and caller.skid == skid
+    if caller_role != 'SUPER_ADMIN':
+        if action in ('delete', 'reactivate', 'reset_password') and is_self:
+            return None, forbidden("You can't do this to your own account")
+        if target.get('role') == 'SCHOOL_ADMIN' and action != 'view' and not (is_self and action == 'edit'):
+            return None, forbidden('Only a super admin can manage school admin accounts')
+    return target, None
+
+
+@user_bp.route('/get/<skid>/<int:school_user_id>', methods=['GET'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+def get_school_user(skid, school_user_id):
+    target, denied = _school_user_guard(skid, school_user_id, 'view')
+    if denied:
+        return denied
+    return jsonify({'user': target, 'status': 'success', 'code': 200}), 200
+
+
+@user_bp.route('/update-school/<skid>/<int:school_user_id>', methods=['PUT'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@log_actions('UPDATE_SCHOOL_USER')
+def update_school_user(skid, school_user_id):
+    _, denied = _school_user_guard(skid, school_user_id, 'edit')
+    if denied:
+        return denied
+    try:
+        user = UserService.update_school_user(skid, school_user_id, request.get_json() or {})
+        return jsonify({'message': 'User updated successfully', 'user': user, 'status': 'success', 'code': 200}), 200
+    except LookupError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 404}), 404
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
+    except Exception as e:
+        return jsonify({'message': f'Failed to update user: {str(e)}', 'status': 'error', 'code': 500}), 500
+
+
+@user_bp.route('/delete/<skid>/<int:school_user_id>', methods=['DELETE'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@log_actions('DEACTIVATE_SCHOOL_USER')
+def delete_school_user(skid, school_user_id):
+    """Soft delete: inactive + login disabled; records kept, can be reactivated."""
+    from app.utils.user_status import set_school_user_active, status_response
+    _, denied = _school_user_guard(skid, school_user_id, 'delete')
+    if denied:
+        return denied
+    return status_response(set_school_user_active(skid, school_user_id, False, None, 'User'))
+
+
+@user_bp.route('/reactivate/<skid>/<int:school_user_id>', methods=['PATCH'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@log_actions('REACTIVATE_SCHOOL_USER')
+def reactivate_school_user(skid, school_user_id):
+    from app.utils.user_status import set_school_user_active, status_response
+    _, denied = _school_user_guard(skid, school_user_id, 'reactivate')
+    if denied:
+        return denied
+    return status_response(set_school_user_active(skid, school_user_id, True, None, 'User'))
+
+
+@user_bp.route('/<int:school_user_id>/reset-password/<skid>', methods=['POST'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@log_actions('ADMIN_RESET_PASSWORD')
+def admin_reset_password(school_user_id, skid):
+    """
+    Admin sets a new password for a user's login. The user is logged out everywhere.
+    Super admins and other school admins can't be reset here.
+    """
+    from app import db
+    from app.models.main.User import User
+    from app.models.main.UserSession import UserSession
+    from app.utils.helpers import validate_password
+    _, denied = _school_user_guard(skid, school_user_id, 'reset_password')
+    if denied:
+        return denied
+    new_password = (request.get_json(silent=True) or {}).get('new_password') or ''
+    ok, error = validate_password(new_password)
+    if not ok:
+        return jsonify({'message': error, 'status': 'error', 'code': 400}), 400
+    main_user = User.query.filter_by(school_user_id=school_user_id, skid=skid).first()
+    if not main_user:
+        return jsonify({'message': 'This user has no login yet. Create a login first.', 'status': 'error', 'code': 400}), 400
+    if main_user.role == UserRole.SUPER_ADMIN:
+        return jsonify({'message': 'Super admin passwords cannot be reset here', 'status': 'error', 'code': 403}), 403
+    main_user.set_password(new_password)
+    db.session.commit()
+    ended = 0
+    for session in UserSession.get_user_sessions(main_user.id, active_only=True):
+        session.logout()
+        ended += 1
+    return jsonify({
+        'message': f'Password reset. The user was signed out of {ended} active session(s).',
+        'status': 'success', 'code': 200,
+    }), 200

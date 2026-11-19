@@ -147,7 +147,8 @@ class FinanceService {
         const skid = getSchoolId();
         if (!skid) throw new Error('School ID not found. Please log in again.');
         const response = await api.get(`/classes/list/${skid}`);
-        return Array.isArray(response) ? response : [];
+        // The API returns { code, data: [...] }; accept a bare array too.
+        return Array.isArray(response) ? response : (response as any)?.data || [];
     }
 
     // ============================================

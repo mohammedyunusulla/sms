@@ -13,6 +13,7 @@ import {
   LoadingSpinner,
   EmptyState,
   Modal,
+  PasswordToggleButton,
 } from '../../components';
 import { userService } from '../../services/modules/userService';
 import { IUser } from '../../types/index';
@@ -29,6 +30,8 @@ const UserDetail: FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [resettingPassword, setResettingPassword] = useState(false);
 
@@ -55,13 +58,13 @@ const UserDetail: FC = () => {
     if (!selectedUser) return;
 
     const confirmed = window.confirm(
-      'Are you sure you want to delete this user? This action cannot be undone.'
+      'Delete this user? They will be marked inactive and can no longer log in. Their records are kept and they can be reactivated.'
     );
 
     if (confirmed) {
       try {
         await userService.delete(selectedUser.id);
-        toast.success('User deleted successfully');
+        toast.success('User deleted. Their records are kept and they can be reactivated.');
         setTimeout(() => navigate('/users'), 1500);
       } catch (err: any) {
         toast.error(err.message || 'Failed to delete user');
@@ -362,26 +365,34 @@ const UserDetail: FC = () => {
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               New Password
             </label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Enter new password"
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div className="relative">
+              <input
+                type={showNewPassword ? 'text' : 'password'}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password"
+                autoComplete="new-password"
+                className="w-full px-4 py-2 pr-11 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <PasswordToggleButton visible={showNewPassword} onToggle={() => setShowNewPassword((v) => !v)} />
+            </div>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Confirm Password
             </label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Confirm new password"
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+                autoComplete="new-password"
+                className="w-full px-4 py-2 pr-11 rounded-lg border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <PasswordToggleButton visible={showConfirmPassword} onToggle={() => setShowConfirmPassword((v) => !v)} />
+            </div>
           </div>
 
           <div className="flex gap-3 pt-4">

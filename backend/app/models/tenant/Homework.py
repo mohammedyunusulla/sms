@@ -26,6 +26,8 @@ class HomeworkAssignment(BaseModelTenant, BaseModelTenantMixin):
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=False)
     reference_answer_key = Column(Text, nullable=True)
+    # Photos of the homework (e.g. a photo of the board) - stored under HOMEWORK_UPLOAD_DIR
+    instruction_image_paths = Column(JSON, default=list, nullable=True)
     expected_time_minutes = Column(Integer, default=15, nullable=False)
     due_date = Column(DateTime, nullable=True)
     created_by = Column(Integer, nullable=False, index=True)

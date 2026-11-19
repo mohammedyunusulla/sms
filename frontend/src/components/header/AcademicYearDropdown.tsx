@@ -59,7 +59,17 @@ const AcademicYearDropdown: FC<AcademicYearDropdownProps> = ({ onManageClick }) 
     };
 
     if (!academicYears || academicYears.length === 0) {
-        return null;
+        // No years yet: admins/principals get a visible way to create the first one.
+        if (!onManageClick) return null;
+        return (
+            <button
+                onClick={handleManageClick}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900/20 dark:text-amber-300 dark:hover:bg-amber-900/30 transition-colors"
+            >
+                <CalendarIcon />
+                <span className="text-sm font-medium">Set up academic year</span>
+            </button>
+        );
     }
 
     return (

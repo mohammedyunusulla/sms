@@ -2,6 +2,7 @@
 from flask import Blueprint, request, jsonify
 from app.services.studentParent_service import StudentParentService 
 from app.decorators import login_required
+from app.decorators.auth import own_parent_required
 
 studentParent_bp = Blueprint('studentParent', __name__)
 
@@ -74,6 +75,7 @@ def update_student_parent_link(skid, student_user_id):
 # GET PARENT'S CHILDREN (for parent mobile app - returns full details)
 @studentParent_bp.route('/children/<int:parent_user_id>/<skid>', methods=['GET'])
 @login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'PARENT'])
+@own_parent_required('parent_user_id')
 def get_parent_children(parent_user_id, skid):
     try:
         if not skid:

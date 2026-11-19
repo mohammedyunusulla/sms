@@ -1,9 +1,12 @@
 import base64
 import json
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from google import genai
+
+# (raw bytes, mime type) — e.g. (b"...", "image/png")
+Image = Tuple[bytes, str]
 
 
 class HomeworkGeminiService:
@@ -14,33 +17,39 @@ class HomeworkGeminiService:
             raise ValueError("GEMINI_API_KEY is not configured")
         return genai.Client(api_key=api_key)
 
+    @staticmethod
+    def _image_parts(images: Sequence[Image]) -> List[Dict[str, Any]]:
+        """Inline image parts, each sent with its real type (it used to be hard-coded to JPEG)."""
+        return [
+            {"inline_data": {"mime_type": mime or "image/jpeg", "data": base64.b64encode(raw).decode("utf-8")}}
+            for raw, mime in images
+        ]
+
     @classmethod
     def generate_socratic_hint(
         cls,
         assignment_title: str,
         assignment_description: str,
         student_doubt: str,
-        image_bytes: Optional[bytes] = None,
+        student_images: Optional[Sequence[Image]] = None,
+        instruction_images: Optional[Sequence[Image]] = None,
     ) -> str:
         client = cls._get_client()
         prompt = (
             "You are a strict Socratic tutor for school homework.\n"
             "Never provide the final direct answer.\n"
             "Give a concise hint in 3-6 bullets that helps the student progress.\n\n"
-            f"Assignment: {assignment_title}\n"
-            f"Instructions: {assignment_description}\n"
+            f"Homework: {assignment_title}\n"
+            f"Instructions: {assignment_description or '(see the homework photos)'}\n"
             f"Student question: {student_doubt}"
         )
         parts: List[Any] = [prompt]
-        if image_bytes:
-            parts.append(
-                {
-                    "inline_data": {
-                        "mime_type": "image/jpeg",
-                        "data": base64.b64encode(image_bytes).decode("utf-8"),
-                    }
-                }
-            )
+        if instruction_images:
+            parts.append("Homework photos (the questions, e.g. a photo of the board):")
+            parts.extend(cls._image_parts(instruction_images))
+        if student_images:
+            parts.append("Student's work so far:")
+            parts.extend(cls._image_parts(student_images))
 
         response = client.models.generate_content(
             model="gemini-2.5-flash",
@@ -49,12 +58,31 @@ class HomeworkGeminiService:
         return (response.text or "Try solving one step at a time and verify each intermediate value.").strip()
 
     @classmethod
+    def extract_instructions(cls, images: Sequence[Image], subject: str = "") -> str:
+        """Draft homework instructions from photos (e.g. of the board) for the teacher to edit."""
+        client = cls._get_client()
+        prompt = (
+            "These photos show school homework written on a board or a page.\n"
+            "Write out the homework exactly as given, as clear plain-text instructions for students:\n"
+            "- keep every question, number and formula; number the questions\n"
+            "- do not solve anything and do not add your own questions\n"
+            "- if part of the photo is unreadable, write [unclear] there\n"
+            f"Subject: {subject or 'not given'}"
+        )
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[prompt, *cls._image_parts(images)],
+        )
+        return (response.text or "").strip()
+
+    @classmethod
     def grade_submission(
         cls,
         assignment: Dict[str, Any],
-        image_bytes_list: List[bytes],
+        images: Sequence[Image],
         active_duration_seconds: int,
         hints_used_count: int,
+        instruction_images: Optional[Sequence[Image]] = None,
     ) -> Dict[str, Any]:
         client = cls._get_client()
         grading_schema = {
@@ -79,12 +107,12 @@ class HomeworkGeminiService:
 
         prompt = (
             "Evaluate this student homework from notebook images.\n"
-            "Use the assignment description and optional reference answer key/rubric.\n"
+            "Use the homework description and optional reference answer key/rubric.\n"
             "Score strictness: 0-100 accuracy.\n"
             "Return only JSON matching schema.\n\n"
             f"Title: {assignment['title']}\n"
             f"Subject: {assignment['subject']}\n"
-            f"Description: {assignment['description']}\n"
+            f"Description: {assignment['description'] or '(see the homework photos)'}\n"
             f"Reference key: {assignment.get('reference_answer_key') or 'Not provided'}\n"
             f"Expected time (minutes): {assignment['expected_time_minutes']}\n"
             f"Active duration seconds: {active_duration_seconds}\n"
@@ -92,15 +120,11 @@ class HomeworkGeminiService:
         )
 
         parts: List[Any] = [prompt]
-        for raw in image_bytes_list:
-            parts.append(
-                {
-                    "inline_data": {
-                        "mime_type": "image/jpeg",
-                        "data": base64.b64encode(raw).decode("utf-8"),
-                    }
-                }
-            )
+        if instruction_images:
+            parts.append("Homework photos (the questions, e.g. a photo of the board):")
+            parts.extend(cls._image_parts(instruction_images))
+        parts.append("Student's notebook pages:")
+        parts.extend(cls._image_parts(images))
 
         response = client.models.generate_content(
             model="gemini-2.5-flash",

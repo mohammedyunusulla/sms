@@ -198,11 +198,25 @@ const UserList: FC = () => {
         try {
             setLoading(true);
             await userService.delete(selectedUser!.id);
-            toast.success('User deleted successfully!');
+            toast.success('User deleted. Their records are kept and they can be reactivated.');
             fetchUsers(currentPage, pageSize);
             setDeleteConfirmOpen(false);
         } catch (err: any) {
             toast.error(err.message || 'Failed to delete user.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleReactivate = async (user: { id: string | number; full_name?: string }) => {
+        setShowActionsMenu(null);
+        try {
+            setLoading(true);
+            await userService.reactivate(String(user.id));
+            toast.success(`${user.full_name || 'User'} reactivated`);
+            fetchUsers(currentPage, pageSize);
+        } catch (err) {
+            toast.error((err as { message?: string })?.message || 'Failed to reactivate user.');
         } finally {
             setLoading(false);
         }
@@ -467,7 +481,18 @@ const UserList: FC = () => {
                             </svg>
                             View User
                         </button>
-                        {hasPermission(Permission.DELETE_USERS) && (
+                        {hasPermission(Permission.DELETE_USERS) && rows.find(r => r.id === showActionsMenu)?.is_active === false && (
+                            <button
+                                onClick={() => handleReactivate(rows.find(r => r.id === showActionsMenu)!)}
+                                className="w-full text-left px-4 py-2 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors flex items-center gap-2 text-green-700 dark:text-green-400 last:rounded-b-lg"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Reactivate User
+                            </button>
+                        )}
+                        {hasPermission(Permission.DELETE_USERS) && rows.find(r => r.id === showActionsMenu)?.is_active !== false && (
                             <button
                                 onClick={() => handleDelete(rows.find(r => r.id === showActionsMenu)!)}
                                 className="w-full text-left px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2 text-red-600 dark:text-red-400 last:rounded-b-lg"
@@ -485,7 +510,7 @@ const UserList: FC = () => {
             <ConfirmDialog
                 isOpen={deleteConfirmOpen}
                 title="Delete User"
-                message={`Are you sure you want to delete the user "${selectedUser?.full_name}"?`}
+                message={`Delete "${selectedUser?.full_name}"? They will be marked inactive and can no longer log in. Their records are kept, and you can reactivate them from the Inactive filter.`}
                 type="danger"
                 confirmText="Yes, Delete"
                 cancelText="Cancel"

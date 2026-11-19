@@ -139,7 +139,7 @@ class TimetableService {
             throw new Error('School ID not found. Please log in again.');
         }
 
-        const response = await api.delete(`${this.baseUrl}/delete/${id}/${schoolId}`);
+        const response = await api.delete(`${this.baseUrl}/delete/${id}`, { params: { skid: schoolId } });
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.data?.message || 'Failed to delete timetable');
         }
@@ -295,23 +295,6 @@ class TimetableService {
             responseType: 'blob',
         });
         return response.data;
-    }
-
-    /**
-     * Bulk delete timetables
-     */
-    async bulkDelete(ids: string[]): Promise<void> {
-        const api = getApiClient();
-        const schoolId = getSchoolId();
-
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
-        }
-
-        const response = await api.post(`${this.baseUrl}/bulk-delete/${schoolId}`, { ids });
-        if (response.code !== 200 || response.status !== 'success') {
-            throw new Error(response.data?.message || 'Failed to delete timetables');
-        }
     }
 
     /**

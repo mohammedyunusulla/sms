@@ -2,7 +2,20 @@ from app import db
 from app.models.tenant import Class, Teacher, SchoolUsers, Student, StudentEnrollment
 from app.models.tenant.Sections import Section
 from app.utils.db_manager import switch_to_school_db
+from app.utils.usage_check import usage_summary, CLASS_REFERENCES, SECTION_REFERENCES, blocked_message
+from sqlalchemy import text
 from datetime import date
+
+
+def _section_teacher_id(value):
+    """A section's class teacher is optional: '', None, 'null', 'NaN' -> None (no teacher)."""
+    if value is None or (isinstance(value, str) and value.strip().lower() in ('', 'null', 'none', 'nan', 'undefined')):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        raise ValueError("Invalid class teacher")
+
 
 class ClassService:
     @staticmethod
@@ -78,8 +91,10 @@ class ClassService:
                 if not class_obj:
                     raise ValueError("Class not found")
                 
-                # Check if class has students enrolled
-                # You might want to add this check based on your business logic
+                # Only allow deleting a class nothing depends on (its empty sections are removed with it)
+                usage = usage_summary(tenant_session, CLASS_REFERENCES, class_id)
+                if usage:
+                    raise ValueError(blocked_message(class_obj.class_name or f'#{class_id}', 'class', usage))
                 Sections = tenant_session.query(Section).filter_by(class_id=class_id).all()
                 
                 # Delete all Section first
@@ -90,6 +105,8 @@ class ClassService:
                 tenant_session.delete(class_obj)
                 tenant_session.commit()
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to delete class: {str(e)}")
 
@@ -163,17 +180,15 @@ class ClassService:
                 if existing_section:
                     raise ValueError(f"Section '{data['section_name']}' already exists for this class")
                 
-                # Validate teacher exists if provided
-                # teacher_id = data.get('teacher_id')
-                # if teacher_id:
-                #     teacher = tenant_session.query(Teacher).filter_by(user_id=teacher_id).first()
-                #     if not teacher:
-                #         raise ValueError("Teacher not found")
-                
+                # Class teacher is optional (can be assigned later); validate it if given
+                teacher_id = _section_teacher_id(data.get('teacher_id'))
+                if teacher_id is not None and not tenant_session.query(Teacher).filter_by(user_id=teacher_id).first():
+                    raise ValueError("Teacher not found")
+
                 new_section = Section(
                     section_name=data['section_name'],
                     class_id=data['class_id'],
-                    teacher_id= data.get('teacher_id')
+                    teacher_id=teacher_id
                 )
                 
                 tenant_session.add(new_section)
@@ -183,6 +198,8 @@ class ClassService:
                 tenant_session.refresh(new_section)
                 return new_section.to_dict()
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to create section: {str(e)}")
 
@@ -236,12 +253,10 @@ class ClassService:
                 if existing_section:
                     raise ValueError(f"Section '{data['section_name']}' already exists for this class")
                 
-                # Validate teacher exists if provided
-                teacher_id = data.get('teacher_id')
-                if teacher_id:
-                    teacher = tenant_session.query(Teacher).filter_by(user_id=teacher_id).first()
-                    if not teacher:
-                        raise ValueError("Teacher not found")
+                # Validate teacher exists if provided; an empty value removes the class teacher
+                teacher_id = _section_teacher_id(data.get('teacher_id'))
+                if teacher_id is not None and not tenant_session.query(Teacher).filter_by(user_id=teacher_id).first():
+                    raise ValueError("Teacher not found")
                 
                 section.section_name = data['section_name']
                 if 'teacher_id' in data:
@@ -252,6 +267,8 @@ class ClassService:
                 tenant_session.refresh(section)
                 return section.to_dict()
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to update section: {str(e)}")
 
@@ -266,15 +283,18 @@ class ClassService:
                 if not section:
                     raise ValueError("Section not found")
                 
-                # Check if section has students enrolled
-                # You might want to add this check based on your business logic
-                # students = tenant_session.query(Student).filter_by(section_id=section_id).all()
-                # if students:
-                #     raise ValueError("Cannot delete section with enrolled students")
-                
+                # Only allow deleting a section nothing depends on
+                usage = usage_summary(tenant_session, SECTION_REFERENCES, section_id)
+                if usage:
+                    raise ValueError(blocked_message(section.section_name or f'#{section_id}', 'section', usage))
+
+                # Subject links are configuration only: remove them with the section
+                tenant_session.execute(text('DELETE FROM section_subjects WHERE section_id = :id'), {'id': int(section_id)})
                 tenant_session.delete(section)
                 tenant_session.commit()
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to delete section: {str(e)}")
 

@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
 import { homeworkApi } from '../api/homeworkApi';
 import QrScannerInput from '../components/QrScannerInput';
+import HomeworkPhotos from '../components/HomeworkPhotos';
 import { HomeworkAssignment, HomeworkSession } from '../types';
 
 function formatDuration(totalSeconds: number): string {
@@ -74,7 +75,7 @@ export default function StudentHomeworkPage() {
 
   const startSession = async () => {
     if (!selectedAssignmentId || !startQr.trim()) {
-      toast.error('Select assignment and scan QR to start.');
+      toast.error('Select homework and scan QR to start.');
       return;
     }
     try {
@@ -163,7 +164,7 @@ export default function StudentHomeworkPage() {
             onChange={(event) => setSelectedAssignmentId(Number(event.target.value))}
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
           >
-            <option value="">Select assignment</option>
+            <option value="">Select homework</option>
             {assignments.map((assignment) => (
               <option key={assignment.id} value={assignment.id}>
                 {assignment.title} ({assignment.subject})
@@ -184,7 +185,14 @@ export default function StudentHomeworkPage() {
       {selectedAssignment && (
         <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{selectedAssignment.title}</h3>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{selectedAssignment.description}</p>
+          {selectedAssignment.description && (
+            <p className="mt-1 whitespace-pre-line text-sm text-gray-500 dark:text-gray-400">{selectedAssignment.description}</p>
+          )}
+          {!!selectedAssignment.photo_count && (
+            <div className="mt-3">
+              <HomeworkPhotos assignmentId={selectedAssignment.id} count={selectedAssignment.photo_count} />
+            </div>
+          )}
           <p className="mt-2 text-xs text-gray-500">Expected time: {selectedAssignment.expected_time_minutes} minutes</p>
         </div>
       )}

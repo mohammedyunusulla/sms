@@ -14,6 +14,7 @@ import { IProgressCard, IProgressCardSubject } from '../../types/index';
 import { useAuthStore } from '../../stores/authStore';
 import { generateProgressCardPdf } from '../../prints';
 import type { SchoolData, PdfAction } from '../../prints';
+import { formatDateRange } from '../../utils/dateRange';
 
 type GradeBadgeVariant = 'success' | 'primary' | 'warning' | 'danger' | 'secondary';
 
@@ -332,6 +333,11 @@ const ProgressCardView: FC = () => {
                                 {progressCard.attendance.percentage?.toFixed(1)}%
                             </Badge>
                         </p>
+                        {formatDateRange(progressCard.attendance.from, progressCard.attendance.to) && (
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400" data-testid="attendance-period">
+                                {formatDateRange(progressCard.attendance.from, progressCard.attendance.to)}
+                            </p>
+                        )}
                     </div>
                 )}
                 <div className={`bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-6 ${!progressCard.attendance ? 'md:col-span-2' : ''}`}>

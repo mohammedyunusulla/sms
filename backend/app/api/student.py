@@ -5,6 +5,44 @@ from app.models.main.User import UserRole
 
 student_bp = Blueprint('students', __name__)
 
+# Blank optional fields are stored as NULL ('' breaks class/section/roll numbers and unique admission_number)
+STUDENT_OPTIONAL_FIELDS = (
+    'gender', 'date_of_birth', 'blood_group', 'emergency_contact', 'address', 'admission_number',
+    'aadhar_number', 'birth_certificate_number', 'nationality', 'religion', 'category', 'mother_tongue',
+    'roll_no', 'admission_date', 'class_id', 'section_id', 'parent_id',
+)
+STUDENT_REQUIRED_FIELDS = (
+    ('username', 'Username'), ('password', 'Password'), ('first_name', 'First name'),
+    ('last_name', 'Last name'), ('email', 'Email'), ('phone', 'Phone'),
+)
+
+
+def _link_parent(skid, student_user_id, parent_id):
+    """Save the parent chosen in the student form (create or change the student_parents link)."""
+    if not parent_id:
+        return None
+    from app.services.studentParent_service import StudentParentService
+    return StudentParentService.update_student_parent_link(int(student_user_id), int(parent_id), 'Guardian', skid)
+
+
+def _school_user_id_for(skid, username):
+    from app.models.tenant import SchoolUsers
+    from app.utils.db_manager import switch_to_school_db
+    with switch_to_school_db(skid) as tenant_session:
+        su = tenant_session.query(SchoolUsers).filter_by(username=username).first()
+        return su.id if su else None
+
+
+def _admission_number_taken(skid, admission_number, exclude_user_id=None):
+    """students.admission_number is unique in the tenant DB."""
+    from app.models.tenant import Student
+    from app.utils.db_manager import switch_to_school_db
+    with switch_to_school_db(skid) as tenant_session:
+        q = tenant_session.query(Student).filter(Student.admission_number == admission_number)
+        if exclude_user_id is not None:
+            q = q.filter(Student.user_id != int(exclude_user_id))
+        return q.first() is not None
+
 @student_bp.route('/create/<skid>', methods=['POST'])
 @login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
 @log_actions('CREATE_TEACHER_USER')
@@ -20,15 +58,35 @@ def create_student(skid):
             return jsonify({'message': 'No data provided'}), 400
         if not skid:
             return jsonify({'message': 'School ID is required'}), 400
-        
+
+        from app.utils.form_input import clean_payload, missing_fields_message, error
+        from app.utils.helpers import validate_password
+        data = clean_payload(data, STUDENT_OPTIONAL_FIELDS)
+        missing = missing_fields_message(data, STUDENT_REQUIRED_FIELDS)
+        if missing:
+            return error(missing, 400)
+        ok, password_error = validate_password(data['password'])
+        if not ok:
+            return error(password_error, 400)
+
         duplicate_check = StudentService.check_duplicate_user(data, skid)
         if duplicate_check:
-            return jsonify({'message': duplicate_check}), 400
+            return error(duplicate_check, 500 if duplicate_check.startswith('Error checking') else 409)
+        if data.get('admission_number') and _admission_number_taken(skid, data['admission_number']):
+            return error(f"Admission number '{data['admission_number']}' is already used by another student", 409)
 
         StudentService.create_student_user(data, skid)
 
+        # Link the parent picked in the form (this used to be silently dropped)
+        message = 'Student created successfully'
+        if data.get('parent_id'):
+            try:
+                _link_parent(skid, _school_user_id_for(skid, data['username']), data['parent_id'])
+            except Exception as link_error:
+                message = f'Student created, but linking the parent failed: {link_error}'
+
         return jsonify({
-            'message': 'Student created successfully',
+            'message': message,
             'status': 'success',
             'code': 200
         }), 200
@@ -110,6 +168,14 @@ def update_student(skid, student_id):
         if not data:
             return jsonify({'message': 'No data provided'}), 400
 
+        from app.utils.form_input import clean_payload, error
+        data = clean_payload(data, STUDENT_OPTIONAL_FIELDS)
+        for key, label in STUDENT_REQUIRED_FIELDS:
+            if key != 'password' and key in data and not data[key]:
+                return error(f'{label} is required', 400)
+        if data.get('admission_number') and _admission_number_taken(skid, data['admission_number'], exclude_user_id=student_id):
+            return error(f"Admission number '{data['admission_number']}' is already used by another student", 409)
+
         # Check for duplicates (excluding current student)
         # Only check fields that are being updated
         check_data = {}
@@ -123,9 +189,12 @@ def update_student(skid, student_id):
         if check_data:
             duplicate_check = StudentService.check_duplicate_user_for_update(check_data, skid, int(student_id))
             if duplicate_check:
-                return jsonify({'message': duplicate_check}), 400
+                return error(duplicate_check, 500 if duplicate_check.startswith('Error checking') else 409)
 
         StudentService.update_student(student_id, skid, data)
+        # Save a changed parent (no parent_id sent = leave the existing link alone)
+        if data.get('parent_id'):
+            _link_parent(skid, student_id, data['parent_id'])
 
         return jsonify({
             'message': 'Student updated successfully',
@@ -350,3 +419,31 @@ def promote_students(skid):
         return jsonify({'message': str(e)}), 400
     except Exception as e:
         return jsonify({'message': f'Failed to promote students: {str(e)}'}), 500
+
+def _set_student_active_response(skid, student_id, active):
+    result = StudentService.set_student_active(skid, student_id, active)
+    if result['success']:
+        return jsonify({'code': 200, 'status': 'success', 'message': result['message'], 'data': result['data']}), 200
+    return jsonify({'code': result['code'], 'status': 'error', 'message': result['message']}), result['code']
+
+
+@student_bp.route('/delete/<int:student_id>/<skid>', methods=['DELETE'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@log_actions('DEACTIVATE_STUDENT')
+def delete_student(student_id, skid):
+    """Soft delete: mark the student inactive and disable their login. All records are kept."""
+    try:
+        return _set_student_active_response(skid, student_id, False)
+    except Exception as e:
+        return jsonify({'code': 500, 'status': 'error', 'message': f'Failed to delete student: {str(e)}'}), 500
+
+
+@student_bp.route('/reactivate/<int:student_id>/<skid>', methods=['PATCH'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@log_actions('REACTIVATE_STUDENT')
+def reactivate_student(student_id, skid):
+    """Undo a soft delete: mark the student active and re-enable their login."""
+    try:
+        return _set_student_active_response(skid, student_id, True)
+    except Exception as e:
+        return jsonify({'code': 500, 'status': 'error', 'message': f'Failed to reactivate student: {str(e)}'}), 500

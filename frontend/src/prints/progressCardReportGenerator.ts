@@ -14,6 +14,7 @@ import {
 } from './HeaderAndFooterComponent';
 import type { SchoolData, PdfAction } from './printTypes';
 import type { IProgressCard } from '../types/index';
+import { formatDateRange } from '../utils/dateRange';
 
 /**
  * Grade color helper
@@ -253,7 +254,7 @@ export const generateProgressCardPdf = async (
                             stack: [
                                 { text: 'Attendance', bold: true, fontSize: 10, margin: [0, 0, 0, 5] },
                                 {
-                                    text: `Days Present: ${attendance.present_days} / ${attendance.total_days} (${attendance.percentage.toFixed(1)}%)`,
+                                    text: `Days Present: ${attendance.present_days} / ${attendance.total_days} (${attendance.percentage.toFixed(1)}%)${formatDateRange(attendance.from, attendance.to) ? ` — ${formatDateRange(attendance.from, attendance.to)}` : ''}`,
                                     fontSize: 9,
                                 },
                             ],

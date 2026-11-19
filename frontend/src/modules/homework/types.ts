@@ -10,6 +10,8 @@ export interface HomeworkAssignment {
   reference_answer_key?: string | null;
   expected_time_minutes: number;
   due_date?: string | null;
+  /** number of homework photos (e.g. of the board) */
+  photo_count?: number;
   created_by: number;
   created_at: string;
   current_session_status?: HomeworkSessionStatus | null;

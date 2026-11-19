@@ -13,11 +13,13 @@ import {
     FormInput,
     FormSelect,
     LoadingSpinner,
+    PasswordToggleButton,
 } from '../../components';
 import { staffService } from '../../services/modules/staffService';
 import { roleService } from '../../services/modules/roleService';
 import { useAuthStore } from '../../stores/authStore';
 import { IUser } from '../../types/index';
+import { passwordProblem } from '../../utils/formValidation';
 
 interface IFormData {
     username: string;
@@ -46,6 +48,7 @@ const UserForm: FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     // Form state
     const [formData, setFormData] = useState<IFormData>({
@@ -164,11 +167,9 @@ const UserForm: FC = () => {
 
         // Password validation (required for new users)
         if (!isEditMode) {
-            if (!formData.password) {
-                newErrors.password = 'Password is required';
-            } else if (formData.password.length < 6) {
-                newErrors.password = 'Password must be at least 6 characters';
-            }
+            // Same rules as the backend (8+ characters, upper, lower, digit)
+            const problem = passwordProblem(formData.password || '');
+            if (problem) newErrors.password = problem;
 
             if (!formData.confirmPassword) {
                 newErrors.confirmPassword = 'Please confirm password';
@@ -330,9 +331,9 @@ const UserForm: FC = () => {
                                 />
                             </FormField>
                             <FormField
-                                label="last Name"
+                                label="Last Name"
                                 required
-                                error={errors.first_name}
+                                error={errors.last_name}
                             >
                                 <FormInput
                                     name="last_name"
@@ -425,7 +426,7 @@ const UserForm: FC = () => {
                                     label="Password"
                                     required
                                     error={errors.password}
-                                    help="Minimum 6 characters"
+                                    help="At least 8 characters, with an uppercase letter, a lowercase letter and a digit"
                                 >
                                     <div className="relative">
                                         <FormInput
@@ -435,15 +436,11 @@ const UserForm: FC = () => {
                                             onChange={handleInputChange}
                                             placeholder="Enter password"
                                             error={Boolean(errors.password)}
+                                            className="pr-11"
+                                            autoComplete="new-password"
                                             required
                                         />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPassword(!showPassword)}
-                                            className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
-                                        >
-                                            {showPassword ? '🙈' : '👁️'}
-                                        </button>
+                                        <PasswordToggleButton visible={showPassword} onToggle={() => setShowPassword((v) => !v)} />
                                     </div>
                                 </FormField>
 
@@ -453,15 +450,20 @@ const UserForm: FC = () => {
                                     required
                                     error={errors.confirmPassword}
                                 >
-                                    <FormInput
-                                        name="confirmPassword"
-                                        type={showPassword ? 'text' : 'password'}
-                                        value={formData.confirmPassword}
-                                        onChange={handleInputChange}
-                                        placeholder="Confirm password"
-                                        error={Boolean(errors.confirmPassword)}
-                                        required
-                                    />
+                                    <div className="relative">
+                                        <FormInput
+                                            name="confirmPassword"
+                                            type={showConfirmPassword ? 'text' : 'password'}
+                                            value={formData.confirmPassword}
+                                            onChange={handleInputChange}
+                                            placeholder="Confirm password"
+                                            error={Boolean(errors.confirmPassword)}
+                                            className="pr-11"
+                                            autoComplete="new-password"
+                                            required
+                                        />
+                                        <PasswordToggleButton visible={showConfirmPassword} onToggle={() => setShowConfirmPassword((v) => !v)} />
+                                    </div>
                                 </FormField>
                             </div>
                         </div>

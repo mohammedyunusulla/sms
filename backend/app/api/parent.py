@@ -1,8 +1,18 @@
 from flask import Blueprint, request, jsonify
 from app.services.parent_service import ParentService
 from app.decorators import log_actions, login_required
+from app.utils.user_status import set_school_user_active, status_response
+from app.models.tenant.Parent import Parent
 
 parent_bp = Blueprint('parents', __name__)
+
+PARENT_OPTIONAL_FIELDS = (
+    'relation_type', 'father_phone', 'father_occupation', 'father_qualification', 'mother_full_name',
+    'mother_phone', 'mother_occupation', 'mother_qualification', 'address', 'city', 'state', 'postal_code',
+    'phone', 'gender', 'date_of_birth',
+)
+# Father's name becomes the account's first name (school_users.first_name is NOT NULL)
+PARENT_REQUIRED_FIELDS = (('username', 'Username'), ('password', 'Password'), ('father_full_name', "Father's name"))
 
 
 @parent_bp.route('/create/details/<skid>', methods=['POST'])
@@ -19,11 +29,28 @@ def create_parent(skid):
             return jsonify({'message': 'No data provided'}), 400
         if not skid:
             raise ValueError("School ID (skid) is required")
-        
+
+        import re
+        from app.utils.form_input import clean_payload, missing_fields_message, error
+        from app.utils.helpers import validate_password
+        data = clean_payload(data, PARENT_OPTIONAL_FIELDS)
+        missing = missing_fields_message(data, PARENT_REQUIRED_FIELDS)
+        if missing:
+            return error(missing, 400)
+        # The parent form uses the username as the login email
+        data['email'] = data.get('email') or data['username']
+        if not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', data['email']):
+            return error('Username must be a valid email address', 400)
+        ok, password_error = validate_password(data['password'])
+        if not ok:
+            return error(password_error, 400)
+        data['first_name'] = data.get('first_name') or data['father_full_name']
+        data['last_name'] = data.get('last_name') or data.get('mother_full_name') or ''
+
         # Check for duplicates
         duplicate_check = ParentService.check_duplicate_user(data, skid)
         if duplicate_check:
-            return jsonify({'message': duplicate_check}), 400
+            return error(duplicate_check, 409)
         
         user = ParentService.create_parent_user(data, skid)
         
@@ -99,17 +126,8 @@ def delete_parent(skid, parent_id):
         if not parent_id:
             raise ValueError("Parent ID is required")
         
-        # Delete the parent
-        result = ParentService.delete_parent_user(parent_id, skid)
-        
-        if not result:
-            return jsonify({'message': 'Parent not found'}), 404
-        
-        return jsonify({
-            'message': 'Parent deleted successfully',
-            'status': 'success',
-            'code': 200
-        }), 200
+        # Soft delete: inactive + login disabled; all records are kept and can be reactivated.
+        return status_response(set_school_user_active(skid, parent_id, False, Parent, 'Parent'))
         
     except ValueError as e:
         return jsonify({'message': str(e)}), 400
@@ -255,3 +273,14 @@ def get_student_parents(student_id, skid):
             'status': 'error',
             'code': 500
         }), 500
+
+
+@parent_bp.route('/reactivate/<skid>/<parent_id>', methods=['PATCH'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@log_actions('REACTIVATE_PARENT_USER')
+def reactivate_parent(skid, parent_id):
+    """Undo a soft delete: active again and login re-enabled."""
+    try:
+        return status_response(set_school_user_active(skid, parent_id, True, Parent, 'Parent'))
+    except Exception as e:
+        return jsonify({'code': 500, 'status': 'error', 'message': f'Failed to reactivate parent: {str(e)}'}), 500

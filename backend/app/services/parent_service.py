@@ -28,7 +28,8 @@ class ParentService:
                 raise ValueError("School not found")
             
             plan = data.get('plan', school.plan)
-            create_login = plan in ['STANDARD', 'PREMIUM']
+            # school.plan is a SchoolPlan enum (never equal to a plain string); compare by value
+            create_login = getattr(plan, 'value', plan) in ('STANDARD', 'PREMIUM')
             
             # Step 1: Create main user (only for STANDARD/PREMIUM)
             if create_login:
@@ -222,7 +223,13 @@ class ParentService:
                 
                 # Update SchoolUsers fields
                 user_fields = ['first_name', 'last_name', 'email', 'username', 'phone', 'gender', 'date_of_birth']
+                # Required account columns: never overwrite them with an empty value
+                required_user_fields = {'first_name', 'email', 'username'}
                 for key, value in data.items():
+                    if key in required_user_fields and not value:
+                        continue
+                    if key == 'last_name' and value is None:
+                        continue
                     if key in user_fields and hasattr(school_user, key):
                         setattr(school_user, key, value)
                 
@@ -239,6 +246,10 @@ class ParentService:
                 if main_user:
                     main_user_fields = ['first_name', 'last_name', 'email', 'username', 'phone']
                     for key, value in data.items():
+                        if key in required_user_fields and not value:
+                            continue
+                        if key == 'last_name' and value is None:
+                            continue
                         if key in main_user_fields and hasattr(main_user, key):
                             setattr(main_user, key, value)
                     

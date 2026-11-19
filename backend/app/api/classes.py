@@ -230,7 +230,7 @@ def get_sections_by_class(skid, class_id):
 
 
 @class_bp.route('/add-to-section/<skid>/<int:section_id>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
 def add_students_to_section(skid, section_id):
     """
     Add one or multiple students to a specific section
@@ -295,7 +295,7 @@ def add_students_to_section(skid, section_id):
 
 
 @class_bp.route('/remove-from-section/<skid>/<int:section_id>/<int:student_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
 def remove_student_from_section(skid, section_id, student_id):
     """
     Remove a student from a specific class or its sections
@@ -317,7 +317,7 @@ def remove_student_from_section(skid, section_id, student_id):
 
 
 @class_bp.route('/move-to-section/<skid>/<int:new_section_id>/<int:student_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
 def move_student_to_section(skid, new_section_id, student_id):
     """
     Move a student from current section to a new section
@@ -353,7 +353,7 @@ def move_student_to_section(skid, new_section_id, student_id):
 
 
 @class_bp.route('/remove-subject-from-section/<skid>/<int:section_id>/<int:subject_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
 def remove_subject_from_section(skid, section_id, subject_id):
     """
     Remove a subject from a specific class or its sections
