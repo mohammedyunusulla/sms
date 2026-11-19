@@ -85,5 +85,7 @@ def enter_marks(skid, academic_year_id):
             'status': 'success',
             'code': 200
         }), 200
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': str(e), 'status': 'error', 'code': 500}), 500

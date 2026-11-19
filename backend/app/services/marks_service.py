@@ -66,17 +66,15 @@ class MarksService:
                 
                 updated_count = 0
                 created_count = 0
-                
+
+                from app.utils.validators import student_marks
+                from app.models.tenant.SchoolUsers import SchoolUsers
                 for data in marks_data:
-                    # Validate marks
-                    if exam_config.has_internal_external:
-                        if data['internal_marks'] > exam_config.internal_max_marks:
-                            raise ValueError(f"Internal marks exceed maximum for student {data['student_id']}")
-                        if data['external_marks'] > exam_config.external_max_marks:
-                            raise ValueError(f"External marks exceed maximum for student {data['student_id']}")
-                    
-                    if data['total_marks'] > exam_config.total_max_marks:
-                        raise ValueError(f"Total marks exceed maximum for student {data['student_id']}")
+                    # Validate marks: 0..maximum, and internal + external = total (negative marks and
+                    # mismatched splits like 5 + 5 = 99 used to be saved). Nothing is saved if any row is wrong.
+                    person = tenant_session.query(SchoolUsers).filter_by(id=data.get('student_id')).first()
+                    who = f"{person.first_name} {person.last_name or ''}".strip() if person else f"student {data.get('student_id')}"
+                    data['internal_marks'], data['external_marks'], data['total_marks'] = student_marks(exam_config, data, who)
                     
                     existing_entry = tenant_session.query(MarksEntry).filter_by(
                         exam_config_id=exam_config_id,
@@ -114,5 +112,7 @@ class MarksService:
                     "updated": updated_count,
                     "total": len(marks_data)
                 }
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to save marks: {str(e)}")

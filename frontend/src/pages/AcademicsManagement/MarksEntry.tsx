@@ -241,6 +241,10 @@ const MarksEntry: FC = () => {
 
         if (!examConfig) return errors;
 
+        if (studentMarks.internal_marks < 0 || studentMarks.external_marks < 0 || studentMarks.total_marks < 0) {
+            errors.push("Marks can't be negative");
+        }
+
         if (examConfig.has_internal_external) {
             if (studentMarks.internal_marks > (examConfig.internal_max_marks || 0)) {
                 errors.push(`Internal marks exceed maximum (${examConfig.internal_max_marks})`);

@@ -261,6 +261,7 @@ const ExamSubjectConfigForm: FC<ExamSubjectConfigFormProps> = ({
               placeholder="e.g., 35"
               required
               min="0"
+              max={String(formData.total_max_marks)}
             />
           </FormField>
         </div>

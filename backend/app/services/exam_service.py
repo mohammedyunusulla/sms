@@ -160,13 +160,14 @@ class ExamService:
                 if existing:
                     raise ValueError("Configuration already exists for this exam-subject combination")
                 
-                # Validation
-                if data.get('has_internal_external'):
-                    internal = data.get('internal_max_marks', 0)
-                    external = data.get('external_max_marks', 0)
-                    if internal + external != data['total_max_marks']:
-                        raise ValueError("Internal + External marks must equal Total marks")
-                
+                # Validation: maxima > 0, split adds up, passing mark within the total
+                from app.utils.validators import exam_setup_marks
+                internal, external, total, passing, weightage = exam_setup_marks(
+                    data.get('has_internal_external'), data.get('internal_max_marks'), data.get('external_max_marks'),
+                    data.get('total_max_marks'), data.get('min_passing_marks'), data.get('weightage_percentage', 100.0))
+                data.update(internal_max_marks=internal, external_max_marks=external, total_max_marks=total,
+                            min_passing_marks=passing, weightage_percentage=weightage)
+
                 new_config = ExamSubjectConfig(
                     exam_type_id=data['exam_type_id'],
                     class_id=data['class_id'],
@@ -185,6 +186,8 @@ class ExamService:
                 tenant_session.refresh(new_config)
                 
                 return new_config.to_dict()
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to create configuration: {str(e)}")
     
@@ -233,26 +236,43 @@ class ExamService:
                 if not config:
                     raise ValueError("Configuration not found")
                 
-                # Validation for internal/external
-                if data.get('has_internal_external'):
-                    internal = data.get('internal_max_marks', 0)
-                    external = data.get('external_max_marks', 0)
-                    total = data.get('total_max_marks', config.total_max_marks)
-                    if internal + external != total:
-                        raise ValueError("Internal + External marks must equal Total marks")
-                
+                # Validate the setup as it will be after the update (sent values over current ones)
+                from app.utils.validators import exam_setup_marks
+                has_ie = data.get('has_internal_external', config.has_internal_external)
+                internal, external, total, passing, weightage = exam_setup_marks(
+                    has_ie,
+                    data.get('internal_max_marks', config.internal_max_marks),
+                    data.get('external_max_marks', config.external_max_marks),
+                    data.get('total_max_marks', config.total_max_marks),
+                    data.get('min_passing_marks', config.min_passing_marks),
+                    data.get('weightage_percentage', config.weightage_percentage),
+                )
+                # Lowering a maximum must not leave entered marks above it
+                from app.models.tenant.MarksModels import MarksEntry
+                from sqlalchemy import or_
+                over = tenant_session.query(MarksEntry).filter(
+                    MarksEntry.exam_config_id == config_id,
+                    or_(MarksEntry.total_marks > total,
+                        MarksEntry.internal_marks > (internal if has_ie else total),
+                        MarksEntry.external_marks > (external if has_ie else total)),
+                ).count()
+                if over:
+                    raise ValueError(f"{over} student{'' if over == 1 else 's'} already ha{'s' if over == 1 else 've'} marks above the new maximum. Correct those marks first.")
+
                 # Update fields
-                config.has_internal_external = data.get('has_internal_external', config.has_internal_external)
-                config.internal_max_marks = data.get('internal_max_marks', config.internal_max_marks)
-                config.external_max_marks = data.get('external_max_marks', config.external_max_marks)
-                config.total_max_marks = data.get('total_max_marks', config.total_max_marks)
-                config.min_passing_marks = data.get('min_passing_marks', config.min_passing_marks)
-                config.weightage_percentage = data.get('weightage_percentage', config.weightage_percentage)
+                config.has_internal_external = has_ie
+                config.internal_max_marks = internal
+                config.external_max_marks = external
+                config.total_max_marks = total
+                config.min_passing_marks = passing
+                config.weightage_percentage = weightage
                 
                 tenant_session.commit()
                 tenant_session.refresh(config)
-                
+
                 return config.to_dict()
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to update configuration: {str(e)}")
     
