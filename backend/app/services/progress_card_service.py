@@ -5,6 +5,55 @@ from app.models.tenant.Sections import Section
 from app.models.tenant.Class import Class
 from app.utils.db_manager import switch_to_school_db
 from sqlalchemy import func, or_
+from datetime import date
+
+
+def _progress_card_attendance(tenant_session, student, exam_id):
+    """
+    Real attendance for a progress card: from the start of the academic year up to the last
+    exam date of this exam for the student's class (or today, if that date is still ahead).
+    Present = Present + Late, total = days with attendance marked (same as the attendance
+    service). Returns None when no attendance has been marked in that period.
+    """
+    from app.models.tenant.AcademicYear import AcademicYear
+    from app.models.tenant.Attendance import Attendance
+    from app.utils.attendance_status import status_key
+
+    exam_rows = tenant_session.query(ExamTimetable).filter(
+        ExamTimetable.exam_type_id == exam_id,
+        ExamTimetable.class_id == student.class_id,
+        or_(ExamTimetable.section_id == student.section_id, ExamTimetable.section_id == None),
+    ).all()
+    year = None
+    if exam_rows:
+        year = tenant_session.query(AcademicYear).filter_by(id=exam_rows[0].academic_year_id).first()
+    if year is None:
+        year = tenant_session.query(AcademicYear).filter_by(is_current=True).first()
+    if year is None:
+        return None
+
+    last_exam_day = max((row.exam_date for row in exam_rows), default=None)
+    period_end = min(d for d in (last_exam_day, date.today(), year.end_date) if d is not None)
+    period_start = year.start_date
+    if period_end < period_start:
+        return None
+
+    records = tenant_session.query(Attendance.status).filter(
+        Attendance.student_user_id == student.user_id,
+        Attendance.date >= period_start,
+        Attendance.date <= period_end,
+    ).all()
+    total_days = len(records)
+    if total_days == 0:
+        return None
+    present_days = sum(1 for (status,) in records if status_key(status) in ('PRESENT', 'LATE'))
+    return {
+        'present_days': present_days,
+        'total_days': total_days,
+        'percentage': round(present_days / total_days * 100, 1),
+        'from': period_start.isoformat(),
+        'to': period_end.isoformat(),
+    }
 
 
 class ProgressCardService:
@@ -315,12 +364,10 @@ class ProgressCardService:
                     'rank': rank,
                     'total_students': total_students,
                     'class_teacher_name': class_teacher_name,
-                    'class_teacher_remarks': 'Excellent performance. Keep up the good work!',
-                    'attendance': {
-                        'present_days': 38,
-                        'total_days': 40,
-                        'percentage': 95.0
-                    }
+                    # No remarks feature exists yet: don't invent one (the card shows "No remarks provided.")
+                    'class_teacher_remarks': None,
+                    # Real attendance (None = nothing marked yet; the card then hides the box)
+                    'attendance': _progress_card_attendance(tenant_session, student, exam_id),
                 }
         except Exception as e:
             raise Exception(f"Failed to calculate progress card: {str(e)}")

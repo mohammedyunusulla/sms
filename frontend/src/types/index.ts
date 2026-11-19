@@ -653,6 +653,9 @@ export interface IProgressCardAttendance {
     present_days: number;
     total_days: number;
     percentage: number;
+    /** Period counted: academic year start .. last exam day (or today) */
+    from?: string;
+    to?: string;
 }
 
 export interface IProgressCard {
@@ -668,8 +671,8 @@ export interface IProgressCard {
     rank: number;
     total_students: number;
     subject_details: IProgressCardSubject[];
-    attendance?: IProgressCardAttendance;
-    class_teacher_remarks?: string;
+    attendance?: IProgressCardAttendance | null;
+    class_teacher_remarks?: string | null;
     class_teacher_name?: string;
 }
 
