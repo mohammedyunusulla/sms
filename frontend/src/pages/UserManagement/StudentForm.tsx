@@ -246,7 +246,10 @@ const StudentForm: FC<IStudentFormProps> = ({ initialData, mode: propMode = 'cre
         else if (!isValidEmail(v('email'))) next.email = 'Enter a valid email address';
         if (!v('phone')) next.phone = 'Phone is required';
         else if (!isValidPhone(v('phone'))) next.phone = 'Enter a 10-digit phone number';
-        if (!selectedParentId) next.parent = 'Select a parent or create a new one';
+        // A parent is required for new students. Existing students without one (older records) can
+        // still be saved; once a student has a parent, the link can be changed but not dropped.
+        const parentRequired = mode === 'create' || !!originalParentId;
+        if (parentRequired && !selectedParentId) next.parent = 'Select a parent or create a new one';
         return next;
     };
 
@@ -865,9 +868,16 @@ const StudentForm: FC<IStudentFormProps> = ({ initialData, mode: propMode = 'cre
                 {/* Parent Linking */}
                 {!isViewMode && (
                     <div>
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Parent Information *</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                            Parent Information{mode === 'create' || originalParentId ? ' *' : ''}
+                        </h3>
                         {errors.parent && (
                             <p role="alert" className="-mt-2 mb-4 text-sm text-red-600 dark:text-red-400">{errors.parent}</p>
+                        )}
+                        {mode === 'update' && !originalParentId && !selectedParentId && (
+                            <p className="-mt-2 mb-4 text-sm text-amber-700 dark:text-amber-300" data-testid="no-parent-hint">
+                                No parent is linked to this student yet. You can save other changes now and link a parent when you have their details.
+                            </p>
                         )}
 
                         {/* Current Associated Parent (Edit Mode) */}
