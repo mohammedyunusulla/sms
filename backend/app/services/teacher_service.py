@@ -319,7 +319,17 @@ class TeacherService:
                 offset = (page - 1) * limit
                 teachers_data = query.offset(offset).limit(limit).all()
 
-                teacher_list = [teacher.to_dict() for teacher in teachers_data]
+                # The list showed "-" for Employee ID / Designation: only the school-user record was returned.
+                teacher_rows = {t.user_id: t for t in tenant_session.query(Teacher).filter(
+                    Teacher.user_id.in_([u.id for u in teachers_data])).all()} if teachers_data else {}
+                teacher_list = []
+                for school_user in teachers_data:
+                    item = school_user.to_dict()
+                    teacher = teacher_rows.get(school_user.id)
+                    item['employee_id'] = teacher.employee_id if teacher else None
+                    item['designation'] = teacher.designation if teacher else None
+                    item['date_of_joining'] = teacher.date_of_joining.isoformat() if teacher and teacher.date_of_joining else None
+                    teacher_list.append(item)
 
                 # Calculate total pages
                 total_pages = (total + limit - 1) // limit
