@@ -198,7 +198,7 @@ const forceLogout = (): void => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('loggedUser');
-    window.location.href = '/';
+    window.location.href = '/signin';
 };
 
 /**

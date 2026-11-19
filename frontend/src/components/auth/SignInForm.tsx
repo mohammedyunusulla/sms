@@ -41,7 +41,26 @@ export default function SignInForm() {
 
     return (
         <div className="flex flex-col flex-1">
+            <div className="w-full max-w-md pt-4 mx-auto sm:pt-10">
+                <Link
+                    to="/"
+                    className="inline-flex items-center gap-1.5 text-sm text-gray-500 transition-colors hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                >
+                    <svg className="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M19 12H5M11 18l-6-6 6-6" />
+                    </svg>
+                    Back to home
+                </Link>
+            </div>
             <div className="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
+                <div className="mb-8">
+                    <h1 className="mb-2 font-semibold text-gray-800 text-title-sm dark:text-white/90">
+                        Welcome back
+                    </h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Sign in with the email and password provided by your school.
+                    </p>
+                </div>
                 <form onSubmit={handleSubmit}>
                     <div className="space-y-6">
                         <div>

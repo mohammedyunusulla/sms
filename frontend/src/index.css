@@ -790,3 +790,50 @@ span.flatpickr-weekday,
 .simplebar-scrollbar.simplebar-visible:before {
   @apply opacity-100;
 }
+
+/* ===== Branded app loader (components/common/AppLoader.tsx) ===== */
+@keyframes app-loader-appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes app-loader-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.97);
+    opacity: 0.85;
+  }
+}
+@keyframes app-loader-bar {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(260%);
+  }
+}
+.app-loader {
+  animation: app-loader-appear 0.3s ease-out 0.15s both;
+}
+.app-loader-logo {
+  animation: app-loader-breathe 2s ease-in-out infinite;
+}
+.app-loader-bar {
+  animation: app-loader-bar 1.3s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-loader-logo {
+    animation: none;
+  }
+  .app-loader-bar {
+    width: 100%;
+    animation: app-loader-appear 1.2s ease-in-out infinite alternate;
+  }
+}

@@ -20,7 +20,7 @@ export default function UserDropdown() {
     async function handleSignOut() {
         closeDropdown();
         await logout();
-        navigate('/');
+        navigate('/signin');
     }
     return (
         <div className="relative">
