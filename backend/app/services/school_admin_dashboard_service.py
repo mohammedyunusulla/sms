@@ -4,6 +4,7 @@ from app.models.tenant.ExpenseModels import Expense
 from app.models.tenant.FeeModels import StudentFee, FeePayment
 from app.models.tenant.Roles import Role
 from sqlalchemy import func, and_, or_, extract, case, cast, Float
+from app.utils.attendance_status import status_column
 from datetime import date, datetime, timedelta
 from app.models.tenant.TimeTable import Timetable
 from app.models.tenant.Sections import Section
@@ -94,7 +95,7 @@ class SchoolAdminDashboardService:
             and_(
                 Attendance.academic_year_id == academic_year_id,
                 Attendance.date == today,
-                Attendance.status.in_(['PRESENT', 'LATE'])
+                status_column(Attendance.status).in_(['PRESENT', 'LATE'])
             )
         ).scalar() or 0
         
@@ -337,7 +338,7 @@ class SchoolAdminDashboardService:
                         and_(
                             Attendance.academic_year_id == academic_year_id,
                             Attendance.date == current_date,
-                            Attendance.status.in_(['PRESENT', 'LATE'])
+                            status_column(Attendance.status).in_(['PRESENT', 'LATE'])
                         )
                     )
                     if class_id:
@@ -374,7 +375,7 @@ class SchoolAdminDashboardService:
                     and_(
                         Attendance.academic_year_id == academic_year_id,
                         Attendance.date == today,
-                        Attendance.status.in_(['PRESENT', 'LATE'])
+                        status_column(Attendance.status).in_(['PRESENT', 'LATE'])
                     )
                 )
                 if class_id:

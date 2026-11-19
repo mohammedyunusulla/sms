@@ -6,6 +6,7 @@ from app import db
 from sqlalchemy.exc import IntegrityError
 from flask import jsonify
 from app.utils.db_manager import switch_to_school_db
+from app.utils.attendance_status import normalize_status, status_key
 from app.utils.helpers import generate_student_id
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import and_, func
@@ -45,7 +46,7 @@ class AttendanceService:
                         'class_id': r['class_id'],
                         'section_id': r['section_id'],
                         'academic_year_id': academic_year_id,
-                        'status': r['status'],
+                        'status': normalize_status(r['status']),
                         'remarks': r.get('remarks', ''),
                         'date': datetime.strptime(r['date'], '%Y-%m-%d').date(),
                         'created_at': datetime.utcnow(),
@@ -83,7 +84,7 @@ class AttendanceService:
                 
                 for record_data in records:
                     student_id = record_data['student_id']
-                    status = record_data['status']
+                    status = normalize_status(record_data['status'])
                     remarks = record_data.get('remarks', '')
                     
                     # Find existing attendance record
@@ -121,6 +122,8 @@ class AttendanceService:
                     'date': attendance_date.strftime('%Y-%m-%d')
                 }
                 
+        except ValueError:
+            raise  # validation errors (e.g. invalid status) -> 400 in the route
         except Exception as e:
             if tenant_session:
                 tenant_session.rollback()
@@ -231,10 +234,10 @@ class AttendanceService:
                 ).count()
                 
                 # Calculate statistics
-                present = len([r for r in records if r.status == 'Present'])
-                absent = len([r for r in records if r.status == 'Absent'])
-                late = len([r for r in records if r.status == 'Late'])
-                leave = len([r for r in records if r.status in ['Leave', 'Medical_Leave', 'Excused']])
+                present = len([r for r in records if status_key(r.status) == 'PRESENT'])
+                absent = len([r for r in records if status_key(r.status) == 'ABSENT'])
+                late = len([r for r in records if status_key(r.status) == 'LATE'])
+                leave = len([r for r in records if status_key(r.status) == 'LEAVE'])
                 not_marked = total_students - len(records)
                 
                 attendance_rate = round((present / total_students * 100), 2) if total_students > 0 else 0
@@ -376,16 +379,16 @@ class AttendanceService:
                             })
                             
                             # Count by status
-                            if status == 'Present':
+                            if status_key(status) == 'PRESENT':
                                 present_count += 1
                                 overall_stats['total_present'] += 1
-                            elif status == 'Absent':
+                            elif status_key(status) == 'ABSENT':
                                 absent_count += 1
                                 overall_stats['total_absent'] += 1
-                            elif status == 'Late':
+                            elif status_key(status) == 'LATE':
                                 late_count += 1
                                 overall_stats['total_late'] += 1
-                            elif status in ['Leave', 'Medical_Leave', 'Excused']:
+                            elif status_key(status) == 'LEAVE':
                                 leave_count += 1
                                 overall_stats['total_leave'] += 1
                         else:
@@ -495,10 +498,10 @@ class AttendanceService:
                 # Convert to list format with statistics per date
                 result = []
                 for date_key, date_records in sorted(date_wise_records.items(), reverse=True):
-                    present_count = len([r for r in date_records if r['status'] == 'Present'])
-                    absent_count = len([r for r in date_records if r['status'] == 'Absent'])
-                    late_count = len([r for r in date_records if r['status'] == 'Late'])
-                    leave_count = len([r for r in date_records if r['status'] in ['Leave', 'Medical_Leave', 'Excused']])
+                    present_count = len([r for r in date_records if status_key(r['status']) == 'PRESENT'])
+                    absent_count = len([r for r in date_records if status_key(r['status']) == 'ABSENT'])
+                    late_count = len([r for r in date_records if status_key(r['status']) == 'LATE'])
+                    leave_count = len([r for r in date_records if status_key(r['status']) == 'LEAVE'])
                     
                     # Sort records by roll number
                     date_records.sort(key=lambda x: x['student']['roll_no'] or '')
@@ -543,7 +546,7 @@ class AttendanceService:
                     raise ValueError("Attendance record not found")
                 
                 # Update fields
-                record.status = status
+                record.status = normalize_status(status)
                 if remarks is not None:
                     record.remarks = remarks
                 record.updated_at = datetime.now()
@@ -623,10 +626,10 @@ class AttendanceService:
                 
                 # Calculate statistics
                 total_days = len(records)
-                present_count = len([r for r in records if r.status == 'Present'])
-                absent_count = len([r for r in records if r.status == 'Absent'])
-                late_count = len([r for r in records if r.status == 'Late'])
-                leave_count = len([r for r in records if r.status in ['Leave', 'Medical_Leave', 'Excused']])
+                present_count = len([r for r in records if status_key(r.status) == 'PRESENT'])
+                absent_count = len([r for r in records if status_key(r.status) == 'ABSENT'])
+                late_count = len([r for r in records if status_key(r.status) == 'LATE'])
+                leave_count = len([r for r in records if status_key(r.status) == 'LEAVE'])
                 
                 attended_count = present_count + late_count
                 attendance_percentage = round((attended_count / total_days * 100), 2) if total_days > 0 else 0

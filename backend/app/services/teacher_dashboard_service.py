@@ -9,6 +9,7 @@ from app.models.tenant.Subject import Subject
 from app.models.tenant.Class import Class
 from app.models.tenant.Sections import Section
 from sqlalchemy import and_, or_, func, distinct
+from app.utils.attendance_status import status_column
 from datetime import datetime, date, timedelta
 
 
@@ -170,7 +171,7 @@ class TeacherDashboardService:
                 base_filters = and_(
                     Attendance.date == attendance_date,
                     Attendance.academic_year_id == academic_year_id,
-                    Attendance.status == 'Absent',
+                    status_column(Attendance.status) == 'ABSENT',
                     SchoolUsers.is_active == True
                 )
                 
