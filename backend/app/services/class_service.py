@@ -6,6 +6,17 @@ from app.utils.usage_check import usage_summary, CLASS_REFERENCES, SECTION_REFER
 from sqlalchemy import text
 from datetime import date
 
+
+def _section_teacher_id(value):
+    """A section's class teacher is optional: '', None, 'null', 'NaN' -> None (no teacher)."""
+    if value is None or (isinstance(value, str) and value.strip().lower() in ('', 'null', 'none', 'nan', 'undefined')):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        raise ValueError("Invalid class teacher")
+
+
 class ClassService:
     @staticmethod
     def create_class(data, skid):
@@ -169,17 +180,15 @@ class ClassService:
                 if existing_section:
                     raise ValueError(f"Section '{data['section_name']}' already exists for this class")
                 
-                # Validate teacher exists if provided
-                # teacher_id = data.get('teacher_id')
-                # if teacher_id:
-                #     teacher = tenant_session.query(Teacher).filter_by(user_id=teacher_id).first()
-                #     if not teacher:
-                #         raise ValueError("Teacher not found")
-                
+                # Class teacher is optional (can be assigned later); validate it if given
+                teacher_id = _section_teacher_id(data.get('teacher_id'))
+                if teacher_id is not None and not tenant_session.query(Teacher).filter_by(user_id=teacher_id).first():
+                    raise ValueError("Teacher not found")
+
                 new_section = Section(
                     section_name=data['section_name'],
                     class_id=data['class_id'],
-                    teacher_id= data.get('teacher_id')
+                    teacher_id=teacher_id
                 )
                 
                 tenant_session.add(new_section)
@@ -189,6 +198,8 @@ class ClassService:
                 tenant_session.refresh(new_section)
                 return new_section.to_dict()
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to create section: {str(e)}")
 
@@ -242,12 +253,10 @@ class ClassService:
                 if existing_section:
                     raise ValueError(f"Section '{data['section_name']}' already exists for this class")
                 
-                # Validate teacher exists if provided
-                teacher_id = data.get('teacher_id')
-                if teacher_id:
-                    teacher = tenant_session.query(Teacher).filter_by(user_id=teacher_id).first()
-                    if not teacher:
-                        raise ValueError("Teacher not found")
+                # Validate teacher exists if provided; an empty value removes the class teacher
+                teacher_id = _section_teacher_id(data.get('teacher_id'))
+                if teacher_id is not None and not tenant_session.query(Teacher).filter_by(user_id=teacher_id).first():
+                    raise ValueError("Teacher not found")
                 
                 section.section_name = data['section_name']
                 if 'teacher_id' in data:
@@ -258,6 +267,8 @@ class ClassService:
                 tenant_session.refresh(section)
                 return section.to_dict()
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to update section: {str(e)}")
 

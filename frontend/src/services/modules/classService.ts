@@ -185,7 +185,8 @@ class ClassService {
     }
 
     // Create Section For the Selected Class
-    async createSection(classId: string, sectionName: string, teacherId: string): Promise<any> {
+    // teacherId is optional: a section can be created without a class teacher and assigned later
+    async createSection(classId: string, sectionName: string, teacherId?: string | number | null): Promise<any> {
         const api = getApiClient();
         const schoolId = getSchoolId();
 
@@ -196,7 +197,7 @@ class ClassService {
         const response = await api.post(`${this.baseUrl}/create/section/${schoolId}`, {
             class_id: classId,
             section_name: sectionName,
-            teacher_id: teacherId,
+            teacher_id: teacherId || null,
         });
 
         if (response.code === 200 && response.status === 'success') {
@@ -206,7 +207,8 @@ class ClassService {
         throw new Error(response.data?.message || 'Failed to create section');
     }
 
-    async updateSection(classId: string, sectionId: string, sectionName: string, teacherId: string): Promise<any> {
+    // teacherId empty/null removes the class teacher
+    async updateSection(classId: string, sectionId: string, sectionName: string, teacherId?: string | number | null): Promise<any> {
         const api = getApiClient();
         const schoolId = getSchoolId();
 
@@ -217,7 +219,7 @@ class ClassService {
         const response = await api.put(`${this.baseUrl}/update/section/${schoolId}/${sectionId}`, {
             class_id: classId,
             section_name: sectionName,
-            teacher_id: teacherId,
+            teacher_id: teacherId || null,
         });
 
         if (response.code === 200 && response.status === 'success') {

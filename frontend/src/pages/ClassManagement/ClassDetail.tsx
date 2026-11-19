@@ -117,7 +117,7 @@ const ClassDetail: FC = () => {
             setSectionData({
                 id: section.id,
                 section_name: section.section_name,
-                teacher_id: section.teacher_id,
+                teacher_id: section.teacher_id ?? '',
             });
         } else {
             setSectionData({
@@ -136,17 +136,19 @@ const ClassDetail: FC = () => {
     };
 
     const handleSaveSection = async () => {
-        if (!sectionData.section_name || !sectionData.teacher_id) {
-            toast.error('Please fill in all fields');
+        // Only the name is required; the class teacher can be assigned later
+        if (!sectionData.section_name.trim()) {
+            toast.error('Section name is required');
             return;
         }
+        const teacherId = sectionData.teacher_id ? String(sectionData.teacher_id) : null;
         setIsSavingSection(true);
         try {
             if (isEditMode) {
-                await classService.updateSection(id!, sectionData.id!.toString(), sectionData.section_name, sectionData.teacher_id.toString());
+                await classService.updateSection(id!, sectionData.id!.toString(), sectionData.section_name.trim(), teacherId);
                 toast.success('Section updated successfully');
             } else {
-                await classService.createSection(id!, sectionData.section_name, sectionData.teacher_id.toString());
+                await classService.createSection(id!, sectionData.section_name.trim(), teacherId);
                 toast.success('Section created successfully');
             }
             setShowSectionModal(false);
@@ -353,7 +355,7 @@ const ClassDetail: FC = () => {
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Section Name
+                                    Section Name <span className="text-red-500">*</span>
                                 </label>
                                 <input
                                     type="text"
@@ -365,14 +367,14 @@ const ClassDetail: FC = () => {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Class Teacher
+                                    Class Teacher <span className="font-normal text-gray-500 dark:text-gray-400">(optional)</span>
                                 </label>
                                 <select
-                                    value={sectionData.teacher_id}
-                                    onChange={(e) => setSectionData({ ...sectionData, teacher_id: parseInt(e.target.value) })}
+                                    value={sectionData.teacher_id ?? ''}
+                                    onChange={(e) => setSectionData({ ...sectionData, teacher_id: e.target.value ? parseInt(e.target.value) : '' })}
                                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                                 >
-                                    <option value="">Select a teacher</option>
+                                    <option value="">No class teacher (assign later)</option>
                                     {teachers.map((teacher) => (
                                         <option key={teacher.id} value={teacher.id}>
                                             {teacher.first_name} {teacher.last_name}
