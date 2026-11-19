@@ -26,6 +26,30 @@ def academic_year_for_date(tenant_session, day):
         raise ValueError(f"No academic year covers {day.strftime('%d %b %Y')}. Set up the academic year first.")
     return year.id
 
+
+def attendance_day(value):
+    """The attendance date: a real date, not in the future (Sundays are allowed for events / make-up days)."""
+    from app.utils.validators import not_in_future
+    return not_in_future(value, "Attendance date")
+
+
+def check_in_section(tenant_session, student_ids, section_id, year_id):
+    """Every student must be enrolled in this section in that academic year (any status, so past days stay editable)."""
+    from app.models.tenant.StudentEnrollment import StudentEnrollment
+    wanted = {int(i) for i in student_ids}
+    if not wanted:
+        return
+    enrolled = {row[0] for row in tenant_session.query(StudentEnrollment.student_id).filter(
+        StudentEnrollment.section_id == section_id,
+        StudentEnrollment.academic_year_id == year_id,
+        StudentEnrollment.student_id.in_(wanted),
+    ).all()}
+    missing = wanted - enrolled
+    if missing:
+        people = tenant_session.query(SchoolUsers).filter(SchoolUsers.id.in_(missing)).all()
+        names = ", ".join(sorted(f"{u.first_name} {u.last_name or ''}".strip() for u in people)) or ", ".join(map(str, sorted(missing)))
+        raise ValueError(f"Not in this section for that academic year: {names}")
+
 class AttendanceService:
 
     @staticmethod
@@ -38,11 +62,19 @@ class AttendanceService:
                 if not data.get('records'):
                     raise ValueError("No attendance records to save")
                 
+                # One section and one date per save; the date can't be in the future
+                section_id = data['records'][0]['section_id']
+                day = attendance_day(data['records'][0]['date'])
+                if any(r.get('section_id') != section_id or attendance_day(r.get('date')) != day for r in data['records']):
+                    raise ValueError("All records must be for the same section and date")
+                check_in_section(tenant_session, [r['student_id'] for r in data['records']], section_id,
+                                 academic_year_for_date(tenant_session, day))
+
                 # First check if attendance already exists for this date and section
                 existing_records = tenant_session.query(Attendance).filter(
                     and_(
-                        Attendance.section_id == data['records'][0]['section_id'],
-                        Attendance.date == datetime.strptime(data['records'][0]['date'], '%Y-%m-%d').date()
+                        Attendance.section_id == section_id,
+                        Attendance.date == day
                     )
                 ).all()
                 
@@ -94,9 +126,19 @@ class AttendanceService:
         try:
             with switch_to_school_db(skid) as tenant_session:
                 records = data['records']
-                attendance_date = datetime.strptime(data['records'][0]['date'], '%Y-%m-%d').date()
+                if not records:
+                    raise ValueError("No attendance records to save")
+                attendance_date = attendance_day(records[0]['date'])
                 section_id = data['section_id']
                 academic_year_id = academic_year_for_date(tenant_session, attendance_date)
+                if any(attendance_day(r.get('date')) != attendance_date for r in records):
+                    raise ValueError("All records must be for the same date")
+                # Students without a row yet must be in the section; existing rows stay correctable
+                # (e.g. a student who has since moved section)
+                has_row = {row[0] for row in tenant_session.query(Attendance.student_user_id).filter(
+                    Attendance.section_id == section_id, Attendance.date == attendance_date).all()}
+                check_in_section(tenant_session, [r['student_id'] for r in records if int(r['student_id']) not in has_row],
+                                 section_id, academic_year_id)
 
                 updated_records = []
                 

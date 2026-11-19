@@ -497,6 +497,7 @@ const MarkAttendance: FC = () => {
                             <FormInput
                                 name="date"
                                 type="date"
+                                max={new Date().toLocaleDateString('en-CA')}
                                 value={formData.date}
                                 onChange={handleFormChange}
                                 required
