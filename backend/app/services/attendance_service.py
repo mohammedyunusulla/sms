@@ -12,6 +12,20 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy import and_, func
 from datetime import datetime, date
 
+
+def academic_year_for_date(tenant_session, day):
+    """
+    The academic year whose dates contain this day. Attendance is filed under it, so it can't be
+    missing (update used to create rows with no year) or wrong (whatever year the header had selected).
+    """
+    from app.models.tenant.AcademicYear import AcademicYear
+    year = tenant_session.query(AcademicYear).filter(
+        AcademicYear.start_date <= day, AcademicYear.end_date >= day
+    ).order_by(AcademicYear.start_date.desc()).first()
+    if not year:
+        raise ValueError(f"No academic year covers {day.strftime('%d %b %Y')}. Set up the academic year first.")
+    return year.id
+
 class AttendanceService:
 
     @staticmethod
@@ -21,11 +35,8 @@ class AttendanceService:
         """
         try:
             with switch_to_school_db(skid) as tenant_session:
-                # Validate academic_year_id
-                if 'academic_year_id' not in data:
-                    raise ValueError("academic_year_id is required")
-                
-                academic_year_id = data['academic_year_id']
+                if not data.get('records'):
+                    raise ValueError("No attendance records to save")
                 
                 # First check if attendance already exists for this date and section
                 existing_records = tenant_session.query(Attendance).filter(
@@ -38,14 +49,18 @@ class AttendanceService:
                 if existing_records:
                     raise ValueError("Attendance already exists for this date and section. Use update instead.")
                 
-                # Prepare records for bulk insert
+                # Prepare records for bulk insert (each filed under the academic year of its date)
                 records = []
+                years_by_date = {}
                 for r in data['records']:
+                    day = datetime.strptime(r['date'], '%Y-%m-%d').date()
+                    if day not in years_by_date:
+                        years_by_date[day] = academic_year_for_date(tenant_session, day)
                     record = {
                         'student_user_id': r['student_id'],
                         'class_id': r['class_id'],
                         'section_id': r['section_id'],
-                        'academic_year_id': academic_year_id,
+                        'academic_year_id': years_by_date[day],
                         'status': normalize_status(r['status']),
                         'remarks': r.get('remarks', ''),
                         'date': datetime.strptime(r['date'], '%Y-%m-%d').date(),
@@ -64,6 +79,8 @@ class AttendanceService:
                     'section_id': data['records'][0]['section_id']
                 }
                 
+        except ValueError:
+            raise
         except Exception as e:
             if tenant_session:
                 tenant_session.rollback()
@@ -79,7 +96,8 @@ class AttendanceService:
                 records = data['records']
                 attendance_date = datetime.strptime(data['records'][0]['date'], '%Y-%m-%d').date()
                 section_id = data['section_id']
-                
+                academic_year_id = academic_year_for_date(tenant_session, attendance_date)
+
                 updated_records = []
                 
                 for record_data in records:
@@ -100,6 +118,7 @@ class AttendanceService:
                         # Update existing record
                         existing_record.status = status
                         existing_record.remarks = remarks
+                        existing_record.academic_year_id = academic_year_id  # also repairs rows saved without a year
                         existing_record.updated_at = datetime.now()
                         updated_records.append(existing_record)
                     else:
@@ -109,6 +128,7 @@ class AttendanceService:
                             class_id=record_data['class_id'],
                             section_id=section_id,
                             date=attendance_date,
+                            academic_year_id=academic_year_id,
                             status=status,
                             remarks=remarks
                         )
