@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import type { MouseEvent } from "react";
 import { Link } from "react-router";
-import { ThemeToggleButton } from "../../../components/common/ThemeToggleButton";
 import { NAV_LINKS, scrollToSection, scrollToTop, useLoginCta } from "../landingNav";
-import { ArrowRightIcon, CloseIcon, MenuIcon } from "./icons";
-import Logo from "./Logo";
+import { ArrowRightIcon, CloseIcon, MenuIcon } from "../../../components/common/StrokeIcons";
+import Logo from "../../../components/common/BrandLogo";
 
 function NavBadge({ children }: { children: string }) {
   return (
@@ -65,7 +64,7 @@ export default function LandingNavbar() {
           className="flex shrink-0 items-center rounded-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/30"
           aria-label="Edusphere home"
         >
-          <Logo className="h-8 sm:h-9" />
+          <Logo className="h-9 sm:h-11" />
         </a>
 
         <ul className="hidden items-center gap-1 lg:flex">
@@ -84,9 +83,6 @@ export default function LandingNavbar() {
         </ul>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <div className="hidden sm:block">
-            <ThemeToggleButton />
-          </div>
           <Link
             to={cta.to}
             className="group inline-flex items-center gap-1.5 rounded-full bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-500/25 transition hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/30 sm:px-5"
@@ -115,7 +111,7 @@ export default function LandingNavbar() {
           open ? "max-h-[28rem] opacity-100" : "max-h-0 opacity-0"
         }`}
       >
-        <ul className="space-y-1 px-5 pb-3 pt-1">
+        <ul className="space-y-1 px-5 pb-5 pt-1">
           {NAV_LINKS.map((link) => (
             <li key={link.id}>
               <a
@@ -129,10 +125,6 @@ export default function LandingNavbar() {
             </li>
           ))}
         </ul>
-        <div className="mx-5 mb-5 flex items-center justify-between border-t border-gray-200 pt-4 dark:border-white/10">
-          <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Appearance</span>
-          <ThemeToggleButton />
-        </div>
       </div>
     </header>
   );

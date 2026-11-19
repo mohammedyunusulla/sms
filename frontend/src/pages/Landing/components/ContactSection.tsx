@@ -1,7 +1,7 @@
 import type { ComponentType } from "react";
-import { CONTACT } from "../contactInfo";
-import { ExternalLinkIcon, LinkedInIcon, MailIcon, MapPinIcon } from "./icons";
-import type { IconProps } from "./icons";
+import { CONTACT } from "../../../config/contact";
+import { ExternalLinkIcon, LinkedInIcon, MailIcon, MapPinIcon } from "../../../components/common/StrokeIcons";
+import type { IconProps } from "../../../components/common/StrokeIcons";
 import Reveal from "./Reveal";
 import SectionHeading from "./SectionHeading";
 

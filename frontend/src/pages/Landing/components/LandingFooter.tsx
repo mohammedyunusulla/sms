@@ -1,8 +1,8 @@
 import { Link } from "react-router";
 import { NAV_LINKS, scrollToSection, scrollToTop, useLoginCta } from "../landingNav";
-import { CONTACT } from "../contactInfo";
-import { ArrowUpIcon, GlobeIcon, LinkedInIcon, MailIcon, MapPinIcon } from "./icons";
-import Logo from "./Logo";
+import { CONTACT } from "../../../config/contact";
+import { ArrowUpIcon, GlobeIcon, LinkedInIcon, MailIcon, MapPinIcon } from "../../../components/common/StrokeIcons";
+import Logo from "../../../components/common/BrandLogo";
 
 const linkClass =
   "text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white";

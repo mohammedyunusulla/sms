@@ -1,5 +1,5 @@
 /**
- * Lightweight stroke icons used only on the landing page.
+ * Lightweight 24×24 stroke icons shared by the landing page and auth pages.
  * All icons inherit `currentColor` and are decorative (aria-hidden) by default.
  */
 import type { ReactNode, SVGProps } from "react";
@@ -39,6 +39,19 @@ export const CloseIcon = (p: IconProps) => (
 export const ArrowRightIcon = (p: IconProps) => (
   <Svg {...p}>
     <path d="M5 12h14M13 6l6 6-6 6" />
+  </Svg>
+);
+
+export const ArrowLeftIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M19 12H5M11 18l-6-6 6-6" />
+  </Svg>
+);
+
+export const AlertCircleIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7.5v5.5M12 16.5h.01" />
   </Svg>
 );
 

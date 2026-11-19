@@ -1,7 +1,7 @@
-import { CONTACT } from "../contactInfo";
+import { CONTACT } from "../../../config/contact";
 import { scrollToSection } from "../landingNav";
 import HeroPreview from "./HeroPreview";
-import { ArrowRightIcon, CalendarIcon, CheckIcon, SparklesIcon } from "./icons";
+import { ArrowRightIcon, CalendarIcon, CheckIcon, SparklesIcon } from "../../../components/common/StrokeIcons";
 import Reveal from "./Reveal";
 
 const HIGHLIGHTS = ["Role-based dashboards", "Isolated data per school", "Mobile app coming soon"];
@@ -36,7 +36,7 @@ export default function HeroSection() {
 
           <Reveal delay={160}>
             <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-gray-600 lg:mx-0 dark:text-gray-400">
-              Edusphere brings attendance, timetables, exams, fees, homework and school transport together,
+              <strong className="font-semibold text-gray-900 dark:text-white">Edusphere</strong> brings attendance, timetables, exams, fees, homework and school transport together,
               with a dashboard tailored to every administrator, teacher, parent and student.
             </p>
           </Reveal>

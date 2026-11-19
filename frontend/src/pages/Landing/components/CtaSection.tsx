@@ -1,7 +1,7 @@
 import { Link } from "react-router";
-import { CONTACT } from "../contactInfo";
+import { CONTACT } from "../../../config/contact";
 import { useLoginCta } from "../landingNav";
-import { ArrowRightIcon, CalendarIcon } from "./icons";
+import { ArrowRightIcon, CalendarIcon } from "../../../components/common/StrokeIcons";
 import Reveal from "./Reveal";
 
 export default function CtaSection() {

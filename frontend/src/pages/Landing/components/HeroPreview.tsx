@@ -9,7 +9,7 @@ import {
   QrCodeIcon,
   SparklesIcon,
   WalletIcon,
-} from "./icons";
+} from "../../../components/common/StrokeIcons";
 
 const KPIS = [
   { label: "Attendance today", value: "96.4%", note: "+1.2% this week", tone: "text-success-600 dark:text-success-400" },

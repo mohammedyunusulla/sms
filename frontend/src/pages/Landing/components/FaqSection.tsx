@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { Link } from "react-router";
-import { ChevronDownIcon } from "./icons";
+import { ChevronDownIcon } from "../../../components/common/StrokeIcons";
 import Reveal from "./Reveal";
 import SectionHeading from "./SectionHeading";
 

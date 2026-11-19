@@ -1,4 +1,4 @@
-import { BuildingIcon, DatabaseIcon, LockIcon, LogInIcon, ShieldCheckIcon, UploadIcon } from "./icons";
+import { BuildingIcon, DatabaseIcon, LockIcon, LogInIcon, ShieldCheckIcon, UploadIcon } from "../../../components/common/StrokeIcons";
 import Reveal from "./Reveal";
 import SectionHeading from "./SectionHeading";
 

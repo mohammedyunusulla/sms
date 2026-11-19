@@ -13,8 +13,8 @@ import {
   QrCodeIcon,
   SmartphoneIcon,
   WalletIcon,
-} from "./icons";
-import type { IconProps } from "./icons";
+} from "../../../components/common/StrokeIcons";
+import type { IconProps } from "../../../components/common/StrokeIcons";
 import Reveal from "./Reveal";
 import SectionHeading from "./SectionHeading";
 
