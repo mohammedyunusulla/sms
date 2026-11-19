@@ -5,11 +5,14 @@ import { PermissionGuard } from "./components/auth/PermissionGuard";
 import { ROUTE_PERMISSION_MAP } from "./config/permissions";
 import { useAuth } from "./hooks/useAuth";
 import { Toaster } from "react-hot-toast";
-import { LoadingSpinner } from "./components";
+import AppLoader from "./components/common/AppLoader";
 import { ScrollToTop } from "./components/common/ScrollToTop";
 
 // Eager imports (critical for initial load)
 import AppLayout from "./layout/AppLayout";
+
+// Public landing page (entry point at "/")
+const LandingPage = lazy(() => import("./pages/Landing/LandingPage"));
 
 // Lazy loaded auth pages (loaded immediately for login)
 const SignIn = lazy(() => import("./pages/AuthPages/SignIn"));
@@ -193,10 +196,13 @@ function AppContent() {
             />
             <Router>
                 <ScrollToTop />
-                <Suspense fallback={<LoadingSpinner fullHeight message="Loading page..." />}>
+                <Suspense fallback={<AppLoader message="Loading page…" />}>
                 <Routes>
+                    {/* Public landing page */}
+                    <Route path="/" element={<LandingPage />} />
+
                     {/* Auth Routes */}
-                    <Route path="/" element={<SignIn />} />
+                    <Route path="/signin" element={<SignIn />} />
                     <Route path="/signup" element={<SignUp />} />
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
