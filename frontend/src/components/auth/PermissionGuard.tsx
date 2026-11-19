@@ -8,7 +8,8 @@
 import { ReactNode } from 'react';
 import { Navigate } from 'react-router';
 import { usePermissions } from '../../hooks/usePermissions';
-import { Permission } from '../../config/permissions';
+import { Permission, isPathHiddenForRole } from '../../config/permissions';
+import { useAuthStore } from '../../stores/authStore';
 
 interface PermissionGuardProps {
   children: ReactNode;
@@ -18,6 +19,8 @@ interface PermissionGuardProps {
   anyPermission?: Permission[];
   /** If true, only SUPER_ADMIN can access this route. */
   superAdminOnly?: boolean;
+  /** The route path, to apply ROLE_HIDDEN_PATHS. */
+  path?: string;
 }
 
 export const PermissionGuard = ({
@@ -25,8 +28,14 @@ export const PermissionGuard = ({
   permission,
   anyPermission,
   superAdminOnly,
+  path,
 }: PermissionGuardProps) => {
   const { hasPermission, hasAnyPermission, isSuperAdmin } = usePermissions();
+  const role = useAuthStore((state) => state.user?.role);
+
+  if (path && isPathHiddenForRole(role, path)) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   if (superAdminOnly) {
     if (!isSuperAdmin) {

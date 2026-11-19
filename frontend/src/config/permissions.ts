@@ -83,6 +83,18 @@ export enum Permission {
 // ──────────────────────────────────────────────
 // Route → Permission Map
 // ──────────────────────────────────────────────
+/**
+ * Pages a role never sees, even when its permissions would show them, because the server doesn't serve
+ * that role there. A Clerk (fee counter) has view_students / view_classes but no access to parents or rooms.
+ */
+export const ROLE_HIDDEN_PATHS: Record<string, string[]> = {
+  CLERK: ['/parents', '/rooms'],
+};
+
+/** True if this path (or a page under it, e.g. /parents/new) is hidden for the role. */
+export const isPathHiddenForRole = (role: string | undefined | null, path: string): boolean =>
+  !!role && (ROLE_HIDDEN_PATHS[role] || []).some((p) => path === p || path.startsWith(`${p}/`));
+
 export interface RoutePermissionConfig {
   permission?: Permission;
   /** Access granted if user has ANY of these permissions (OR logic) */
@@ -181,8 +193,9 @@ export const ROUTE_PERMISSION_MAP: Record<string, RoutePermissionConfig> = {
   '/finance/fee-structure/edit/:classId': { permission: Permission.MANAGE_FEES },
   '/finance/fee-collection': { permission: Permission.MANAGE_FEES },
   '/finance/expenses': { permission: Permission.VIEW_EXPENSES },
-  '/finance/salary-setup': { permission: Permission.MANAGE_FEES },
-  '/finance/salary-payments': { permission: Permission.MANAGE_FEES },
+  // Salaries are staff expenses, not fee collection (a fee clerk with manage_fees must not see them)
+  '/finance/salary-setup': { permission: Permission.MANAGE_EXPENSES },
+  '/finance/salary-payments': { permission: Permission.MANAGE_EXPENSES },
   '/finance/defaulters': { permission: Permission.MANAGE_FEES },
 
   // Assignments
@@ -403,8 +416,8 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, SidebarGroupPermissionConfig
       '/finance/fee-structure': Permission.VIEW_FEES,
       '/finance/fee-collection': Permission.MANAGE_FEES,
       '/finance/expenses': Permission.VIEW_EXPENSES,
-      '/finance/salary-setup': Permission.MANAGE_FEES,
-      '/finance/salary-payments': Permission.MANAGE_FEES,
+      '/finance/salary-setup': Permission.MANAGE_EXPENSES,
+      '/finance/salary-payments': Permission.MANAGE_EXPENSES,
       '/finance/defaulters': Permission.MANAGE_FEES,
     },
   },

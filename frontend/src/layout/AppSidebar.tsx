@@ -17,7 +17,8 @@ import {
     TaskIcon,
     UserCircleIcon
 } from "../icons";
-import { SIDEBAR_PERMISSION_MAP } from "../config/permissions";
+import { SIDEBAR_PERMISSION_MAP, isPathHiddenForRole } from "../config/permissions";
+import { useAuthStore } from "../stores/authStore";
 // import SidebarWidget from "./SidebarWidget";
 
 type NavItem = {
@@ -208,6 +209,7 @@ const AppSidebar: React.FC = () => {
     const { isExpanded, isMobileOpen, isHovered, setIsHovered } = useSidebar();
     const location = useLocation();
     const { hasPermission, hasAnyPermission, isFullAccess, isSuperAdmin } = usePermissions();
+    const userRole = useAuthStore((state) => state.user?.role);
 
     const [openSubmenuName, setOpenSubmenuName] = useState<string | null>(null);
     const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
@@ -310,6 +312,7 @@ const AppSidebar: React.FC = () => {
 
             // For single-path items (no sub-items), also check excludeIfHasPermission
             if (!nav.subItems) {
+                if (isPathHiddenForRole(userRole, nav.path || '')) return acc;
                 const excludePerm = sidebarConfig.excludeIfHasPermission?.[nav.path || ''];
                 if (excludePerm && hasPermission(excludePerm)) return acc;
                 acc.push(nav);
@@ -318,6 +321,7 @@ const AppSidebar: React.FC = () => {
 
             // Filter sub-items by individual item permissions
             const visibleSubItems = nav.subItems.filter((sub) => {
+                if (isPathHiddenForRole(userRole, sub.path)) return false;
                 const excludePerm = sidebarConfig.excludeIfHasPermission?.[sub.path];
                 if (excludePerm && hasPermission(excludePerm)) return false;
 
@@ -333,7 +337,7 @@ const AppSidebar: React.FC = () => {
 
             return acc;
         }, []);
-    }, [isFullAccess, isSuperAdmin, hasPermission, hasAnyPermission]);
+    }, [isFullAccess, isSuperAdmin, hasPermission, hasAnyPermission, userRole]);
 
     const renderMenuItems = (items: NavItem[], _menuType: "main" | "others") => (
         <ul className="flex flex-col gap-4">

@@ -154,6 +154,16 @@ def _bootstrap_main_schema(app):
         )
         db.session.commit()
 
+        # Login roles added after the users table was created (create_all doesn't alter an existing enum type)
+        for role_value in ('CLERK',):
+            db.session.execute(text(
+                "DO $$ BEGIN "
+                "IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'userrole') THEN "
+                f"ALTER TYPE userrole ADD VALUE IF NOT EXISTS '{role_value}'; "
+                "END IF; END $$;"
+            ))
+            db.session.commit()
+
 def setup_logging(app):
     if not os.path.exists('logs'):
         os.mkdir('logs')

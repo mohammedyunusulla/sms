@@ -338,7 +338,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['fee', 'structure', 'tuition', 'charges'],
         category: 'Finance',
         icon: '💰',
-        roles: [UserRole.SCHOOL_ADMIN],
+        roles: [UserRole.SCHOOL_ADMIN, UserRole.CLERK],
     },
     {
         id: 'fee-collection',
@@ -348,7 +348,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['fee', 'collection', 'payment', 'receipts'],
         category: 'Finance',
         icon: '💳',
-        roles: [UserRole.SCHOOL_ADMIN],
+        roles: [UserRole.SCHOOL_ADMIN, UserRole.CLERK],
     },
     {
         id: 'expenses',
@@ -388,7 +388,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['defaulters', 'overdue', 'pending fees', 'dues', 'fee report'],
         category: 'Finance',
         icon: '⏰',
-        roles: [UserRole.SCHOOL_ADMIN],
+        roles: [UserRole.SCHOOL_ADMIN, UserRole.CLERK],
     },
 
     // Profile & Settings

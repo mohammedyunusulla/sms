@@ -197,7 +197,7 @@ def remove_subject_from_section(skid, section_id, subject_id):
 
 # GET SUBJECTS FOR A SECTION
 @subject_bp.route('/section/<skid>/<int:section_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'])
 def get_subjects_by_section(skid, section_id):
     """Get all subjects assigned to a specific section"""
     try:

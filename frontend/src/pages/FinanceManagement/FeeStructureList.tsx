@@ -11,11 +11,12 @@ import { financeService } from '../../services/modules/financeService';
 import { useAuthStore } from '../../stores/authStore';
 import { IGroupedFeeStructure, IFeeRow } from '../../types/index';
 import { usePermissions } from '../../hooks/usePermissions';
-import { Permission } from '../../config/permissions';
 
 const FeeStructureList: FC = () => {
     const navigate = useNavigate();
-    const { hasPermission } = usePermissions();
+    const { isFullAccess } = usePermissions();
+    // Creating / editing / deleting fee structures is admin-only on the server (a fee clerk only views them)
+    const canEditFees = isFullAccess;
     const { user, academicYearVersion } = useAuthStore();
     const academicYearId = user?.current_academic_year?.id;
 
@@ -200,7 +201,7 @@ const FeeStructureList: FC = () => {
                 subtitle="Manage fee structures and assignments for each class"
                 breadcrumbs={breadcrumbs}
                 actions={
-                    hasPermission(Permission.MANAGE_FEES) ? (
+                    canEditFees ? (
                         <Button variant="primary" size="sm" onClick={() => navigate('/finance/fee-structure/create')}>
                             + Create Fee Structure
                         </Button>
@@ -247,7 +248,7 @@ const FeeStructureList: FC = () => {
                             </svg>
                             View Details
                         </button>
-                        {hasPermission(Permission.MANAGE_FEES) && (
+                        {canEditFees && (
                             <button
                                 onClick={() => { const row = groupedFees.find(r => r.class_id === showActionsMenu); if (row) handleEdit(row); setShowActionsMenu(null); }}
                                 className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 text-gray-900 dark:text-gray-100"
@@ -258,7 +259,7 @@ const FeeStructureList: FC = () => {
                                 Edit
                             </button>
                         )}
-                        {hasPermission(Permission.MANAGE_FEES) && (
+                        {canEditFees && (
                             <button
                                 onClick={() => { const row = groupedFees.find(r => r.class_id === showActionsMenu); if (row) handleAssignClick(row); setShowActionsMenu(null); }}
                                 className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 text-gray-900 dark:text-gray-100"
@@ -269,7 +270,7 @@ const FeeStructureList: FC = () => {
                                 Assign to Class
                             </button>
                         )}
-                        {hasPermission(Permission.MANAGE_FEES) && (
+                        {canEditFees && (
                             <button
                                 onClick={() => { const row = groupedFees.find(r => r.class_id === showActionsMenu); if (row) handleDeleteClick(row); setShowActionsMenu(null); }}
                                 className="w-full text-left px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2 text-red-600 dark:text-red-400 last:rounded-b-lg"

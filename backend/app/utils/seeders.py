@@ -47,6 +47,9 @@ DEFAULT_ROLE_PERMISSIONS = {
         'view_announcements',
     ],
     'BUS_STAFF': ['view_bus_scan', 'manage_bus_scan'],
+    # Fee counter: look up students, collect fees, receipts, defaulters; fee structures and classes read-only.
+    # The backend routes for these allow CLERK (cancelling, discounts and installment plans stay with admins).
+    'CLERK': ['view_fees', 'manage_fees', 'view_students', 'view_classes'],
 }
 
 
@@ -75,6 +78,18 @@ def seed_default_roles(session, school_id=None):
     if new_roles:
         session.add_all(new_roles)
         session.commit()
+
+
+def add_missing_system_roles(session, apply=False):
+    """
+    For existing schools: the system roles they don't have yet (e.g. CLERK, added later), with default permissions.
+    Returns the role codes that were (or would be) added.
+    """
+    existing = {r[0] for r in session.query(Role.role_code).all()}
+    missing = [r.value for r in UserRole if r.value not in existing and r.value != "SUPER_ADMIN"]
+    if apply and missing:
+        seed_default_roles(session)
+    return missing
 
 
 def fill_empty_role_permissions(session, apply=False):

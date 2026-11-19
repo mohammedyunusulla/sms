@@ -12,6 +12,8 @@ import { financeService } from '../../services/modules/financeService';
 import { useAuthStore } from '../../stores/authStore';
 import { IStudentFeeSummary, IStudentFee, IInstallment, IPaymentData } from '../../types/index';
 import InstallmentDialog from './InstallmentDialog';
+import { usePermissions } from '../../hooks/usePermissions';
+import { Permission } from '../../config/permissions';
 import PaymentHistoryDialog from './PaymentHistoryDialog';
 import DiscountDialog from './DiscountDialog';
 import { generateFeeReceiptPdf, generateFeeSummaryReceiptPdf } from '../../prints';
@@ -47,6 +49,8 @@ const defaultPaymentData: IPaymentData = {
 const FeeCollection: FC = () => {
     const { user } = useAuthStore();
     const academicYearId = user?.current_academic_year?.id;
+    // Cancelling payments, discounts and installment plans are admin-only on the server; a fee clerk only collects
+    const { isFullAccess, hasPermission } = usePermissions();
 
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -511,18 +515,20 @@ const FeeCollection: FC = () => {
                             </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                            {(feeSummary?.fees || []).some((f) => Number(f.balance_amount) > 0) && (
+                            {isFullAccess && (feeSummary?.fees || []).some((f) => Number(f.balance_amount) > 0) && (
                                 <Button variant="outline" size="sm" onClick={() => setShowDiscountDialog(true)}>
                                     Apply Discount
                                 </Button>
                             )}
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setShowExamTimetableModal(true)}
-                            >
-                                Exam Timetable
-                            </Button>
+                            {hasPermission(Permission.VIEW_EXAMS) && (
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setShowExamTimetableModal(true)}
+                                >
+                                    Exam Timetable
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -569,7 +575,7 @@ const FeeCollection: FC = () => {
                                     </Button>
                                 )}
                                 {/* Setup Installments - only for recurring fees that allow installments */}
-                                {!row.has_installments && row.balance_amount > 0 && row.status !== 'PAID' && row.fee_structure?.is_recurring && row.fee_structure?.allows_installments && (
+                                {isFullAccess && !row.has_installments && row.balance_amount > 0 && row.status !== 'PAID' && row.fee_structure?.is_recurring && row.fee_structure?.allows_installments && (
                                     <Button variant="primary" size="sm" onClick={() => openInstallmentSetup(row)}>
                                         Setup Installments
                                     </Button>
@@ -752,6 +758,7 @@ const FeeCollection: FC = () => {
                 onClose={() => setHistoryFeeId(null)}
                 fee={historyFee}
                 installments={historyFeeId ? feeInstallments[historyFeeId] || [] : []}
+                canCancel={isFullAccess}
                 onCancelled={refreshSummary}
             />
 

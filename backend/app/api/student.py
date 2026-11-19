@@ -209,7 +209,7 @@ def update_student(skid, student_id):
 
 
 @student_bp.route('/list/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER', 'CLERK'])
 @log_actions('GET_STUDENTS')
 def get_students_paginated(skid):
     """
@@ -258,7 +258,7 @@ def get_students_paginated(skid):
 
 
 @student_bp.route('/list/<skid>/<academic_year_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLERK'])
 @log_actions('GET_STUDENTS')
 def get_students(skid, academic_year_id):
     """
@@ -281,7 +281,7 @@ def get_students(skid, academic_year_id):
 
 # Fetch student list for the section based on the sectionId
 @student_bp.route('/list/inSection/<skid>/<academic_year_id>/<int:section_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'])
 def get_students_for_section(skid, academic_year_id, section_id):
     """
     Get all students for a specific class-section with pagination and filtering
@@ -335,7 +335,7 @@ def get_students_for_section(skid, academic_year_id, section_id):
         return jsonify({'message': f'Failed to retrieve students: {str(e)}', 'status': 'error', 'code': 500}), 500
 
 @student_bp.route('/get-by-id/<skid>/<int:id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLERK'])
 @log_actions('GET_STUDENTS')
 def get_student_by_id(skid, id):
     """

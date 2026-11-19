@@ -48,7 +48,7 @@ def create_fee_structure(skid):
 
 # GET FEE STRUCTURES
 @fee_bp.route('/structure/list/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'])
 def get_fee_structures(skid):
     """Get all fee structures with optional filters"""
     try:
@@ -134,7 +134,7 @@ def bulk_assign_fees_to_class(skid):
 
 # RECORD PAYMENT
 @fee_bp.route('/payment/record/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT', 'CLERK'])
 @log_actions('RECORD_FEE_PAYMENT')
 def record_payment(skid):
     """
@@ -206,7 +206,7 @@ def cancel_payment(skid, payment_id):
 
 # CONVERT REMAINING INSTALLMENTS TO FULL PAYMENT
 @fee_bp.route('/payment/convert-to-full/<skid>/<int:student_fee_id>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT', 'CLERK'])
 def convert_to_full_payment(skid, student_fee_id):
     """Convert remaining installments to full payment option"""
     try:
@@ -224,7 +224,7 @@ def convert_to_full_payment(skid, student_fee_id):
 
 # FULL PAYMENT FOR REMAINING CONVERTED INSTALLMENT AMOUNT
 @fee_bp.route('/payment/record-full-remaining/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT', 'CLERK'])
 def record_full_remaining_payment(skid):
     """Record full payment for remaining balance after installments"""
     try:
@@ -358,7 +358,7 @@ def auto_generate_recurring_installments(skid):
 
 # GET INSTALLMENTS
 @fee_bp.route('/installments/get/<skid>/<int:student_fee_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT', 'PARENT', 'STUDENT'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'CLERK'])
 @student_access_required('student_fee_id', resolver=student_fee_owner)
 def get_installments(skid, student_fee_id):
     """Get all installments for a student fee"""
@@ -378,7 +378,7 @@ def get_installments(skid, student_fee_id):
 
 # RECORD INSTALLMENT PAYMENT
 @fee_bp.route('/installments/payment/<skid>/<int:installment_id>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT', 'CLERK'])
 @log_actions('RECORD_INSTALLMENT_PAYMENT')
 def record_installment_payment(skid, installment_id):
     """
@@ -430,7 +430,7 @@ def record_installment_payment(skid, installment_id):
 
 # GET STUDENT FEE SUMMARY
 @fee_bp.route('/summary/student/<skid>/<int:student_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'PARENT', 'STUDENT'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'PARENT', 'STUDENT', 'CLERK'])
 @student_access_required('student_id')
 def get_student_fee_summary(skid, student_id):
     """Get complete fee summary for a student"""
@@ -453,7 +453,7 @@ def get_student_fee_summary(skid, student_id):
 
 # FEE COLLECTION REPORT
 @fee_bp.route('/report/collection/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT', 'CLERK'])
 def get_fee_collection_report(skid):
     """Get fee collection report with filters"""
     try:
@@ -480,7 +480,7 @@ def get_fee_collection_report(skid):
 
 # DEFAULTERS LIST
 @fee_bp.route('/report/defaulters/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT', 'CLERK'])
 def get_defaulters_list(skid):
     """Get list of students with pending fees"""
      
@@ -603,7 +603,7 @@ def delete_class_fee_structures(skid, class_id, academic_year_id):
 
 # UNIVERSAL STUDENT SEARCH FOR FEE COLLECTION
 @fee_bp.route('/search-student/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT', 'CLERK'])
 def search_student_for_fees(skid):
     """
     Universal student search for fee collection

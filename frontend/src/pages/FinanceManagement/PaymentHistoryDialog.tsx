@@ -15,6 +15,8 @@ interface PaymentHistoryDialogProps {
     onClose: () => void;
     fee: IStudentFee | null;
     installments: IInstallment[];
+    /** Cancelling is admin-only on the server; others just see the history. */
+    canCancel?: boolean;
     onCancelled: () => void;
 }
 
@@ -23,7 +25,7 @@ const money = (v: number | string | undefined) => `₹${parseFloat(String(v || 0
 const formatDate = (d?: string) =>
     d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 
-const PaymentHistoryDialog: FC<PaymentHistoryDialogProps> = ({ isOpen, onClose, fee, installments, onCancelled }) => {
+const PaymentHistoryDialog: FC<PaymentHistoryDialogProps> = ({ isOpen, onClose, fee, installments, canCancel = true, onCancelled }) => {
     const [cancelling, setCancelling] = useState<IFeePayment | null>(null);
     const [reason, setReason] = useState('');
     const [reasonError, setReasonError] = useState('');
@@ -130,7 +132,7 @@ const PaymentHistoryDialog: FC<PaymentHistoryDialogProps> = ({ isOpen, onClose, 
                             </div>
                             <div className="flex items-center gap-2">
                                 <Badge variant="success" size="sm">Paid</Badge>
-                                <Button variant="danger" size="sm" onClick={() => setCancelling(p)}>Cancel</Button>
+                                {canCancel && <Button variant="danger" size="sm" onClick={() => setCancelling(p)}>Cancel</Button>}
                             </div>
                         </div>
                     ))}

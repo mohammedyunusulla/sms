@@ -13,6 +13,7 @@ class UserRole(enum.Enum):
     STUDENT = "STUDENT"
     PARENT = "PARENT"
     BUS_STAFF = "BUS_STAFF"
+    CLERK = "CLERK"  # fee counter: collect fees, defaulters, read-only students / classes
 
 class User(BaseModel):
     __tablename__ = 'users'

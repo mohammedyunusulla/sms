@@ -14,6 +14,7 @@ export enum UserRole {
   TEACHER = 'TEACHER',              // Teacher/Educator
   STUDENT = 'STUDENT',              // Student/Learner
   PARENT = 'PARENT',                // Parent/Guardian
+  CLERK = 'CLERK',                  // Fee counter
 }
 
 /**
@@ -26,6 +27,7 @@ export const USER_ROLE_DISPLAY: Record<UserRole, string> = {
   [UserRole.TEACHER]: 'Teacher',
   [UserRole.STUDENT]: 'Student',
   [UserRole.PARENT]: 'Parent',
+  [UserRole.CLERK]: 'Clerk',
 };
 
 /**

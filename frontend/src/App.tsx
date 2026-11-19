@@ -144,7 +144,7 @@ const guarded = (path: string, element: ReactNode) => {
     const config = ROUTE_PERMISSION_MAP[path];
     if (!config) return element;
     return (
-        <PermissionGuard permission={config.permission} anyPermission={config.anyPermission} superAdminOnly={config.superAdminOnly}>
+        <PermissionGuard path={path} permission={config.permission} anyPermission={config.anyPermission} superAdminOnly={config.superAdminOnly}>
             {element}
         </PermissionGuard>
     );
