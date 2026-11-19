@@ -643,6 +643,8 @@ const FeeCollection: FC = () => {
                             <FormInput
                                 label="Amount"
                                 type="number"
+                                min="0.01"
+                                step="0.01"
                                 required
                                 value={paymentData.amount_paid}
                                 onChange={(e) => setPaymentData({ ...paymentData, amount_paid: parseFloat(e.target.value) || 0 })}
@@ -660,6 +662,7 @@ const FeeCollection: FC = () => {
                         <FormInput
                             label="Payment Date"
                             type="date"
+                            max={new Date().toLocaleDateString('en-CA')}
                             required
                             value={paymentData.payment_date}
                             onChange={(e) => setPaymentData({ ...paymentData, payment_date: e.target.value })}

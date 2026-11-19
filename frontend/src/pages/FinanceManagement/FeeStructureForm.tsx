@@ -321,7 +321,7 @@ const FeeStructureForm: FC = () => {
                                             value={row.is_recurring ? (row.recurrence_amount || '') : (row.amount || '')}
                                             onChange={(e) => updateRow(row._rowId, row.is_recurring ? 'recurrence_amount' : 'amount', e.target.value)}
                                             placeholder={row.is_recurring ? 'Per period' : 'Total amount'}
-                                            min="0"
+                                            min="0.01"
                                             step="0.01"
                                         />
                                     </td>

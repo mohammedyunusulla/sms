@@ -243,6 +243,8 @@ const SalaryPayments: FC = () => {
                     <FormInput
                         label="Year"
                         type="number"
+                        min="2000"
+                        max="2100"
                         value={genYear}
                         onChange={(e) => setGenYear(e.target.value)}
                     />
@@ -328,6 +330,7 @@ const SalaryPayments: FC = () => {
                             <FormInput
                                 label="Payment Date"
                                 type="date"
+                                max={new Date().toLocaleDateString('en-CA')}
                                 required
                                 value={paymentForm.payment_date}
                                 onChange={(e) => setPaymentForm({ ...paymentForm, payment_date: e.target.value })}

@@ -2,6 +2,20 @@ from app.models.tenant import SchoolUsers, Teacher, Staff
 from app.models.tenant.ExpenseModels import *
 from app.utils.db_manager import switch_to_school_db
 from sqlalchemy.orm import joinedload
+from datetime import date
+from app.utils.validators import non_negative_amount, not_in_future, number_in_range, positive_amount, to_date, within_an_academic_year
+
+
+def _salary_totals(data):
+    """Basic > 0, every allowance/deduction >= 0, and the net pay can't go below zero."""
+    basic = positive_amount(data.get('basic_salary'), "Basic salary")
+    allowances = {k: non_negative_amount(v, f"Allowance '{k}'") for k, v in (data.get('allowances') or {}).items()}
+    deductions = {k: non_negative_amount(v, f"Deduction '{k}'") for k, v in (data.get('deductions') or {}).items()}
+    gross = round(basic + sum(allowances.values()), 2)
+    net = round(gross - sum(deductions.values()), 2)
+    if net < 0:
+        raise ValueError("Deductions can't be more than the gross salary")
+    return basic, allowances, deductions, gross, net
 
 class ExpenseService:
     # Predefined categories (from UI constant)
@@ -67,18 +81,27 @@ class ExpenseService:
     def create_salary_setup(skid, data):
         try:
             with switch_to_school_db(skid) as tenant_session:
-                # Calculate gross and net
-                allowances_total = sum(data.get('allowances', {}).values())
-                deductions_total = sum(data.get('deductions', {}).values())
-                gross = data['basic_salary'] + allowances_total
-                net = gross - deductions_total
-                
+                basic, allowances, deductions, gross, net = _salary_totals(data)
+                staff_id = int(data['staff_id'])
+                # Salaries are for teachers and staff only, and one active setup per person per year
+                is_staff = (tenant_session.query(Teacher).filter_by(user_id=staff_id).first()
+                            or tenant_session.query(Staff).filter_by(user_id=staff_id).first())
+                if not is_staff:
+                    raise ValueError("Salary setups are only for teachers and staff")
+                duplicate = tenant_session.query(StaffSalarySetup).filter(
+                    StaffSalarySetup.staff_id == staff_id,
+                    StaffSalarySetup.academic_year_id == data['academic_year_id'],
+                    StaffSalarySetup.is_active.is_(True),
+                ).first()
+                if duplicate:
+                    raise ValueError("This person already has a salary setup for this academic year. Edit it instead.")
+
                 setup = StaffSalarySetup(
-                    staff_id=data['staff_id'],
+                    staff_id=staff_id,
                     academic_year_id=data['academic_year_id'],
-                    basic_salary=data['basic_salary'],
-                    allowances=data.get('allowances', {}),
-                    deductions=data.get('deductions', {}),
+                    basic_salary=basic,
+                    allowances=allowances,
+                    deductions=deductions,
                     gross_salary=gross,
                     net_salary=net,
                     effective_from=data['effective_from'],
@@ -89,6 +112,8 @@ class ExpenseService:
                 tenant_session.add(setup)
                 tenant_session.commit()
                 return setup.to_dict()
+        except ValueError:
+            raise
         except Exception as e:
             tenant_session.rollback()
             raise Exception(f"Failed to create salary setup: {str(e)}")
@@ -110,14 +135,8 @@ class ExpenseService:
                 if not setup:
                     raise ValueError("Salary setup not found")
                 
-                # Calculate new totals
-                basic = data['basic_salary']
-                allowances = data.get('allowances', {})
-                deductions = data.get('deductions', {})
-                allowances_total = sum(allowances.values())
-                deductions_total = sum(deductions.values())
-                gross = basic + allowances_total
-                net = gross - deductions_total
+                # Calculate new totals (validated)
+                basic, allowances, deductions, gross, net = _salary_totals(data)
                 
                 # Update fields
                 setup.basic_salary = basic
@@ -130,7 +149,9 @@ class ExpenseService:
                 setup.is_active = data.get('is_active', True)
                 
                 tenant_session.commit()
-                
+
+        except ValueError:
+            raise
         except Exception as e:
             tenant_session.rollback()
             raise Exception(f"Failed to update salary setup: {str(e)}")
@@ -170,6 +191,8 @@ class ExpenseService:
         
     @staticmethod
     def generate_monthly_salaries(skid, academic_year_id, month, year):
+        month = int(number_in_range(month, 1, 12, "Month"))
+        year = int(number_in_range(year, 2000, 2100, "Year"))
         try:
             with switch_to_school_db(skid) as tenant_session:
                 # Get all active salary setups
@@ -231,9 +254,13 @@ class ExpenseService:
                 payment = tenant_session.query(SalaryPayment).get(payment_id)
                 if not payment:
                     raise ValueError("Payment not found")
-                
+                if payment.status == 'paid':
+                    # paying twice used to create a second expense entry
+                    raise ValueError("This salary is already marked as paid")
+                paid_on = not_in_future(payment_data.get('payment_date') or date.today(), "Payment date")
+
                 payment.status = 'paid'
-                payment.payment_date = payment_data.get('payment_date')
+                payment.payment_date = paid_on
                 payment.payment_method = payment_data.get('payment_method')
                 payment.transaction_reference = payment_data.get('transaction_reference')
                 payment.paid_by = payment_data.get('paid_by')
@@ -257,6 +284,8 @@ class ExpenseService:
                 tenant_session.add(expense)
                 tenant_session.commit()
                 return payment.to_dict()
+        except ValueError:
+            raise
         except Exception as e:
             tenant_session.rollback()
             raise Exception(f"Failed to mark salary as paid: {str(e)}")
@@ -309,11 +338,15 @@ class ExpenseService:
         """Create expense record - type-safe"""
         try:
             with switch_to_school_db(skid) as tenant_session:
+                amount = positive_amount(data.get('amount'), "Expense amount")
+                expense_day = not_in_future(data.get('expense_date'), "Expense date")
+                # filed under the academic year that contains the date
+                academic_year_id = within_an_academic_year(tenant_session, expense_day, "Expense date")
                 expense = Expense(
-                    academic_year_id=int(data['academic_year_id']),
+                    academic_year_id=academic_year_id,
                     expense_category=data['expense_category'],
-                    expense_date=data['expense_date'],
-                    amount=float(data['amount']),
+                    expense_date=expense_day,
+                    amount=amount,
                     vendor_name=data.get('vendor_name') or None,
                     description=data.get('description') or None,
                     payment_method=data['payment_method'],
@@ -338,9 +371,8 @@ class ExpenseService:
                     'approval_status': expense.approval_status
                 }
                 
-        except ValueError as ve:
-            tenant_session.rollback()
-            raise Exception(f"Invalid data type: {str(ve)}")
+        except ValueError:
+            raise
         except Exception as e:
             tenant_session.rollback()
             raise Exception(f"Failed to create expense: {str(e)}")
@@ -356,18 +388,24 @@ class ExpenseService:
                 
                 if not expense:
                     raise ValueError("Expense not found")
-                
-                # Update fields
-                expense.expense_category = data.get('expense_category', expense.expense_category)
-                expense.expense_date = data.get('expense_date', expense.expense_date)
-                expense.amount = float(data.get('amount', expense.amount))
-                expense.vendor_name = data.get('vendor_name')
-                expense.description = data.get('description')
-                expense.payment_method = data.get('payment_method', expense.payment_method)
-                expense.receipt_attachment_url = data.get('receipt_attachment_url')
-                
+                if expense.reference_type == 'salary_payment':
+                    raise ValueError("Salary expenses are managed from Salary Payments and can't be edited here")
+
+                # Update only the fields that were sent (others used to be wiped)
+                if 'amount' in data:
+                    expense.amount = positive_amount(data['amount'], "Expense amount")
+                if 'expense_date' in data:
+                    expense_day = not_in_future(data['expense_date'], "Expense date")
+                    expense.academic_year_id = within_an_academic_year(tenant_session, expense_day, "Expense date")
+                    expense.expense_date = expense_day
+                for field in ('expense_category', 'payment_method', 'vendor_name', 'description', 'receipt_attachment_url'):
+                    if field in data:
+                        setattr(expense, field, data[field] or (None if field in ('vendor_name', 'description', 'receipt_attachment_url') else getattr(expense, field)))
+
                 tenant_session.commit()
-                
+
+        except ValueError:
+            raise
         except Exception as e:
             tenant_session.rollback()
             raise Exception(f"Failed to update expense: {str(e)}")

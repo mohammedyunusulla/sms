@@ -401,6 +401,7 @@ const ExpenseList: FC = () => {
                     <FormInput
                         label="Expense Date"
                         type="date"
+                        max={new Date().toLocaleDateString('en-CA')}
                         required
                         value={formData.expense_date}
                         onChange={(e) => setFormData({ ...formData, expense_date: e.target.value })}
@@ -408,6 +409,8 @@ const ExpenseList: FC = () => {
                     <FormInput
                         label="Amount"
                         type="number"
+                        min="0.01"
+                        step="0.01"
                         required
                         value={String(formData.amount)}
                         onChange={(e) => setFormData({ ...formData, amount: e.target.value })}

@@ -304,6 +304,8 @@ const InstallmentDialog: FC<InstallmentDialogProps> = ({ isOpen, onClose, studen
                                             <FormInput
                                                 label="Amount"
                                                 type="number"
+                                                min="0.01"
+                                                step="0.01"
                                                 value={inst.amount}
                                                 onChange={(e) => updateInstallment(inst.id, 'amount', e.target.value)}
                                                 required

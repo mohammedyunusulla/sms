@@ -15,13 +15,17 @@ class FeeService:
     @staticmethod
     def create_fee_structure(data, skid):
         """Create fee structure for a class"""
+        from app.utils.validators import positive_amount
         try:
             with switch_to_school_db(skid) as tenant_session:
+                amount = positive_amount(data.get('amount'), "Fee amount")
+                if data.get('is_recurring') and data.get('recurrence_amount') not in (None, ''):
+                    data['recurrence_amount'] = positive_amount(data['recurrence_amount'], "Recurring amount")
                 fee_structure = FeeStructure(
                     academic_year_id=data['academic_year_id'],
                     class_id=data['class_id'],
                     fee_name=data['fee_name'],
-                    amount=data['amount'],
+                    amount=amount,
                     is_mandatory=data.get('is_mandatory', True),
                     description=data.get('description'),
                     is_recurring=data.get('is_recurring', False),
@@ -32,8 +36,10 @@ class FeeService:
                 )
                 tenant_session.add(fee_structure)
                 tenant_session.commit()
-                
+
                 return fee_structure.to_dict()
+        except ValueError:
+            raise
         except Exception as e:
             tenant_session.rollback()
             raise Exception(f"Failed to create fee structure: {str(e)}")
@@ -75,7 +81,13 @@ class FeeService:
                 fee_structure = tenant_session.query(FeeStructure).filter_by(id=fee_id).first()
                 if not fee_structure:
                     raise ValueError("Fee structure not found")
-                
+
+                from app.utils.validators import positive_amount
+                if 'amount' in data:
+                    data['amount'] = positive_amount(data['amount'], "Fee amount")
+                if data.get('recurrence_amount') not in (None, ''):
+                    data['recurrence_amount'] = positive_amount(data['recurrence_amount'], "Recurring amount")
+
                 for key, value in data.items():
                     if hasattr(fee_structure, key) and key not in ['id', 'created_at']:
                         # if key == 'fee_type' and isinstance(value, str):
@@ -84,6 +96,8 @@ class FeeService:
                 
                 tenant_session.commit()
                 return fee_structure.to_dict()
+        except ValueError:
+            raise
         except Exception as e:
             tenant_session.rollback()
             raise Exception(f"Failed to update fee structure: {str(e)}")
@@ -297,11 +311,22 @@ class FeeService:
                 
                 if not student_fee:
                     raise ValueError("Student fee record not found")
-                
-                # Validate amount
-                balance = float(student_fee.total_amount) - float(student_fee.paid_amount)
-                if float(data['amount_paid']) > balance:
-                    raise ValueError(f"Payment amount exceeds balance. Balance: {balance}")
+
+                # Validate amount, date and mode (zero / negative / future-dated payments used to be accepted,
+                # and the balance ignored discounts and late fees)
+                from app.utils.validators import not_in_future, positive_amount
+                amount = positive_amount(data.get('amount_paid'), "Payment amount")
+                payment_day = not_in_future(data.get('payment_date') or date.today(), "Payment date")
+                balance = round(float(student_fee.total_amount) - float(student_fee.discount_amount or 0)
+                                + float(student_fee.late_fee or 0) - float(student_fee.paid_amount or 0), 2)
+                if balance <= 0:
+                    raise ValueError("This fee is already fully paid")
+                if amount > balance:
+                    raise ValueError(f"Payment amount exceeds the balance of {balance:.2f}")
+                if data.get('payment_mode') not in PaymentMode.__members__:
+                    raise ValueError(f"Payment mode must be one of: {', '.join(PaymentMode.__members__)}")
+                data['amount_paid'] = amount
+                data['payment_date'] = payment_day.isoformat()
                 
                 # Generate receipt number
                 last_payment = tenant_session.query(FeePayment).order_by(
@@ -341,6 +366,8 @@ class FeeService:
                     'student_fee': student_fee.to_dict(),
                     'receipt_number': receipt_num
                 }
+        except ValueError:
+            raise
         except Exception as e:
             tenant_session.rollback()
             raise Exception(f"Failed to record payment: {str(e)}")
@@ -544,11 +571,20 @@ class FeeService:
                 
                 if not installment:
                     raise ValueError("Installment not found")
-                
-                # Validate amount
-                balance = float(installment.amount) - float(installment.paid_amount)
-                if float(data['amount_paid']) > balance:
-                    raise ValueError(f"Payment amount exceeds balance. Balance: {balance}")
+
+                # Validate amount, date and mode
+                from app.utils.validators import not_in_future, positive_amount
+                amount = positive_amount(data.get('amount_paid'), "Payment amount")
+                payment_day = not_in_future(data.get('payment_date') or date.today(), "Payment date")
+                balance = round(float(installment.amount) - float(installment.paid_amount or 0), 2)
+                if balance <= 0:
+                    raise ValueError("This installment is already fully paid")
+                if amount > balance:
+                    raise ValueError(f"Payment amount exceeds the installment balance of {balance:.2f}")
+                if data.get('payment_mode') not in PaymentMode.__members__:
+                    raise ValueError(f"Payment mode must be one of: {', '.join(PaymentMode.__members__)}")
+                data['amount_paid'] = amount
+                data['payment_date'] = payment_day.isoformat()
                 
                 # Generate receipt number
                 last_payment = tenant_session.query(FeePayment).order_by(FeePayment.id.desc()).first()
@@ -598,6 +634,8 @@ class FeeService:
                     'student_fee': student_fee.to_dict(),
                     'receipt_number': receipt_num
                 }
+        except ValueError:
+            raise
         except Exception as e:
             tenant_session.rollback()
             raise Exception(f"Failed to record installment payment: {str(e)}")

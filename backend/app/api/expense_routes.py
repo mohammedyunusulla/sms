@@ -17,6 +17,8 @@ def get_salary_setups(skid):
             'status': 'success',
             'code': 200
         }), 200
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': f'Failed to get salary setups: {str(e)}'}), 500
 
@@ -32,6 +34,8 @@ def create_salary_setup(skid):
             'message': 'Salary setup created successfully',
             'status': 'success'
         }), 201
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': f'Failed to create salary setup: {str(e)}'}), 500
 
@@ -47,6 +51,8 @@ def update_salary_setup(skid):
             'message': 'Salary setup updated successfully',
             'status': 'success'
         }), 200
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': f'Failed to update salary setup: {str(e)}'}), 500
 
@@ -62,6 +68,8 @@ def delete_salary_setup(skid, setup_id):
             'soft_delete': result['soft_delete'],
             'status': 'success'
         }), 200
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': f'Failed to delete salary setup: {str(e)}'}), 500
 
@@ -84,6 +92,8 @@ def generate_salaries(skid):
             'message': 'Salaries generated successfully',
             'status': 'success'
         }), 201
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': f'Failed to generate salaries: {str(e)}'}), 500
 
@@ -99,6 +109,8 @@ def mark_salary_paid(skid, payment_id):
             'message': 'Salary marked as paid successfully',
             'status': 'success'
         }), 200
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': f'Failed to mark salary as paid: {str(e)}'}), 500
 
@@ -114,6 +126,8 @@ def mark_salary_unpaid(skid, payment_id):
             'status': 'success',
             'code': 200
         }), 200
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': f'Failed to mark salary as unpaid: {str(e)}'}), 500
 
@@ -132,6 +146,8 @@ def get_salary_payments(skid):
             'status': 'success',
             'code': 200
         }), 200
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': f'Failed to get salary payments: {str(e)}'}), 500
 
@@ -154,6 +170,8 @@ def get_expenses(skid):
             'status': 'success',
             'code': 200
         }), 200
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': f'Failed to get expenses: {str(e)}'}), 500
 
@@ -170,6 +188,8 @@ def create_expense(skid):
             'message': 'Expense created successfully',
             'status': 'success'
         }), 201
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': f'Failed to create expense: {str(e)}'}), 500
 
@@ -195,6 +215,8 @@ def update_expense(skid, expense_id):
             'status': 'success',
             'code':200
         }), 200
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': f'Failed to update expense: {str(e)}'}), 500
 
@@ -209,5 +231,7 @@ def delete_expense(skid, expense_id):
             'status': 'success',
             'code':200
         }), 200
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': f'Failed to delete expense: {str(e)}'}), 500

@@ -333,6 +333,8 @@ const SalarySetup: FC = () => {
                         <FormInput
                             label="Basic Salary"
                             type="number"
+                            min="0.01"
+                            step="0.01"
                             required
                             value={formData.basic_salary}
                             onChange={(e) => setFormData({ ...formData, basic_salary: e.target.value })}
@@ -354,6 +356,7 @@ const SalarySetup: FC = () => {
                             <FormInput
                                 label="HRA"
                                 type="number"
+                                min="0"
                                 value={formData.allowances.hra}
                                 onChange={(e) => setFormData({
                                     ...formData,
@@ -364,6 +367,7 @@ const SalarySetup: FC = () => {
                             <FormInput
                                 label="DA"
                                 type="number"
+                                min="0"
                                 value={formData.allowances.da}
                                 onChange={(e) => setFormData({
                                     ...formData,
@@ -374,6 +378,7 @@ const SalarySetup: FC = () => {
                             <FormInput
                                 label="Transport Allowance"
                                 type="number"
+                                min="0"
                                 value={formData.allowances.transport}
                                 onChange={(e) => setFormData({
                                     ...formData,
@@ -391,6 +396,7 @@ const SalarySetup: FC = () => {
                             <FormInput
                                 label="PF"
                                 type="number"
+                                min="0"
                                 value={formData.deductions.pf}
                                 onChange={(e) => setFormData({
                                     ...formData,
@@ -401,6 +407,7 @@ const SalarySetup: FC = () => {
                             <FormInput
                                 label="Tax"
                                 type="number"
+                                min="0"
                                 value={formData.deductions.tax}
                                 onChange={(e) => setFormData({
                                     ...formData,
