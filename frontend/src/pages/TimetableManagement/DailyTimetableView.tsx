@@ -2,6 +2,8 @@ import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Skeleton } from '../../components';
 import { timetableService } from '../../services/modules/timetableService';
+import dashboardService from '../../services/dashboardService';
+import { getSchoolId } from '../../services/api/client';
 
 export interface Period {
     id?: number | string;
@@ -15,7 +17,9 @@ export interface Period {
 
 interface DailyTimetableViewProps {
     /** Backend "student_user_id" — for parents this is selectedChild.student_id; for students this is user.school_user_id */
-    studentId: number | undefined;
+    studentId?: number | undefined;
+    /** For a teacher: their own school_user_id. Shows the classes they teach that day instead of a section's day. */
+    teacherId?: number | undefined;
 }
 
 const DAY_NAMES_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -111,7 +115,7 @@ const statusStyles: Record<PeriodStatus, { dot: string; badge: string; badgeText
     },
 };
 
-const DailyTimetableView: FC<DailyTimetableViewProps> = ({ studentId }) => {
+const DailyTimetableView: FC<DailyTimetableViewProps> = ({ studentId, teacherId }) => {
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [periods, setPeriods] = useState<Period[]>([]);
     const [loading, setLoading] = useState(false);
@@ -123,22 +127,34 @@ const DailyTimetableView: FC<DailyTimetableViewProps> = ({ studentId }) => {
     );
 
     const fetchTimetable = useCallback(async () => {
-        if (!studentId) {
+        if (!studentId && !teacherId) {
             setPeriods([]);
             return;
         }
         setLoading(true);
         try {
             const dateStr = formatDate(selectedDate);
-            const data = await timetableService.getStudentDailyTimetable(studentId, dateStr);
-            setPeriods(Array.isArray(data) ? data : []);
+            if (teacherId) {
+                // A teacher's own day: the classes they teach (the page used to call the student view with the
+                // teacher's id, which always failed)
+                const rows = await dashboardService.getTeacherDayTimetable(getSchoolId() || '', teacherId, dateStr);
+                setPeriods((rows || []).map((r) => ({
+                    ...r,
+                    class_label: [r.class_name, r.section_name && `Section ${r.section_name}`].filter(Boolean).join(' · '),
+                    room_number: r.room,
+                })));
+            } else {
+                const data = await timetableService.getStudentDailyTimetable(studentId!, dateStr);
+                // the API sends `room`; the card reads room_number (so rooms were never shown)
+                setPeriods(Array.isArray(data) ? data.map((p) => ({ ...p, room_number: p.room_number ?? p.room })) : []);
+            }
         } catch (err: any) {
             toast.error(err?.message || 'Failed to load timetable');
             setPeriods([]);
         } finally {
             setLoading(false);
         }
-    }, [studentId, selectedDate]);
+    }, [studentId, teacherId, selectedDate]);
 
     useEffect(() => {
         fetchTimetable();
@@ -275,6 +291,15 @@ const DailyTimetableView: FC<DailyTimetableViewProps> = ({ studentId }) => {
                                                 >
                                                     {period.subject_name || 'Untitled period'}
                                                 </h4>
+                                                {period.class_label && (
+                                                    <p
+                                                        className={`text-xs mt-0.5 ${
+                                                            isOngoing ? 'text-white/80' : 'text-gray-500 dark:text-gray-400'
+                                                        }`}
+                                                    >
+                                                        🏫 {period.class_label}
+                                                    </p>
+                                                )}
                                                 {period.teacher_name && (
                                                     <p
                                                         className={`text-xs mt-0.5 ${
