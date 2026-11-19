@@ -1,10 +1,7 @@
 from app.models.main.User import User, UserRole
-from app.models.tenant import Student, Teacher, SchoolUsers, TeacherSubject
+from app.models.tenant import Teacher, SchoolUsers, TeacherSubject, Role, UserRoles
 from app import db
-from flask import jsonify
 from app.utils.db_manager import switch_to_school_db
-from app.utils.helpers import generate_student_id
-from app.services.userRole_service import UserRolesService
 from sqlalchemy.orm import joinedload
 
 class TeacherService:
@@ -13,6 +10,9 @@ class TeacherService:
         user = None  # Track user so we can delete if needed
         school_user_id = None # New variable to store the ID from the tenant DB
         try:
+            if data.get('role') != UserRole.TEACHER.value:
+                raise ValueError("Invalid role for teacher creation")
+
             # Create in main DB
             user = User(
                 username=data['username'],
@@ -29,6 +29,12 @@ class TeacherService:
 
             # Insert into tenant DB
             with switch_to_school_db(skid) as tenant_session:
+                teacher_role = tenant_session.query(Role).filter_by(role_code=UserRole.TEACHER.value).first()
+                if not teacher_role:
+                    raise ValueError(
+                        "Role 'TEACHER' not found in school database. Run role seeding for this school."
+                    )
+
                 school_user = SchoolUsers(
                     username=data['username'],
                     email=data['email'],
@@ -36,7 +42,7 @@ class TeacherService:
                     last_name=data['last_name'],
                     phone=data.get('phone'),
                     gender=data.get('gender'),
-                    role_id = data.get('role_id'),
+                    role_id=teacher_role.id,
                     skid=skid,
                     is_active=True
                 )
@@ -47,31 +53,29 @@ class TeacherService:
                 school_user_id = school_user.id
 
                 # Create respective profile
-                if user.role == UserRole.TEACHER:
-                    profile = Teacher(
-                        user_id=school_user_id,
-                        employee_id=data.get('employee_id'),
-                        designation=data.get('designation'),
-                        date_of_joining=data.get('date_of_joining'),
-                        qualifications=data.get('qualifications'),
-                        salary=data.get('salary')
-                    )
-                else:
-                    raise ValueError("Only teacher/student logic implemented. Add parent/staff if needed.")
+                employee_id = data.get('employee_id') or f"TCH-{skid[:6].upper()}-{school_user_id}"
+                profile = Teacher(
+                    user_id=school_user_id,
+                    employee_id=employee_id,
+                    designation=data.get('designation'),
+                    date_of_joining=data.get('date_of_joining'),
+                    qualifications=data.get('qualifications'),
+                    salary=data.get('salary')
+                )
 
                 tenant_session.add(profile)
+                tenant_session.add(
+                    UserRoles(
+                        user_id=school_user_id,
+                        role_id=teacher_role.id,
+                        assigned_by=data.get('assigned_by'),
+                        is_active=True
+                    )
+                )
                 tenant_session.commit()
 
             user.school_user_id = school_user_id
             db.session.commit()
-            
-            # Assign the role after creating the teacher on the basis of role_id
-            role_data = {
-                "user_id": school_user_id,
-                "role_id": data.get("role_id"),
-                "assigned_by": 1
-            }
-            UserRolesService.assign_role_to_user(role_data, skid)
 
             return user.to_dict()
 
@@ -89,7 +93,18 @@ class TeacherService:
                 except Exception as delete_error:
                     db.session.rollback()
                     print(f"Failed to clean up user from main DB: {delete_error}")
-    
+
+            # Delete tenant records if they were created before the failure
+            if school_user_id:
+                try:
+                    with switch_to_school_db(skid) as tenant_session:
+                        tenant_user = tenant_session.query(SchoolUsers).filter_by(id=school_user_id).first()
+                        if tenant_user:
+                            tenant_session.delete(tenant_user)
+                            tenant_session.commit()
+                except Exception as delete_error:
+                    print(f"Failed to clean up tenant user: {delete_error}")
+
             raise Exception(f"Failed to create school user: {str(e)}")
             
     @staticmethod
