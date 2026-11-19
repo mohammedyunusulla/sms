@@ -107,12 +107,15 @@ export const createApiClient = (): AxiosInstance => {
         async (error: AxiosError<ApiErrorResponse>) => {
             const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
+            // A 401 from login just means wrong credentials: skip refresh/logout and
+            // fall through to the normal error mapping so the form can show the
+            // backend's message (forceLogout would reload the page and lose it).
+            const isLoginRequest = originalRequest?.url?.includes('/auth/login');
+
             // Handle 401 - attempt token refresh before logging out
-            if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
-                // Don't retry refresh or login endpoints
-                const isAuthEndpoint = originalRequest.url?.includes('/auth/refresh') ||
-                    originalRequest.url?.includes('/auth/login');
-                if (isAuthEndpoint) {
+            if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !isLoginRequest) {
+                // A failed refresh means the session is gone: log out.
+                if (originalRequest.url?.includes('/auth/refresh')) {
                     forceLogout();
                     return Promise.reject(error);
                 }
