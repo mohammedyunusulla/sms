@@ -36,6 +36,8 @@ class TeacherService:
                     last_name=data['last_name'],
                     phone=data.get('phone'),
                     gender=data.get('gender'),
+                    date_of_birth=data.get('date_of_birth'),
+                    address=data.get('address'),
                     role_id = data.get('role_id'),
                     skid=skid,
                     is_active=True

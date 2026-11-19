@@ -82,7 +82,7 @@ class TeacherService {
         if (response.code === 200 && response.status === 'success') {
             return response?.data;
         }
-        throw new Error(response.data?.message || 'Failed to create teacher');
+        throw new Error(response?.message || response.data?.message || 'Failed to create teacher');
     }
 
     /**
@@ -100,7 +100,7 @@ class TeacherService {
         if (response.code === 200 && response.status === 'success') {
             return response.data;
         }
-        throw new Error(response.data?.message || 'Failed to update teacher');
+        throw new Error(response?.message || response.data?.message || 'Failed to update teacher');
     }
 
     /**

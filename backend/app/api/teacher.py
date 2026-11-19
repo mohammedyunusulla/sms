@@ -7,6 +7,43 @@ from app.models.main.User import UserRole
 
 teacher_bp = Blueprint('teachers', __name__)
 
+# Optional fields: a blank value from the form is stored as NULL ('' breaks dates/numbers/unique employee_id)
+TEACHER_OPTIONAL_FIELDS = ('employee_id', 'designation', 'date_of_joining', 'salary', 'qualifications',
+                           'gender', 'date_of_birth', 'address', 'phone')
+TEACHER_REQUIRED_FIELDS = (('username', 'Username'), ('password', 'Password'), ('first_name', 'First name'),
+                           ('last_name', 'Last name'), ('email', 'Email'), ('phone', 'Phone'),
+                           ('employee_id', 'Employee ID'), ('gender', 'Gender'), ('date_of_birth', 'Date of birth'),
+                           ('address', 'Address'), ('designation', 'Designation'), ('date_of_joining', 'Date of joining'),
+                           ('salary', 'Salary'), ('qualifications', 'Qualifications'))
+
+
+def _employee_id_taken(skid, employee_id, exclude_user_id=None):
+    """teachers.employee_id is unique and NOT NULL in the tenant DB."""
+    from app.models.tenant import Teacher
+    from app.utils.db_manager import switch_to_school_db
+    with switch_to_school_db(skid) as tenant_session:
+        q = tenant_session.query(Teacher).filter(Teacher.employee_id == employee_id)
+        if exclude_user_id is not None:
+            q = q.filter(Teacher.user_id != int(exclude_user_id))
+        return q.first() is not None
+
+
+def _clean_teacher_payload(data):
+    """Trim strings and turn blank optional fields into None."""
+    cleaned = {k: (v.strip() if isinstance(v, str) and k != 'password' else v) for k, v in data.items()}
+    for key in TEACHER_OPTIONAL_FIELDS:
+        if key in cleaned and cleaned[key] in ('', None):
+            cleaned[key] = None
+    return cleaned
+
+
+def _missing_teacher_fields(data):
+    """Return a 'X, Y are required' message for missing mandatory create fields, or None."""
+    missing = [label for key, label in TEACHER_REQUIRED_FIELDS if not data.get(key)]
+    if not missing:
+        return None
+    return f"{', '.join(missing)} {'is' if len(missing) == 1 and missing[0] != 'Qualifications' else 'are'} required"
+
 @teacher_bp.route('/create/<skid>', methods=['POST'])
 @login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
 @log_actions('CREATE_TEACHER_USER')
@@ -22,11 +59,22 @@ def create_teacher(skid):
             return jsonify({'message': 'No data provided'}), 400
         if not skid:
             raise ValueError("School ID (skid) is required")
-        
+
+        data = _clean_teacher_payload(data)
+        missing = _missing_teacher_fields(data)
+        if missing:
+            return jsonify({'message': missing, 'status': 'error', 'code': 400}), 400
+        from app.utils.helpers import validate_password
+        ok, password_error = validate_password(data['password'])
+        if not ok:
+            return jsonify({'message': password_error, 'status': 'error', 'code': 400}), 400
+
         # Check for duplicate before creating
         duplicate_check = TeacherService.check_duplicate_user(data, skid)
         if duplicate_check:
-            return jsonify({'message': duplicate_check, 'status': 'exists', 'code': 200}), 200
+            return jsonify({'message': duplicate_check, 'status': 'error', 'code': 409}), 409
+        if _employee_id_taken(skid, data['employee_id']):
+            return jsonify({'message': f"Employee ID '{data['employee_id']}' is already used by another teacher", 'status': 'error', 'code': 409}), 409
         
         user = TeacherService.create_teacher_user(data, skid)
         
@@ -61,7 +109,14 @@ def update_teacher(skid, teacher_id):
             raise ValueError("School ID (skid) is required")
         if not teacher_id:
             raise ValueError("Teacher ID is required")
-        
+
+        data = _clean_teacher_payload(data)
+        for key, label in TEACHER_REQUIRED_FIELDS:
+            if key != 'password' and key in data and not data[key]:
+                return jsonify({'message': _missing_teacher_fields({k: True for k, _ in TEACHER_REQUIRED_FIELDS if k != key}), 'status': 'error', 'code': 400}), 400
+        if data.get('employee_id') and _employee_id_taken(skid, data['employee_id'], exclude_user_id=teacher_id):
+            return jsonify({'message': f"Employee ID '{data['employee_id']}' is already used by another teacher", 'status': 'error', 'code': 409}), 409
+
         updated_user = TeacherService.update_teacher_user(teacher_id, data, skid)
         
         if not updated_user:

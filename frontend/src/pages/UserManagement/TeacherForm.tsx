@@ -19,6 +19,8 @@ const TeacherForm: FC<ITeacherFormProps> = ({ initialData, mode: propMode = 'cre
     const { id } = useParams();
     const [loading, setLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [showPassword, setShowPassword] = useState(false);
     // Auto-detect mode based on URL - if id exists, it's update mode
     const mode = id ? 'update' : propMode;
     const [formData, setFormData] = useState({
@@ -55,7 +57,32 @@ const TeacherForm: FC<ITeacherFormProps> = ({ initialData, mode: propMode = 'cre
         try {
             setLoading(true);
             const response = await teacherService.getById(id!);
-            setFormData(response);
+            // Teacher-specific fields come nested under `profile`; date inputs need YYYY-MM-DD
+            const profile = response?.profile || {};
+            const toDateInput = (value: unknown) => {
+                if (!value) return '';
+                const text = String(value);
+                if (/^\d{4}-\d{2}-\d{2}/.test(text)) return text.slice(0, 10);
+                const parsed = new Date(text);
+                return isNaN(parsed.getTime()) ? '' : parsed.toISOString().slice(0, 10);
+            };
+            setFormData((prev: typeof formData) => ({
+                ...prev,
+                username: response?.username ?? '',
+                first_name: response?.first_name ?? '',
+                last_name: response?.last_name ?? '',
+                email: response?.email ?? '',
+                phone: response?.phone ?? '',
+                gender: response?.gender ?? '',
+                date_of_birth: toDateInput(response?.date_of_birth),
+                address: response?.address ?? '',
+                is_active: response?.is_active ?? true,
+                employee_id: profile.employee_id ?? '',
+                designation: profile.designation ?? '',
+                date_of_joining: toDateInput(profile.date_of_joining),
+                salary: profile.salary != null ? String(profile.salary) : '',
+                qualifications: profile.qualifications ?? '',
+            }));
         } catch (error) {
             console.error('Error fetching teacher:', error);
             toast.error('Failed to fetch teacher');
@@ -70,13 +97,73 @@ const TeacherForm: FC<ITeacherFormProps> = ({ initialData, mode: propMode = 'cre
             ...prev,
             [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
         }));
+        // Clear a field's error as soon as the user edits it
+        if (errors[name]) {
+            setErrors((prev) => {
+                const next = { ...prev };
+                delete next[name];
+                return next;
+            });
+        }
     };
+
+    // Every field is mandatory (password only when creating)
+    const validate = (): Record<string, string> => {
+        const v = (key: keyof typeof formData) => {
+            const raw = String(formData[key] ?? '').trim();
+            return key === 'date_of_birth' || key === 'date_of_joining' ? raw.slice(0, 10) : raw;
+        };
+        const next: Record<string, string> = {};
+        if (!v('username')) next.username = 'Username is required';
+        else if (v('username').length < 3) next.username = 'Username must be at least 3 characters';
+        if (mode === 'create') {
+            const pw = String(formData.password ?? '');
+            if (!pw) next.password = 'Password is required';
+            else if (pw.length < 8) next.password = 'Password must be at least 8 characters';
+            else if (!/[A-Z]/.test(pw)) next.password = 'Password must contain an uppercase letter';
+            else if (!/[a-z]/.test(pw)) next.password = 'Password must contain a lowercase letter';
+            else if (!/[0-9]/.test(pw)) next.password = 'Password must contain a digit';
+        }
+        if (!v('first_name')) next.first_name = 'First name is required';
+        if (!v('last_name')) next.last_name = 'Last name is required';
+        if (!v('email')) next.email = 'Email is required';
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v('email'))) next.email = 'Enter a valid email address';
+        if (!v('employee_id')) next.employee_id = 'Employee ID is required';
+        if (!v('gender')) next.gender = 'Gender is required';
+        const today = new Date().toISOString().slice(0, 10);
+        if (!v('date_of_birth')) next.date_of_birth = 'Date of birth is required';
+        else if (v('date_of_birth') >= today) next.date_of_birth = 'Date of birth must be in the past';
+        if (!v('address')) next.address = 'Address is required';
+        if (!v('designation')) next.designation = 'Designation is required';
+        if (!v('date_of_joining')) next.date_of_joining = 'Date of joining is required';
+        else if (v('date_of_joining') > today) next.date_of_joining = 'Date of joining cannot be in the future';
+        else if (v('date_of_birth') && !next.date_of_birth && v('date_of_joining') <= v('date_of_birth')) next.date_of_joining = 'Date of joining must be after date of birth';
+        if (!v('salary')) next.salary = 'Salary is required';
+        else if (!(Number(v('salary')) > 0)) next.salary = 'Salary must be a positive number';
+        if (!v('qualifications')) next.qualifications = 'Qualifications are required';
+        if (!v('phone')) next.phone = 'Phone is required';
+        else if (!/^\d{10}$/.test(v('phone').replace(/[\s-]/g, ''))) next.phone = 'Enter a 10-digit phone number';
+        return next;
+    };
+
+    const inputClass = (name: string) =>
+        `w-full px-4 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 ${errors[name]
+            ? 'border-red-500 dark:border-red-500 focus:ring-red-500'
+            : 'border-gray-300 dark:border-gray-600'}`;
+
+    const fieldError = (name: string) =>
+        errors[name] ? <p id={`${name}-error`} role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">{errors[name]}</p> : null;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!formData.first_name || !formData.last_name || !formData.email || !formData.phone) {
-            toast.error('Please fill in all required fields');
+        const found = validate();
+        setErrors(found);
+        if (Object.keys(found).length > 0) {
+            const count = Object.keys(found).length;
+            toast.error(`Please fix ${count} highlighted field${count > 1 ? 's' : ''}`);
+            const first = document.querySelector<HTMLElement>(`[name="${Object.keys(found)[0]}"]`);
+            first?.focus();
             return;
         }
 
@@ -116,7 +203,7 @@ const TeacherForm: FC<ITeacherFormProps> = ({ initialData, mode: propMode = 'cre
             />
 
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
-                <form onSubmit={handleSubmit} className="space-y-8">
+                <form onSubmit={handleSubmit} noValidate className="space-y-8">
                     {/* Account Information Section */}
                     <div>
                         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Account Information</h3>
@@ -132,9 +219,12 @@ const TeacherForm: FC<ITeacherFormProps> = ({ initialData, mode: propMode = 'cre
                                     value={formData.username}
                                     onChange={handleInputChange}
                                     disabled={isViewMode}
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                                    className={inputClass('username')}
+                                    aria-invalid={!!errors.username}
+                                    aria-describedby={errors.username ? 'username-error' : undefined}
                                     placeholder="Enter username"
                                 />
+                                {fieldError('username')}
                             </div>
 
                             {/* Password */}
@@ -143,15 +233,39 @@ const TeacherForm: FC<ITeacherFormProps> = ({ initialData, mode: propMode = 'cre
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Password *
                                     </label>
-                                    <input
-                                        type="password"
-                                        name="password"
-                                        value={formData.password}
-                                        onChange={handleInputChange}
-                                        disabled={isViewMode}
-                                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
-                                        placeholder="Enter password"
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            type={showPassword ? 'text' : 'password'}
+                                            name="password"
+                                            value={formData.password}
+                                            onChange={handleInputChange}
+                                            disabled={isViewMode}
+                                            className={`${inputClass('password')} pr-11`}
+                                            aria-invalid={!!errors.password}
+                                            aria-describedby={errors.password ? 'password-error' : undefined}
+                                            placeholder="Enter password"
+                                            autoComplete="new-password"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword((v) => !v)}
+                                            className="absolute inset-y-0 right-0 flex items-center px-3 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                                            aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                            title={showPassword ? 'Hide password' : 'Show password'}
+                                        >
+                                            {showPassword ? (
+                                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 3l18 18M10.58 10.58a2 2 0 002.83 2.83M9.88 4.24A9.77 9.77 0 0112 4c4.48 0 8.27 2.94 9.54 7a9.96 9.96 0 01-2.04 3.36M6.1 6.1A9.95 9.95 0 002.46 11c1.27 4.06 5.06 7 9.54 7 1.6 0 3.11-.37 4.45-1.04" />
+                                                </svg>
+                                            ) : (
+                                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.46 12C3.73 7.94 7.52 5 12 5c4.48 0 8.27 2.94 9.54 7-1.27 4.06-5.06 7-9.54 7-4.48 0-8.27-2.94-9.54-7z" />
+                                                </svg>
+                                            )}
+                                        </button>
+                                    </div>
+                                {fieldError('password')}
                                 </div>
                             )}
                         </div>
@@ -172,9 +286,12 @@ const TeacherForm: FC<ITeacherFormProps> = ({ initialData, mode: propMode = 'cre
                                     value={formData.first_name}
                                     onChange={handleInputChange}
                                     disabled={isViewMode}
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                                    className={inputClass('first_name')}
+                                    aria-invalid={!!errors.first_name}
+                                    aria-describedby={errors.first_name ? 'first_name-error' : undefined}
                                     placeholder="Enter first name"
                                 />
+                                {fieldError('first_name')}
                             </div>
 
                             {/* Last Name */}
@@ -188,9 +305,12 @@ const TeacherForm: FC<ITeacherFormProps> = ({ initialData, mode: propMode = 'cre
                                     value={formData.last_name}
                                     onChange={handleInputChange}
                                     disabled={isViewMode}
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                                    className={inputClass('last_name')}
+                                    aria-invalid={!!errors.last_name}
+                                    aria-describedby={errors.last_name ? 'last_name-error' : undefined}
                                     placeholder="Enter last name"
                                 />
+                                {fieldError('last_name')}
                             </div>
 
                             {/* Email */}
@@ -204,9 +324,12 @@ const TeacherForm: FC<ITeacherFormProps> = ({ initialData, mode: propMode = 'cre
                                     value={formData.email}
                                     onChange={handleInputChange}
                                     disabled={isViewMode}
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                                    className={inputClass('email')}
+                                    aria-invalid={!!errors.email}
+                                    aria-describedby={errors.email ? 'email-error' : undefined}
                                     placeholder="Enter email"
                                 />
+                                {fieldError('email')}
                             </div>
 
                             {/* Phone */}
@@ -220,34 +343,40 @@ const TeacherForm: FC<ITeacherFormProps> = ({ initialData, mode: propMode = 'cre
                                     value={formData.phone}
                                     onChange={handleInputChange}
                                     disabled={isViewMode}
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                                    className={inputClass('phone')}
+                                    aria-invalid={!!errors.phone}
+                                    aria-describedby={errors.phone ? 'phone-error' : undefined}
                                     placeholder="Enter phone number"
                                 />
+                                {fieldError('phone')}
                             </div>
 
                             {/* Gender */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Gender
+                                    Gender *
                                 </label>
                                 <select
                                     name="gender"
                                     value={formData.gender}
                                     onChange={handleInputChange}
                                     disabled={isViewMode}
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                                    className={inputClass('gender')}
+                                    aria-invalid={!!errors.gender}
+                                    aria-describedby={errors.gender ? 'gender-error' : undefined}
                                 >
                                     <option value="">Select Gender</option>
                                     <option value="Male">Male</option>
                                     <option value="Female">Female</option>
                                     <option value="Other">Other</option>
                                 </select>
+                                {fieldError('gender')}
                             </div>
 
                             {/* Date of Birth */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Date of Birth
+                                    Date of Birth *
                                 </label>
                                 <input
                                     type="date"
@@ -255,15 +384,18 @@ const TeacherForm: FC<ITeacherFormProps> = ({ initialData, mode: propMode = 'cre
                                     value={formData.date_of_birth}
                                     onChange={handleInputChange}
                                     disabled={isViewMode}
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                                    className={inputClass('date_of_birth')}
+                                    aria-invalid={!!errors.date_of_birth}
+                                    aria-describedby={errors.date_of_birth ? 'date_of_birth-error' : undefined}
                                 />
+                                {fieldError('date_of_birth')}
                             </div>
                         </div>
 
                         {/* Address */}
                         <div className="mt-6">
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Address
+                                Address *
                             </label>
                             <textarea
                                 name="address"
@@ -271,9 +403,12 @@ const TeacherForm: FC<ITeacherFormProps> = ({ initialData, mode: propMode = 'cre
                                 onChange={handleInputChange}
                                 disabled={isViewMode}
                                 rows={2}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                                className={inputClass('address')}
+                                    aria-invalid={!!errors.address}
+                                    aria-describedby={errors.address ? 'address-error' : undefined}
                                 placeholder="Enter address"
                             />
+                                {fieldError('address')}
                         </div>
                     </div>
 
@@ -284,7 +419,7 @@ const TeacherForm: FC<ITeacherFormProps> = ({ initialData, mode: propMode = 'cre
                             {/* Employee ID */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Employee ID
+                                    Employee ID *
                                 </label>
                                 <input
                                     type="text"
@@ -292,15 +427,18 @@ const TeacherForm: FC<ITeacherFormProps> = ({ initialData, mode: propMode = 'cre
                                     value={formData.employee_id}
                                     onChange={handleInputChange}
                                     disabled={isViewMode}
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                                    className={inputClass('employee_id')}
+                                    aria-invalid={!!errors.employee_id}
+                                    aria-describedby={errors.employee_id ? 'employee_id-error' : undefined}
                                     placeholder="Enter employee ID"
                                 />
+                                {fieldError('employee_id')}
                             </div>
 
                             {/* Designation */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Designation
+                                    Designation *
                                 </label>
                                 <input
                                     type="text"
@@ -308,15 +446,18 @@ const TeacherForm: FC<ITeacherFormProps> = ({ initialData, mode: propMode = 'cre
                                     value={formData.designation}
                                     onChange={handleInputChange}
                                     disabled={isViewMode}
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                                    className={inputClass('designation')}
+                                    aria-invalid={!!errors.designation}
+                                    aria-describedby={errors.designation ? 'designation-error' : undefined}
                                     placeholder="Enter designation"
                                 />
+                                {fieldError('designation')}
                             </div>
 
                             {/* Date of Joining */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Date of Joining
+                                    Date of Joining *
                                 </label>
                                 <input
                                     type="date"
@@ -324,14 +465,17 @@ const TeacherForm: FC<ITeacherFormProps> = ({ initialData, mode: propMode = 'cre
                                     value={formData.date_of_joining}
                                     onChange={handleInputChange}
                                     disabled={isViewMode}
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                                    className={inputClass('date_of_joining')}
+                                    aria-invalid={!!errors.date_of_joining}
+                                    aria-describedby={errors.date_of_joining ? 'date_of_joining-error' : undefined}
                                 />
+                                {fieldError('date_of_joining')}
                             </div>
 
                             {/* Salary */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Salary
+                                    Salary *
                                 </label>
                                 <input
                                     type="number"
@@ -339,16 +483,19 @@ const TeacherForm: FC<ITeacherFormProps> = ({ initialData, mode: propMode = 'cre
                                     value={formData.salary}
                                     onChange={handleInputChange}
                                     disabled={isViewMode}
-                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                                    className={inputClass('salary')}
+                                    aria-invalid={!!errors.salary}
+                                    aria-describedby={errors.salary ? 'salary-error' : undefined}
                                     placeholder="Enter salary"
                                 />
+                                {fieldError('salary')}
                             </div>
                         </div>
 
                         {/* Qualifications */}
                         <div className="mt-6">
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                Qualifications
+                                Qualifications *
                             </label>
                             <textarea
                                 name="qualifications"
@@ -356,9 +503,12 @@ const TeacherForm: FC<ITeacherFormProps> = ({ initialData, mode: propMode = 'cre
                                 onChange={handleInputChange}
                                 disabled={isViewMode}
                                 rows={4}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50"
+                                className={inputClass('qualifications')}
+                                    aria-invalid={!!errors.qualifications}
+                                    aria-describedby={errors.qualifications ? 'qualifications-error' : undefined}
                                 placeholder="Enter qualifications"
                             />
+                                {fieldError('qualifications')}
                         </div>
                     </div>
 
