@@ -114,7 +114,7 @@ export default function TeacherHomeworkPage() {
         reference_answer_key: form.reference_answer_key || undefined,
         due_date: form.due_date || undefined,
       });
-      toast.success('Homework assignment created');
+      toast.success('Homework created');
       const assignmentRows = await homeworkApi.listAssignments({
         class_id: form.class_id,
         section_id: form.section_id || undefined,
@@ -122,7 +122,7 @@ export default function TeacherHomeworkPage() {
       setAssignments(assignmentRows);
       setForm((prev) => ({ ...prev, title: '', description: '', reference_answer_key: '', due_date: '' }));
     } catch (error: any) {
-      toast.error(error?.message || 'Failed to create assignment');
+      toast.error(error?.message || 'Failed to create homework');
     } finally {
       setLoading(false);
     }
@@ -163,7 +163,7 @@ export default function TeacherHomeworkPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <form onSubmit={onCreateAssignment} className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Create Assignment</h2>
+          <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Create Homework</h2>
           {!hasSections && form.class_id > 0 && (
             <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-200">
               No sections found for this class. Create one in Class Management, then return here.
@@ -303,7 +303,7 @@ export default function TeacherHomeworkPage() {
             onChange={(event) => setSelectedAssignmentId(Number(event.target.value))}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 md:max-w-lg"
           >
-            <option value="">Select assignment</option>
+            <option value="">Select homework</option>
             {assignments.map((row) => (
               <option key={row.id} value={row.id}>
                 {row.title} ({row.subject})

@@ -151,7 +151,7 @@ class HomeworkService:
             tenant_session.add(assignment)
             tenant_session.commit()
             tenant_session.refresh(assignment)
-            return cls._response("Assignment created successfully", cls._assignment_to_dict(assignment), 201)
+            return cls._response("Homework created successfully", cls._assignment_to_dict(assignment), 201)
 
     @classmethod
     def list_assignments(
@@ -186,7 +186,7 @@ class HomeworkService:
             for assignment in assignments:
                 session_status = student_sessions.get(assignment.id).status if assignment.id in student_sessions else None
                 data.append(cls._assignment_to_dict(assignment, session_status))
-            return cls._response("Assignments fetched successfully", data)
+            return cls._response("Homework fetched successfully", data)
 
     @classmethod
     def start_session(cls, skid: str, student_user_id: int, assignment_id: int, qr_code_value: str):
@@ -198,7 +198,7 @@ class HomeworkService:
 
             assignment = tenant_session.query(HomeworkAssignment).filter_by(id=assignment_id, is_active=True).first()
             if not assignment:
-                return cls._error("Assignment not found", 404)
+                return cls._error("Homework not found", 404)
 
             now = cls._utc_now()
             session = (
@@ -280,7 +280,7 @@ class HomeworkService:
 
             assignment = tenant_session.query(HomeworkAssignment).filter_by(id=session.assignment_id, is_active=True).first()
             if not assignment:
-                return cls._error("Assignment not found", 404)
+                return cls._error("Homework not found", 404)
 
             try:
                 hint_text = HomeworkGeminiService.generate_socratic_hint(
@@ -343,7 +343,7 @@ class HomeworkService:
 
             assignment = tenant_session.query(HomeworkAssignment).filter_by(id=session.assignment_id, is_active=True).first()
             if not assignment:
-                return cls._error("Assignment not found", 404)
+                return cls._error("Homework not found", 404)
 
             now = cls._utc_now()
             if session.status == "in_progress" and session.last_resumed_at:
@@ -414,7 +414,7 @@ class HomeworkService:
             cls._ensure_tables(tenant_session)
             assignment = tenant_session.query(HomeworkAssignment).filter_by(id=assignment_id, is_active=True).first()
             if not assignment:
-                return cls._error("Assignment not found", 404)
+                return cls._error("Homework not found", 404)
 
             sessions = tenant_session.query(StudentHomeworkSession).filter_by(assignment_id=assignment_id, is_active=True).all()
             total = len(sessions)
@@ -442,7 +442,7 @@ class HomeworkService:
                     mistakes[str(item).strip()] += 1
 
             return cls._response(
-                "Assignment analytics fetched successfully",
+                "Homework analytics fetched successfully",
                 {
                     "assignment": cls._assignment_to_dict(assignment),
                     "assignment_id": assignment_id,

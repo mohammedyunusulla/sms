@@ -74,7 +74,7 @@ export default function StudentHomeworkPage() {
 
   const startSession = async () => {
     if (!selectedAssignmentId || !startQr.trim()) {
-      toast.error('Select assignment and scan QR to start.');
+      toast.error('Select homework and scan QR to start.');
       return;
     }
     try {
@@ -163,7 +163,7 @@ export default function StudentHomeworkPage() {
             onChange={(event) => setSelectedAssignmentId(Number(event.target.value))}
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
           >
-            <option value="">Select assignment</option>
+            <option value="">Select homework</option>
             {assignments.map((assignment) => (
               <option key={assignment.id} value={assignment.id}>
                 {assignment.title} ({assignment.subject})
