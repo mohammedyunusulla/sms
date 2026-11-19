@@ -101,21 +101,41 @@ class ExamService:
     
     @staticmethod
     def delete_exam_type(exam_id, skid):
-        """Delete an exam type"""
+        """
+        Delete an exam type - only when nothing real depends on it. Refused (with what is in the way)
+        while it has marks, exam timetable entries or seating plans; its empty subject setups (no
+        marks) are removed with it. This used to cascade-delete all marks silently.
+        """
+        from app.models.tenant.MarksModels import MarksEntry
+        from app.utils.usage_check import blocked_message
         try:
             with switch_to_school_db(skid) as tenant_session:
                 exam = tenant_session.query(ExamType).filter_by(id=exam_id).first()
-                
+
                 if not exam:
                     raise ValueError("Exam type not found")
-                
-                # Check if exam has associated configurations
-                # (You can add this check based on your relationships)
-                
+
+                config_ids = [cid for (cid,) in tenant_session.query(ExamSubjectConfig.id).filter_by(exam_type_id=exam_id)]
+                usage = []
+                marks = tenant_session.query(MarksEntry).filter(MarksEntry.exam_config_id.in_(config_ids or [-1])).count()
+                if marks:
+                    usage.append(f"{marks} marks")
+                timetable = tenant_session.query(ExamTimetable).filter_by(exam_type_id=exam_id).count()
+                if timetable:
+                    usage.append(f"{timetable} exam timetable entr{'y' if timetable == 1 else 'ies'}")
+                seating = tenant_session.query(ExamSeatingConfig).filter_by(exam_type_id=exam_id).count()
+                if seating:
+                    usage.append(f"{seating} seating plan{'' if seating == 1 else 's'}")
+                if usage:
+                    raise ValueError(blocked_message(exam.exam_name, "exam", usage))
+
+                # only empty subject setups are left: remove them with the exam type
                 tenant_session.delete(exam)
                 tenant_session.commit()
-                
+
                 return True
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to delete exam type: {str(e)}")
             
@@ -245,16 +265,23 @@ class ExamService:
                 
                 if not config:
                     raise ValueError("Configuration not found")
-                
-                # Check if there are marks entries (optional - for safety)
-                # marks_count = tenant_session.query(MarksEntry).filter_by(exam_config_id=config_id).count()
-                # if marks_count > 0:
-                #     raise ValueError("Cannot delete configuration with existing marks entries")
-                
+
+                # Never delete marks silently: refuse while marks exist for this subject setup
+                from app.models.tenant.MarksModels import MarksEntry
+                marks_count = tenant_session.query(MarksEntry).filter_by(exam_config_id=config_id).count()
+                if marks_count > 0:
+                    subject = config.subject.subject_name if config.subject else "this subject"
+                    raise ValueError(
+                        f"Can't delete the {subject} setup: it has {marks_count} mark{'' if marks_count == 1 else 's'} entered. "
+                        "Remove those marks first."
+                    )
+
                 tenant_session.delete(config)
                 tenant_session.commit()
-                
+
                 return True
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to delete configuration: {str(e)}")
     

@@ -81,18 +81,24 @@ const ExamList: FC = () => {
         setShowBulkDeleteConfirm(true);
     };
 
+    // Try every selected exam; exams still in use (marks, timetable, seating) are refused with the reason
     const confirmBulkDelete = async () => {
-        try {
-            for (const exam of selectedRows) {
+        let deleted = 0;
+        const refused: string[] = [];
+        for (const exam of selectedRows) {
+            try {
                 await examService.delete(String(exam.id));
+                deleted += 1;
+            } catch (err: unknown) {
+                refused.push((err as { message?: string })?.message || `Couldn't delete ${exam.exam_name || 'an exam'}`);
             }
-            toast.success(`${selectedRows.length} exam(s) deleted successfully`);
-            setShowBulkDeleteConfirm(false);
-            setSelectedRows([]);
-            await fetchExams();
-        } catch (err: any) {
-            toast.error(err.message || 'Failed to delete some exams');
         }
+        if (deleted) toast.success(`${deleted} exam(s) deleted`);
+        refused.slice(0, 3).forEach((message) => toast.error(message));
+        if (refused.length > 3) toast.error(`…and ${refused.length - 3} more couldn't be deleted`);
+        setShowBulkDeleteConfirm(false);
+        setSelectedRows([]);
+        await fetchExams();
     };
 
     // Get category color variant
@@ -250,7 +256,7 @@ const ExamList: FC = () => {
                 isOpen={showDeleteConfirm}
                 type="danger"
                 title="Delete Exam"
-                message="Are you sure you want to delete this exam type? This action cannot be undone."
+                message="Delete this exam type? Exams that already have marks, an exam timetable or seating plans can't be deleted - you'll be told what is in the way."
                 onConfirm={confirmDelete}
                 onCancel={() => {
                     setShowDeleteConfirm(false);

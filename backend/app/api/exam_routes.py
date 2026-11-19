@@ -112,6 +112,8 @@ def delete_exam_type(exam_id, skid):
             'status': 'success',
             'code': 200
         }), 200
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': str(e), 'status': 'error', 'code': 500}), 500
 
@@ -237,6 +239,8 @@ def delete_exam_config(skid, config_id):
             'status': 'success',
             'code': 200
         }), 200
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': str(e), 'status': 'error', 'code': 500}), 500
 
