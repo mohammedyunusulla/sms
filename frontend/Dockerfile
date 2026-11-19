@@ -12,7 +12,7 @@ RUN set -eux; \
       REG_HOST="$(echo "${NPM_REGISTRY}" | sed -E 's#^https?://##; s#/$##')"; \
       npm config set "//${REG_HOST}/:_authToken" "${NPM_TOKEN}"; \
     fi; \
-    if [ -f package-lock.json ]; then npm ci; else npm install; fi; \
+    if [ -f package-lock.json ]; then npm ci || npm install; else npm install; fi; \
     rm -f /root/.npmrc
 
 COPY . .
