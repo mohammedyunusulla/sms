@@ -85,10 +85,13 @@ def get_announcements(skid):
         announcement_type = request.args.get('announcement_type')
         priority = request.args.get('priority')
         
-        # Get user info from query params (sent by frontend)
-        user_role = request.args.get('user_role')
-        school_user_id = request.args.get('school_user_id', type=int)
-        
+        # Who is asking comes from the login token, never from the URL: the old
+        # user_role / school_user_id query params let any user see every announcement
+        # (or claim to be an admin). Those params are now ignored.
+        current_user = request.current_user
+        user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
+        school_user_id = current_user.school_user_id
+
         if not academic_year_id:
             return jsonify({
                 'code': 400,
@@ -102,11 +105,11 @@ def get_announcements(skid):
         if priority:
             filters['priority'] = priority
         
-        # Pass user info to service
+        # Always filter by the logged-in user (admins/principal see everything inside the filter)
         user_info = {
             'role': user_role,
             'school_user_id': school_user_id
-        } if user_role and school_user_id else None
+        }
         
         announcements = AnnouncementService.get_announcements(
             skid, 

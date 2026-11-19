@@ -203,22 +203,6 @@ class AnnouncementService {
     }
 
 
-    // Get announcements for current user 
-    async getMyAnnouncements(page = 1, limit = 20): Promise<IAnnouncementListResponse> {
-        const api = getApiClient();
-        const schoolId = getSchoolId();
-
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
-        }
-
-        const response = await api.get(`${this.baseUrl}/me/${schoolId}`, {
-            params: { page, limit },
-        }) as unknown as ApiResponse<IAnnouncementListResponse>;
-        return response as unknown as IAnnouncementListResponse;
-    }
-
-
     // Export announcements to CSV 
     async exportToCSV(params?: IAnnouncementListParams): Promise<Blob> {
         const api = getApiClient();
