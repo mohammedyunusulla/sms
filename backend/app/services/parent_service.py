@@ -223,7 +223,13 @@ class ParentService:
                 
                 # Update SchoolUsers fields
                 user_fields = ['first_name', 'last_name', 'email', 'username', 'phone', 'gender', 'date_of_birth']
+                # Required account columns: never overwrite them with an empty value
+                required_user_fields = {'first_name', 'email', 'username'}
                 for key, value in data.items():
+                    if key in required_user_fields and not value:
+                        continue
+                    if key == 'last_name' and value is None:
+                        continue
                     if key in user_fields and hasattr(school_user, key):
                         setattr(school_user, key, value)
                 
@@ -240,6 +246,10 @@ class ParentService:
                 if main_user:
                     main_user_fields = ['first_name', 'last_name', 'email', 'username', 'phone']
                     for key, value in data.items():
+                        if key in required_user_fields and not value:
+                            continue
+                        if key == 'last_name' and value is None:
+                            continue
                         if key in main_user_fields and hasattr(main_user, key):
                             setattr(main_user, key, value)
                     

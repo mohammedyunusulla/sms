@@ -17,6 +17,22 @@ STUDENT_REQUIRED_FIELDS = (
 )
 
 
+def _link_parent(skid, student_user_id, parent_id):
+    """Save the parent chosen in the student form (create or change the student_parents link)."""
+    if not parent_id:
+        return None
+    from app.services.studentParent_service import StudentParentService
+    return StudentParentService.update_student_parent_link(int(student_user_id), int(parent_id), 'Guardian', skid)
+
+
+def _school_user_id_for(skid, username):
+    from app.models.tenant import SchoolUsers
+    from app.utils.db_manager import switch_to_school_db
+    with switch_to_school_db(skid) as tenant_session:
+        su = tenant_session.query(SchoolUsers).filter_by(username=username).first()
+        return su.id if su else None
+
+
 def _admission_number_taken(skid, admission_number, exclude_user_id=None):
     """students.admission_number is unique in the tenant DB."""
     from app.models.tenant import Student
@@ -61,8 +77,16 @@ def create_student(skid):
 
         StudentService.create_student_user(data, skid)
 
+        # Link the parent picked in the form (this used to be silently dropped)
+        message = 'Student created successfully'
+        if data.get('parent_id'):
+            try:
+                _link_parent(skid, _school_user_id_for(skid, data['username']), data['parent_id'])
+            except Exception as link_error:
+                message = f'Student created, but linking the parent failed: {link_error}'
+
         return jsonify({
-            'message': 'Student created successfully',
+            'message': message,
             'status': 'success',
             'code': 200
         }), 200
@@ -168,6 +192,9 @@ def update_student(skid, student_id):
                 return error(duplicate_check, 500 if duplicate_check.startswith('Error checking') else 409)
 
         StudentService.update_student(student_id, skid, data)
+        # Save a changed parent (no parent_id sent = leave the existing link alone)
+        if data.get('parent_id'):
+            _link_parent(skid, student_id, data['parent_id'])
 
         return jsonify({
             'message': 'Student updated successfully',

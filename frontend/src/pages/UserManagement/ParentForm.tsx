@@ -112,16 +112,24 @@ const ParentForm: FC<IParentFormProps> = ({ initialData, mode: propMode = 'creat
 
         try {
             setIsSubmitting(true);
-            formData['email'] = formData['username'];
-            formData['first_name'] = formData['father_full_name'];
-            formData['last_name'] = formData['mother_full_name'];
+            // The account's first/last name come from the father's/mother's names. Username and email
+            // are only sent when creating: the edit page doesn't load them, and sending null used to
+            // overwrite required columns (every parent edit failed with a 500).
+            const { username, email, password, ...rest } = formData as Record<string, unknown>;
+            const names = {
+                first_name: String(formData.father_full_name ?? '').trim(),
+                last_name: String(formData.mother_full_name ?? '').trim(),
+            };
             let result: any;
             if (mode === 'update' && id) {
-                await parentService.update(id, formData);
+                const payload: Record<string, unknown> = { ...rest, ...names };
+                if (username) payload.username = username;
+                if (email) payload.email = email;
+                await parentService.update(id, payload);
                 toast.success('Parent updated successfully');
-                result = formData;
+                result = payload;
             } else {
-                result = await parentService.create(formData);
+                result = await parentService.create({ ...rest, ...names, username, password, email: email || username });
                 toast.success('Parent created successfully');
             }
 
