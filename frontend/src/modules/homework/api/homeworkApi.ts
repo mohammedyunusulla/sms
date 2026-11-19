@@ -23,10 +23,40 @@ export const homeworkApi = {
     expected_time_minutes: number;
     reference_answer_key?: string;
     due_date?: string;
-  }): Promise<HomeworkAssignment> {
+  }, photos: File[] = []): Promise<HomeworkAssignment> {
     const client = getApiClient();
-    const response = await client.post<ApiEnvelope<HomeworkAssignment>>(API_ENDPOINTS.HOMEWORK.CREATE_ASSIGNMENT, payload);
+    if (photos.length === 0) {
+      const response = await client.post<ApiEnvelope<HomeworkAssignment>>(API_ENDPOINTS.HOMEWORK.CREATE_ASSIGNMENT, payload);
+      return response.data;
+    }
+    // with photos of the homework (e.g. the board): multipart form
+    const form = new FormData();
+    Object.entries(payload).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') form.append(key, String(value));
+    });
+    photos.forEach((photo) => form.append('photos', photo));
+    const response = await client.post<ApiEnvelope<HomeworkAssignment>>(API_ENDPOINTS.HOMEWORK.CREATE_ASSIGNMENT, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
     return response.data;
+  },
+
+  /** One homework photo as a Blob (the endpoint needs the login token, so <img src> can't load it directly). */
+  async getHomeworkPhoto(assignmentId: number, index: number): Promise<Blob> {
+    const client = getApiClient();
+    return (await client.get(`/homework/assignments/${assignmentId}/photos/${index}`, { responseType: 'blob' })) as unknown as Blob;
+  },
+
+  /** AI drafts the instructions from photos of the homework; the teacher edits the text before saving. */
+  async draftInstructionsFromPhotos(photos: File[], subject?: string): Promise<string> {
+    const client = getApiClient();
+    const form = new FormData();
+    photos.forEach((photo) => form.append('photos', photo));
+    if (subject) form.append('subject', subject);
+    const response = await client.post<ApiEnvelope<{ instructions: string }>>('/homework/instructions-from-photo', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data?.instructions || '';
   },
 
   async listAssignments(params?: {
@@ -101,6 +131,28 @@ export const homeworkApi = {
     const client = getApiClient();
     const response = await client.get<ApiEnvelope<HomeworkAnalytics>>(API_ENDPOINTS.HOMEWORK.ANALYTICS(assignmentId));
     return response.data;
+  },
+
+  /** Subjects of a section for the Create Homework dropdown (teachers: only the ones they teach there). */
+  async listSectionSubjects(sectionId: number): Promise<Array<{ id: number; subject_name: string; subject_code?: string | null }>> {
+    const client = getApiClient();
+    const response = await client.get<ApiEnvelope<Array<{ id: number; subject_name: string; subject_code?: string | null }>>>(
+      `/homework/sections/${sectionId}/subjects`
+    );
+    return response.data || [];
+  },
+
+  /** Classes/sections this user may use on the teacher page (teachers: only sections they teach). */
+  async getTeachingScope(): Promise<{
+    all: boolean;
+    sections: Array<{ class_id: number; class_name: string; section_id: number; section_name: string }>;
+  }> {
+    const client = getApiClient();
+    const response = await client.get<ApiEnvelope<{
+      all: boolean;
+      sections: Array<{ class_id: number; class_name: string; section_id: number; section_name: string }>;
+    }>>('/homework/scope');
+    return response.data || { all: false, sections: [] };
   },
 
   async listClasses(): Promise<Array<{ id: number; class_name?: string; name?: string }>> {

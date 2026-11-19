@@ -44,6 +44,30 @@ def is_class_teacher(session, teacher_id, section_id):
     return bool(section and section.teacher_id == int(teacher_id))
 
 
+def teacher_section_ids(session, teacher_id):
+    """
+    Every section a teacher works in: class teacher of it, teaches one of its subjects via
+    Assign Subjects (and the section offers that subject), or has a published timetable slot in it.
+    """
+    teacher_id = int(teacher_id)
+    ids = {sid for (sid,) in session.query(Section.id).filter(Section.teacher_id == teacher_id)}
+    subject_ids = [sid for (sid,) in session.query(TeacherSubject.subject_id).filter_by(teacher_id=teacher_id)]
+    if subject_ids:
+        ids |= {sid for (sid,) in session.query(SectionSubject.section_id).filter(
+            SectionSubject.subject_id.in_(subject_ids),
+            SectionSubject.is_active.isnot(False),
+        )}
+    ids |= {sid for (sid,) in session.query(Timetable.section_id).join(
+        TimetableEntry, TimetableEntry.timetable_id == Timetable.id
+    ).filter(
+        TimetableEntry.teacher_id == teacher_id,
+        TimetableEntry.is_active.is_(True),
+        Timetable.is_active.is_(True),
+        Timetable.is_draft.isnot(True),
+    )}
+    return ids
+
+
 def teaches(session, teacher_id, section_id, subject_id):
     """Teacher teaches subject in section via Assign Subjects (+ section has it) or a published timetable."""
     teacher_id, section_id, subject_id = int(teacher_id), int(section_id), int(subject_id)

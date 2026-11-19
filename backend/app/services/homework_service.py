@@ -1,17 +1,68 @@
 import os
+import shutil
 import uuid
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from app.models.tenant import HomeworkAssignment, SchoolUsers, Student, StudentHomeworkSession, StudentQRSticker
+from app.models.tenant.Class import Class
+from app.models.tenant.Sections import Section
 from app.services.homework_gemini_service import HomeworkGeminiService
 from app.utils.db_manager import switch_to_school_db
+from app.utils.teaching_scope import student_section_id, teacher_section_ids
+
+# Upload limits (notebook pages, hint photos)
+MAX_IMAGE_BYTES = 8 * 1024 * 1024
+MAX_SUBMISSION_PAGES = 10
+MAX_HOMEWORK_PHOTOS = 5
+MAX_EXPECTED_MINUTES = 600
+
+# File signatures of the image types we accept -> mime type
+_IMAGE_SIGNATURES = (
+    (b"\xff\xd8\xff", "image/jpeg"),
+    (b"\x89PNG\r\n\x1a\n", "image/png"),
+    (b"GIF87a", "image/gif"),
+    (b"GIF89a", "image/gif"),
+)
+_EXTENSIONS = {"image/jpeg": ".jpg", "image/png": ".png", "image/gif": ".gif", "image/webp": ".webp", "image/heic": ".heic"}
+
+
+def image_type(raw: bytes) -> Optional[str]:
+    """The image's real type from its first bytes (not from the file name), or None if it isn't an image we accept."""
+    for signature, mime in _IMAGE_SIGNATURES:
+        if raw.startswith(signature):
+            return mime
+    if raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
+        return "image/webp"
+    if raw[4:8] == b"ftyp" and raw[8:12] in (b"heic", b"heix", b"mif1", b"msf1", b"hevc"):
+        return "image/heic"
+    return None
+
+
+def _upload_root() -> Path:
+    return Path(os.getenv("HOMEWORK_UPLOAD_DIR", "uploads/homework")).resolve()
+
+
+_MIME_BY_EXT = {ext: mime for mime, ext in _EXTENSIONS.items()}
+
+
+def load_images(paths) -> List[Tuple[bytes, str]]:
+    """Read stored photos back as (bytes, mime); missing files are skipped."""
+    images = []
+    for path in paths or []:
+        try:
+            raw = Path(path).read_bytes()
+        except OSError:
+            continue
+        images.append((raw, image_type(raw) or _MIME_BY_EXT.get(Path(path).suffix.lower(), "image/jpeg")))
+    return images
 
 
 class HomeworkService:
     STUDENT_ROLE = "STUDENT"
+    STAFF_UNRESTRICTED = ("SUPER_ADMIN", "SCHOOL_ADMIN", "PRINCIPAL")
 
     @staticmethod
     def _utc_now() -> datetime:
@@ -29,6 +80,35 @@ class HomeworkService:
         return {"message": message, "status": "error", "code": code}, code
 
     @staticmethod
+    def _role(current_user) -> str:
+        return current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role)
+
+    @classmethod
+    def _teacher_sections(cls, tenant_session, current_user) -> Optional[set]:
+        """None = unrestricted (admin / principal / super admin); otherwise the sections this teacher works in."""
+        if cls._role(current_user) in cls.STAFF_UNRESTRICTED:
+            return None
+        return teacher_section_ids(tenant_session, current_user.school_user_id)
+
+    @staticmethod
+    def read_images(files, max_count: int) -> Tuple[Optional[List[Tuple[bytes, str]]], Optional[str]]:
+        """Validate uploaded images: real image type, size limit, count. Returns (images, error)."""
+        images: List[Tuple[bytes, str]] = []
+        for file_obj in files or []:
+            raw = file_obj.read()
+            if not raw:
+                continue
+            mime = image_type(raw)
+            if not mime:
+                return None, f"'{file_obj.filename or 'file'}' is not a photo. Use JPG, PNG, WEBP or HEIC images."
+            if len(raw) > MAX_IMAGE_BYTES:
+                return None, f"'{file_obj.filename or 'photo'}' is larger than {MAX_IMAGE_BYTES // (1024 * 1024)} MB."
+            images.append((raw, mime))
+        if len(images) > max_count:
+            return None, f"At most {max_count} photos can be uploaded at once."
+        return images, None
+
+    @staticmethod
     def _session_to_dict(session: StudentHomeworkSession) -> Dict[str, Any]:
         return {
             "id": session.id,
@@ -40,42 +120,60 @@ class HomeworkService:
             "submitted_at": session.submitted_at.isoformat() if session.submitted_at else None,
             "active_duration_seconds": session.active_duration_seconds,
             "hints_used_count": session.hints_used_count,
-            "submission_image_paths": session.submission_image_paths or [],
+            # file names only (not the server's full paths)
+            "submission_image_paths": [Path(p).name for p in (session.submission_image_paths or [])],
             "accuracy_score": session.accuracy_score,
             "efficiency_score": session.efficiency_score,
             "ai_feedback_json": session.ai_feedback_json or {},
         }
 
     @staticmethod
-    def _assignment_to_dict(assignment: HomeworkAssignment, session_status: Optional[str] = None) -> Dict[str, Any]:
-        return {
+    def _assignment_to_dict(
+        assignment: HomeworkAssignment,
+        session_status: Optional[str] = None,
+        include_answer_key: bool = True,
+    ) -> Dict[str, Any]:
+        data = {
             "id": assignment.id,
             "class_id": assignment.class_id,
             "section_id": assignment.section_id,
             "subject": assignment.subject,
             "title": assignment.title,
             "description": assignment.description,
-            "reference_answer_key": assignment.reference_answer_key,
             "expected_time_minutes": assignment.expected_time_minutes,
             "due_date": assignment.due_date.isoformat() if assignment.due_date else None,
+            # photos are fetched one by one from /homework/assignments/<id>/photos/<index>
+            "photo_count": len(assignment.instruction_image_paths or []),
             "created_by": assignment.created_by,
             "created_at": assignment.created_at.isoformat() if assignment.created_at else None,
             "current_session_status": session_status,
         }
+        # The answer key / rubric is for teachers and the AI grader only, never for students
+        if include_answer_key:
+            data["reference_answer_key"] = assignment.reference_answer_key
+        return data
 
     @staticmethod
     def _ensure_tables(tenant_session) -> None:
         StudentQRSticker.__table__.create(bind=tenant_session.bind, checkfirst=True)
         HomeworkAssignment.__table__.create(bind=tenant_session.bind, checkfirst=True)
         StudentHomeworkSession.__table__.create(bind=tenant_session.bind, checkfirst=True)
+        from sqlalchemy import text as sql_text
+        tenant_session.execute(sql_text(
+            "ALTER TABLE homework_assignments ADD COLUMN IF NOT EXISTS instruction_image_paths JSON DEFAULT '[]'"
+        ))
 
+    # ------------------------------------------------------------------ stickers
     @classmethod
-    def assign_sticker(cls, skid: str, student_id: int):
+    def assign_sticker(cls, skid: str, student_id: int, current_user):
         with switch_to_school_db(skid) as tenant_session:
             cls._ensure_tables(tenant_session)
             student = tenant_session.query(Student).filter_by(user_id=student_id).first()
             if not student:
                 return cls._error("Student not found", 404)
+            allowed = cls._teacher_sections(tenant_session, current_user)
+            if allowed is not None and student_section_id(tenant_session, student_id) not in allowed:
+                return cls._error("You can only manage stickers for students in sections you teach", 403)
 
             sticker = tenant_session.query(StudentQRSticker).filter_by(student_id=student_id).first()
             if sticker:
@@ -94,7 +192,7 @@ class HomeworkService:
             )
 
     @classmethod
-    def list_stickers(cls, skid: str, class_id: Optional[int], section_id: Optional[int]):
+    def list_stickers(cls, skid: str, class_id: Optional[int], section_id: Optional[int], current_user):
         with switch_to_school_db(skid) as tenant_session:
             cls._ensure_tables(tenant_session)
             query = (
@@ -106,6 +204,9 @@ class HomeworkService:
                 query = query.filter(Student.class_id == class_id)
             if section_id:
                 query = query.filter(Student.section_id == section_id)
+            allowed = cls._teacher_sections(tenant_session, current_user)
+            if allowed is not None:
+                query = query.filter(Student.section_id.in_(allowed or [-1]))
 
             rows = query.all()
             result = []
@@ -123,35 +224,133 @@ class HomeworkService:
                 )
             return cls._response("Stickers fetched successfully", result)
 
+    # ------------------------------------------------------------------ homework
     @classmethod
-    def create_assignment(cls, skid: str, payload: Dict[str, Any], created_by: int):
-        required = ["class_id", "section_id", "subject", "title", "description"]
-        missing = [field for field in required if not payload.get(field)]
+    def _validate_new_homework(cls, tenant_session, payload: Dict[str, Any], has_photos: bool = False):
+        """Returns (cleaned_values, error_response). Instructions are optional when photos are attached."""
+        text = {k: str(payload.get(k) or "").strip() for k in ("subject", "title", "description")}
+        missing = []
+        if not payload.get("class_id"):
+            missing.append("Class")
+        if not payload.get("section_id"):
+            missing.append("Section")
+        missing += [label for key, label in (("subject", "Subject"), ("title", "Title")) if not text[key]]
+        if not text["description"] and not has_photos:
+            missing.append("Instructions (or a photo of the homework)")
         if missing:
-            return cls._error(f"Missing required fields: {', '.join(missing)}", 422)
+            return None, cls._error(f"{', '.join(missing)} {'is' if len(missing) == 1 else 'are'} required", 422)
+
+        try:
+            class_id, section_id = int(payload["class_id"]), int(payload["section_id"])
+        except (TypeError, ValueError):
+            return None, cls._error("Class and section must be valid", 422)
+        if not tenant_session.query(Class).filter_by(id=class_id).first():
+            return None, cls._error("Class not found", 404)
+        section = tenant_session.query(Section).filter_by(id=section_id).first()
+        if not section:
+            return None, cls._error("Section not found", 404)
+        if section.class_id != class_id:
+            return None, cls._error("That section doesn't belong to the selected class", 422)
+
+        try:
+            minutes = int(payload.get("expected_time_minutes") or 15)
+        except (TypeError, ValueError):
+            return None, cls._error("Expected minutes must be a whole number", 422)
+        if not 1 <= minutes <= MAX_EXPECTED_MINUTES:
+            return None, cls._error(f"Expected minutes must be between 1 and {MAX_EXPECTED_MINUTES}", 422)
 
         due_date = None
         if payload.get("due_date"):
-            due_date = datetime.fromisoformat(payload["due_date"].replace("Z", "+00:00")).replace(tzinfo=None)
+            try:
+                due_date = datetime.fromisoformat(str(payload["due_date"]).replace("Z", "+00:00")).replace(tzinfo=None)
+            except ValueError:
+                return None, cls._error("Due date is not a valid date", 422)
+            if due_date.date() < date.today():
+                return None, cls._error("Due date can't be in the past", 422)
 
+        return {
+            "class_id": class_id,
+            "section_id": section_id,
+            "subject": text["subject"],
+            "title": text["title"],
+            "description": text["description"],
+            "reference_answer_key": (str(payload.get("reference_answer_key") or "").strip() or None),
+            "expected_time_minutes": minutes,
+            "due_date": due_date,
+        }, None
+
+    @classmethod
+    def create_assignment(cls, skid: str, payload: Dict[str, Any], current_user, photos: Optional[Sequence[Tuple[bytes, str]]] = None):
+        photos = list(photos or [])
         with switch_to_school_db(skid) as tenant_session:
             cls._ensure_tables(tenant_session)
-            assignment = HomeworkAssignment(
-                class_id=int(payload["class_id"]),
-                section_id=int(payload["section_id"]),
-                subject=str(payload["subject"]).strip(),
-                title=str(payload["title"]).strip(),
-                description=str(payload["description"]).strip(),
-                reference_answer_key=payload.get("reference_answer_key"),
-                expected_time_minutes=int(payload.get("expected_time_minutes", 15)),
-                due_date=due_date,
-                created_by=created_by,
-                is_active=True,
-            )
+            values, error = cls._validate_new_homework(tenant_session, payload, has_photos=bool(photos))
+            if error:
+                return error
+            allowed = cls._teacher_sections(tenant_session, current_user)
+            if allowed is not None and values["section_id"] not in allowed:
+                return cls._error("You can only create homework for sections you teach", 403)
+            # The subject must be one of the section's subjects (for a teacher: one they teach there)
+            offered = {s["subject_name"].lower(): s["subject_name"] for s in cls._section_subjects(tenant_session, values["section_id"], current_user)}
+            if values["subject"].lower() not in offered:
+                return cls._error("Pick a subject taught in the selected section", 422)
+            values["subject"] = offered[values["subject"].lower()]
+
+            assignment = HomeworkAssignment(**values, created_by=current_user.school_user_id, is_active=True, instruction_image_paths=[])
             tenant_session.add(assignment)
+            tenant_session.flush()  # need the id for the photo folder
+
+            if photos:
+                photo_dir = _upload_root() / str(skid) / "homework" / str(assignment.id)
+                try:
+                    photo_dir.mkdir(parents=True, exist_ok=True)
+                    paths = []
+                    for raw, mime in photos:
+                        path = photo_dir / f"{uuid.uuid4().hex}{_EXTENSIONS.get(mime, '.jpg')}"
+                        path.write_bytes(raw)
+                        paths.append(str(path))
+                except OSError as exc:
+                    shutil.rmtree(photo_dir, ignore_errors=True)
+                    tenant_session.rollback()
+                    return cls._error(f"Couldn't save the photos: {exc}", 500)
+                assignment.instruction_image_paths = paths
+
             tenant_session.commit()
             tenant_session.refresh(assignment)
             return cls._response("Homework created successfully", cls._assignment_to_dict(assignment), 201)
+
+    @classmethod
+    def homework_photo(cls, skid: str, assignment_id: int, index: int, current_user):
+        """Path + mime of one homework photo, if this user may see the homework. Returns (path, mime, error)."""
+        with switch_to_school_db(skid) as tenant_session:
+            cls._ensure_tables(tenant_session)
+            assignment = tenant_session.query(HomeworkAssignment).filter_by(id=assignment_id, is_active=True).first()
+            if not assignment:
+                return None, None, cls._error("Homework not found", 404)
+            if cls._role(current_user) == cls.STUDENT_ROLE:
+                if assignment.section_id != student_section_id(tenant_session, current_user.school_user_id):
+                    return None, None, cls._error("This homework isn't for your class", 403)
+            else:
+                allowed = cls._teacher_sections(tenant_session, current_user)
+                if allowed is not None and assignment.section_id not in allowed:
+                    return None, None, cls._error("You can only view homework for sections you teach", 403)
+            paths = assignment.instruction_image_paths or []
+            if not 0 <= index < len(paths) or not Path(paths[index]).is_file():
+                return None, None, cls._error("Photo not found", 404)
+            raw_head = Path(paths[index]).read_bytes()[:16]
+            return paths[index], image_type(raw_head) or "image/jpeg", None
+
+    @classmethod
+    def instructions_from_photos(cls, photos: Sequence[Tuple[bytes, str]], subject: str = ""):
+        if not photos:
+            return cls._error("Add at least one photo", 422)
+        try:
+            text = HomeworkGeminiService.extract_instructions(photos, subject=subject)
+        except Exception as exc:
+            return cls._error(f"Couldn't read the photo: {exc}", 500)
+        if not text:
+            return cls._error("No text could be read from the photo", 422)
+        return cls._response("Instructions drafted from the photo", {"instructions": text})
 
     @classmethod
     def list_assignments(
@@ -161,6 +360,7 @@ class HomeworkService:
         class_id: Optional[int] = None,
         section_id: Optional[int] = None,
     ):
+        is_student = cls._role(current_user) == cls.STUDENT_ROLE
         with switch_to_school_db(skid) as tenant_session:
             cls._ensure_tables(tenant_session)
             query = tenant_session.query(HomeworkAssignment).filter_by(is_active=True).order_by(HomeworkAssignment.created_at.desc())
@@ -169,25 +369,28 @@ class HomeworkService:
             if section_id:
                 query = query.filter(HomeworkAssignment.section_id == section_id)
 
-            if current_user.role.value == cls.STUDENT_ROLE:
-                student = tenant_session.query(Student).filter_by(user_id=current_user.school_user_id).first()
-                if student:
-                    query = query.filter_by(class_id=student.class_id, section_id=student.section_id)
-                else:
-                    query = query.filter(HomeworkAssignment.id == -1)
+            if is_student:
+                # the student's current section (active enrollment first)
+                own_section = student_section_id(tenant_session, current_user.school_user_id)
+                query = query.filter(HomeworkAssignment.section_id == (own_section if own_section else -1))
+            else:
+                allowed = cls._teacher_sections(tenant_session, current_user)
+                if allowed is not None:
+                    query = query.filter(HomeworkAssignment.section_id.in_(allowed or [-1]))
 
             assignments = query.all()
             student_sessions: Dict[int, StudentHomeworkSession] = {}
-            if current_user.role.value == cls.STUDENT_ROLE:
+            if is_student:
                 rows = tenant_session.query(StudentHomeworkSession).filter_by(student_id=current_user.school_user_id).all()
                 student_sessions = {row.assignment_id: row for row in rows}
 
             data = []
             for assignment in assignments:
                 session_status = student_sessions.get(assignment.id).status if assignment.id in student_sessions else None
-                data.append(cls._assignment_to_dict(assignment, session_status))
+                data.append(cls._assignment_to_dict(assignment, session_status, include_answer_key=not is_student))
             return cls._response("Homework fetched successfully", data)
 
+    # ------------------------------------------------------------------ student sessions
     @classmethod
     def start_session(cls, skid: str, student_user_id: int, assignment_id: int, qr_code_value: str):
         with switch_to_school_db(skid) as tenant_session:
@@ -199,6 +402,8 @@ class HomeworkService:
             assignment = tenant_session.query(HomeworkAssignment).filter_by(id=assignment_id, is_active=True).first()
             if not assignment:
                 return cls._error("Homework not found", 404)
+            if assignment.section_id != student_section_id(tenant_session, student_user_id):
+                return cls._error("This homework isn't for your class", 403)
 
             now = cls._utc_now()
             session = (
@@ -266,7 +471,7 @@ class HomeworkService:
         student_user_id: int,
         session_id: int,
         student_doubt: str,
-        image_bytes: Optional[bytes] = None,
+        student_images: Optional[Sequence[Tuple[bytes, str]]] = None,
     ):
         with switch_to_school_db(skid) as tenant_session:
             cls._ensure_tables(tenant_session)
@@ -287,7 +492,8 @@ class HomeworkService:
                     assignment_title=assignment.title,
                     assignment_description=assignment.description,
                     student_doubt=student_doubt,
-                    image_bytes=image_bytes,
+                    student_images=student_images,
+                    instruction_images=load_images(assignment.instruction_image_paths),
                 )
             except Exception as exc:
                 return cls._error(f"Hint generation failed: {exc}", 500)
@@ -325,7 +531,7 @@ class HomeworkService:
         student_user_id: int,
         session_id: int,
         qr_code_value: str,
-        files,
+        images: Sequence[Tuple[bytes, str]],
     ):
         with switch_to_school_db(skid) as tenant_session:
             cls._ensure_tables(tenant_session)
@@ -344,30 +550,15 @@ class HomeworkService:
             assignment = tenant_session.query(HomeworkAssignment).filter_by(id=session.assignment_id, is_active=True).first()
             if not assignment:
                 return cls._error("Homework not found", 404)
-
-            now = cls._utc_now()
-            if session.status == "in_progress" and session.last_resumed_at:
-                session.active_duration_seconds += int((now - session.last_resumed_at).total_seconds())
-
-            upload_root = Path(os.getenv("HOMEWORK_UPLOAD_DIR", "uploads/homework")).resolve()
-            session_dir = upload_root / str(skid) / str(session.id)
-            session_dir.mkdir(parents=True, exist_ok=True)
-
-            image_bytes_list: List[bytes] = []
-            saved_paths: List[str] = []
-            for file_obj in files:
-                raw = file_obj.read()
-                if not raw:
-                    continue
-                image_bytes_list.append(raw)
-                suffix = Path(file_obj.filename or "page.jpg").suffix or ".jpg"
-                saved_name = f"{uuid.uuid4().hex}{suffix.lower()}"
-                full_path = session_dir / saved_name
-                full_path.write_bytes(raw)
-                saved_paths.append(str(full_path))
-
-            if not image_bytes_list:
+            if not images:
                 return cls._error("At least one image is required", 422)
+
+            # Work out the final active time without touching the session yet: if grading fails,
+            # nothing is saved (this used to add the time again on every failed retry).
+            now = cls._utc_now()
+            active_seconds = session.active_duration_seconds
+            if session.status == "in_progress" and session.last_resumed_at:
+                active_seconds += int((now - session.last_resumed_at).total_seconds())
 
             try:
                 grading = HomeworkGeminiService.grade_submission(
@@ -378,21 +569,36 @@ class HomeworkService:
                         "reference_answer_key": assignment.reference_answer_key,
                         "expected_time_minutes": assignment.expected_time_minutes,
                     },
-                    image_bytes_list=image_bytes_list,
-                    active_duration_seconds=session.active_duration_seconds,
+                    images=images,
+                    active_duration_seconds=active_seconds,
                     hints_used_count=session.hints_used_count,
+                    instruction_images=load_images(assignment.instruction_image_paths),
                 )
             except Exception as exc:
                 return cls._error(f"AI grading failed: {exc}", 500)
+
+            # Only now save the pages (no orphaned files when grading fails)
+            session_dir = _upload_root() / str(skid) / str(session.id)
+            saved_paths: List[str] = []
+            try:
+                session_dir.mkdir(parents=True, exist_ok=True)
+                for raw, mime in images:
+                    full_path = session_dir / f"{uuid.uuid4().hex}{_EXTENSIONS.get(mime, '.jpg')}"
+                    full_path.write_bytes(raw)
+                    saved_paths.append(str(full_path))
+            except OSError as exc:
+                shutil.rmtree(session_dir, ignore_errors=True)
+                return cls._error(f"Couldn't save the uploaded pages: {exc}", 500)
 
             accuracy_score = max(0.0, min(100.0, float(grading.get("accuracy_score", 0))))
             efficiency_score = cls._compute_efficiency_score(
                 accuracy_score,
                 assignment.expected_time_minutes,
-                session.active_duration_seconds,
+                active_seconds,
                 session.hints_used_count,
             )
 
+            session.active_duration_seconds = active_seconds
             session.status = "graded"
             session.submitted_at = now
             session.last_resumed_at = None
@@ -408,13 +614,17 @@ class HomeworkService:
                 {"session": cls._session_to_dict(session), "grading": grading},
             )
 
+    # ------------------------------------------------------------------ analytics
     @classmethod
-    def assignment_analytics(cls, skid: str, assignment_id: int):
+    def assignment_analytics(cls, skid: str, assignment_id: int, current_user):
         with switch_to_school_db(skid) as tenant_session:
             cls._ensure_tables(tenant_session)
             assignment = tenant_session.query(HomeworkAssignment).filter_by(id=assignment_id, is_active=True).first()
             if not assignment:
                 return cls._error("Homework not found", 404)
+            allowed = cls._teacher_sections(tenant_session, current_user)
+            if allowed is not None and assignment.section_id not in allowed:
+                return cls._error("You can only view analytics for sections you teach", 403)
 
             sessions = tenant_session.query(StudentHomeworkSession).filter_by(assignment_id=assignment_id, is_active=True).all()
             total = len(sessions)
@@ -473,3 +683,57 @@ class HomeworkService:
                     ],
                 },
             )
+
+    # ------------------------------------------------------------------ subjects of a section
+    @classmethod
+    def _section_subjects(cls, tenant_session, section_id: int, current_user) -> List[Dict[str, Any]]:
+        """
+        Subjects of a section: the ones added to it (Class Management) plus any taught there in a
+        published timetable. A teacher only gets the subjects they teach in that section.
+        """
+        from app.models.tenant.SectionSubject import SectionSubject
+        from app.models.tenant.Subject import Subject
+        from app.models.tenant.TimeTable import Timetable
+        from app.models.tenant.TimeTableEntry import TimetableEntry
+        from app.utils.teaching_scope import teaches
+
+        ids = {sid for (sid,) in tenant_session.query(SectionSubject.subject_id).filter(
+            SectionSubject.section_id == section_id, SectionSubject.is_active.isnot(False))}
+        ids |= {sid for (sid,) in tenant_session.query(TimetableEntry.subject_id).join(
+            Timetable, TimetableEntry.timetable_id == Timetable.id
+        ).filter(
+            Timetable.section_id == section_id,
+            Timetable.is_active.is_(True),
+            Timetable.is_draft.isnot(True),
+            TimetableEntry.is_active.is_(True),
+            TimetableEntry.subject_id.isnot(None),
+        )}
+        if cls._role(current_user) not in cls.STAFF_UNRESTRICTED:
+            ids = {sid for sid in ids if teaches(tenant_session, current_user.school_user_id, section_id, sid)}
+        subjects = tenant_session.query(Subject).filter(Subject.id.in_(ids or [-1])).order_by(Subject.subject_name).all()
+        return [{"id": s.id, "subject_name": s.subject_name, "subject_code": s.subject_code} for s in subjects]
+
+    @classmethod
+    def section_subjects(cls, skid: str, section_id: int, current_user):
+        with switch_to_school_db(skid) as tenant_session:
+            if not tenant_session.query(Section).filter_by(id=section_id).first():
+                return cls._error("Section not found", 404)
+            allowed = cls._teacher_sections(tenant_session, current_user)
+            if allowed is not None and section_id not in allowed:
+                return cls._error("You can only create homework for sections you teach", 403)
+            return cls._response("Subjects fetched successfully", cls._section_subjects(tenant_session, section_id, current_user))
+
+    # ------------------------------------------------------------------ scope for the teacher page
+    @classmethod
+    def teaching_scope(cls, skid: str, current_user):
+        """Which classes/sections this user may use on the teacher page (all, for admins)."""
+        with switch_to_school_db(skid) as tenant_session:
+            allowed = cls._teacher_sections(tenant_session, current_user)
+            query = tenant_session.query(Section, Class).join(Class, Class.id == Section.class_id)
+            if allowed is not None:
+                query = query.filter(Section.id.in_(allowed or [-1]))
+            rows = [
+                {"class_id": c.id, "class_name": c.class_name, "section_id": s.id, "section_name": s.section_name}
+                for s, c in query.order_by(Class.class_name, Section.section_name).all()
+            ]
+            return cls._response("Scope fetched successfully", {"all": allowed is None, "sections": rows})

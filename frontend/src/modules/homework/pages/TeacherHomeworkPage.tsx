@@ -1,15 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import QRCode from 'qrcode';
-import { useNavigate } from 'react-router';
 import { homeworkApi } from '../api/homeworkApi';
+import PhotoPicker from '../components/PhotoPicker';
 import { HomeworkAnalytics, HomeworkAssignment, StudentStickerRow } from '../types';
 
 type ClassItem = { id: number; class_name?: string; name?: string };
 type SectionItem = { id: number; section_name?: string; name?: string };
 
 export default function TeacherHomeworkPage() {
-  const navigate = useNavigate();
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [sections, setSections] = useState<SectionItem[]>([]);
   const [assignments, setAssignments] = useState<HomeworkAssignment[]>([]);
@@ -17,6 +16,15 @@ export default function TeacherHomeworkPage() {
   const [analytics, setAnalytics] = useState<HomeworkAnalytics | null>(null);
   const [qrImages, setQrImages] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  // null = all classes (admins); otherwise only the sections this teacher teaches
+  const [scopeSections, setScopeSections] = useState<Array<{ class_id: number; class_name: string; section_id: number; section_name: string }> | null>(null);
+  const [scopeLoaded, setScopeLoaded] = useState(false);
+  // subjects of the selected section (teachers: only the ones they teach there)
+  const [subjects, setSubjects] = useState<Array<{ id: number; subject_name: string }>>([]);
+  const [subjectsLoading, setSubjectsLoading] = useState(false);
+  // photos of the homework (e.g. the board): shown to students and given to the AI
+  const [photos, setPhotos] = useState<File[]>([]);
+  const [drafting, setDrafting] = useState(false);
 
   const [form, setForm] = useState({
     class_id: 0,
@@ -34,7 +42,18 @@ export default function TeacherHomeworkPage() {
   useEffect(() => {
     const init = async () => {
       try {
-        const classRows = await homeworkApi.listClasses();
+        const scope = await homeworkApi.getTeachingScope();
+        let classRows: ClassItem[];
+        if (scope.all) {
+          setScopeSections(null);
+          classRows = await homeworkApi.listClasses();
+        } else {
+          setScopeSections(scope.sections);
+          const byId = new Map<number, ClassItem>();
+          scope.sections.forEach((row) => byId.set(row.class_id, { id: row.class_id, class_name: row.class_name }));
+          classRows = [...byId.values()];
+        }
+        setScopeLoaded(true);
         setClasses(classRows);
         if (classRows.length > 0) {
           setForm((prev) => ({ ...prev, class_id: classRows[0].id }));
@@ -51,7 +70,13 @@ export default function TeacherHomeworkPage() {
     const loadClassData = async () => {
       try {
         const [sectionRows, stickerRows, assignmentRows] = await Promise.all([
-          homeworkApi.listSections(form.class_id),
+          scopeSections === null
+            ? homeworkApi.listSections(form.class_id)
+            : Promise.resolve(
+                scopeSections
+                  .filter((row) => row.class_id === form.class_id)
+                  .map((row) => ({ id: row.section_id, section_name: row.section_name }))
+              ),
           homeworkApi.listStickers(form.class_id, form.section_id || undefined),
           homeworkApi.listAssignments({ class_id: form.class_id, section_id: form.section_id || undefined }),
         ]);
@@ -66,7 +91,32 @@ export default function TeacherHomeworkPage() {
       }
     };
     void loadClassData();
-  }, [form.class_id, form.section_id]);
+  }, [form.class_id, form.section_id, scopeSections]);
+
+  useEffect(() => {
+    if (!form.section_id) {
+      setSubjects([]);
+      return;
+    }
+    let cancelled = false;
+    setSubjectsLoading(true);
+    homeworkApi
+      .listSectionSubjects(form.section_id)
+      .then((rows) => {
+        if (cancelled) return;
+        setSubjects(rows);
+        setForm((prev) => (rows.some((row) => row.subject_name === prev.subject) ? prev : { ...prev, subject: '' }));
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setSubjects([]);
+        toast.error((error as { message?: string })?.message || 'Failed to load subjects');
+      })
+      .finally(() => !cancelled && setSubjectsLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [form.section_id]);
 
   useEffect(() => {
     const buildQrImages = async () => {
@@ -102,6 +152,10 @@ export default function TeacherHomeworkPage() {
       toast.error('Please create/select a section first from Class Management.');
       return;
     }
+    if (!form.description.trim() && photos.length === 0) {
+      toast.error('Write the instructions or add a photo of the homework.');
+      return;
+    }
     try {
       setLoading(true);
       await homeworkApi.createAssignment({
@@ -113,8 +167,9 @@ export default function TeacherHomeworkPage() {
         expected_time_minutes: form.expected_time_minutes,
         reference_answer_key: form.reference_answer_key || undefined,
         due_date: form.due_date || undefined,
-      });
+      }, photos);
       toast.success('Homework created');
+      setPhotos([]);
       const assignmentRows = await homeworkApi.listAssignments({
         class_id: form.class_id,
         section_id: form.section_id || undefined,
@@ -125,6 +180,21 @@ export default function TeacherHomeworkPage() {
       toast.error(error?.message || 'Failed to create homework');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onDraftInstructions = async () => {
+    if (photos.length === 0) return;
+    try {
+      setDrafting(true);
+      const text = await homeworkApi.draftInstructionsFromPhotos(photos, form.subject || undefined);
+      // keep anything the teacher already typed, add the drafted text after it
+      setForm((prev) => ({ ...prev, description: prev.description.trim() ? `${prev.description.trim()}\n\n${text}` : text }));
+      toast.success('Instructions filled from the photo. Check and edit before saving.');
+    } catch (error: unknown) {
+      toast.error((error as { message?: string })?.message || "Couldn't read the photo");
+    } finally {
+      setDrafting(false);
     }
   };
 
@@ -161,9 +231,20 @@ export default function TeacherHomeworkPage() {
         </p>
       </div>
 
+      {scopeLoaded && scopeSections !== null && scopeSections.length === 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-200">
+          You aren't assigned to any class yet. Ask the school admin to make you a class teacher, assign you subjects, or add you to a published timetable.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <form onSubmit={onCreateAssignment} className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
           <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Create Homework</h2>
+          {form.section_id > 0 && !subjectsLoading && subjects.length === 0 && (
+            <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-200">
+              No subjects found for this section{scopeSections === null ? '. Add subjects to it in Class Management.' : ' that you teach.'}
+            </div>
+          )}
           {!hasSections && form.class_id > 0 && (
             <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-200">
               No sections found for this class. Create one in Class Management, then return here.
@@ -172,7 +253,7 @@ export default function TeacherHomeworkPage() {
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <select
               value={form.class_id || ''}
-              onChange={(event) => setForm((prev) => ({ ...prev, class_id: Number(event.target.value) }))}
+              onChange={(event) => setForm((prev) => ({ ...prev, class_id: Number(event.target.value), section_id: 0, subject: '' }))}
               className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
             >
               <option value="">Select class</option>
@@ -194,21 +275,24 @@ export default function TeacherHomeworkPage() {
                 </option>
               ))}
             </select>
-            <button
-              type="button"
-              onClick={() => form.class_id && navigate(`/classes/${form.class_id}`)}
-              disabled={!form.class_id}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
-            >
-              Manage Sections
-            </button>
-            <input
-              placeholder="Subject"
+            <select
+              aria-label="Subject"
+              name="subject"
               value={form.subject}
               onChange={(event) => setForm((prev) => ({ ...prev, subject: event.target.value }))}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+              disabled={!form.section_id || subjectsLoading || subjects.length === 0}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-60 dark:border-gray-600 dark:bg-gray-800"
               required
-            />
+            >
+              <option value="">
+                {!form.section_id ? 'Select section first' : subjectsLoading ? 'Loading subjects…' : subjects.length === 0 ? 'No subjects for this section' : 'Select subject'}
+              </option>
+              {subjects.map((row) => (
+                <option key={row.id} value={row.subject_name}>
+                  {row.subject_name}
+                </option>
+              ))}
+            </select>
             <input
               placeholder="Expected minutes"
               type="number"
@@ -226,12 +310,26 @@ export default function TeacherHomeworkPage() {
             className="mt-3 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
             required
           />
+          <div className="mt-3 rounded-lg border border-dashed border-gray-300 p-3 dark:border-gray-600">
+            <PhotoPicker photos={photos} onChange={setPhotos} max={5} label="Homework photos (e.g. the board)" disabled={loading} />
+            {photos.length > 0 && (
+              <button
+                type="button"
+                onClick={onDraftInstructions}
+                disabled={drafting || loading}
+                className="mt-2 rounded-lg border border-indigo-300 px-3 py-1.5 text-xs font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-60 dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-900/20"
+              >
+                {drafting ? 'Reading photo…' : '✨ Fill instructions from photo'}
+              </button>
+            )}
+          </div>
           <textarea
-            placeholder="Instructions"
+            placeholder={photos.length > 0 ? 'Instructions (optional with a photo, e.g. "Do Q3-Q7 from the board")' : 'Instructions'}
             value={form.description}
             onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
             className="mt-3 h-24 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
-            required
+            required={photos.length === 0}
+            name="description"
           />
           <textarea
             placeholder="Optional answer key / rubric"
