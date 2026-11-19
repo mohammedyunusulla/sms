@@ -80,6 +80,8 @@ const TimetableList = lazy(() => import("./pages/TimetableManagement").then(m =>
 const TimetableDetail = lazy(() => import("./pages/TimetableManagement").then(m => ({ default: m.TimetableDetail })));
 const TimetableEdit = lazy(() => import("./pages/TimetableManagement").then(m => ({ default: m.TimetableEdit })));
 const TimetableCreate = lazy(() => import("./pages/TimetableManagement").then(m => ({ default: m.TimetableCreate })));
+const ParentTimetable = lazy(() => import("./pages/TimetableManagement").then(m => ({ default: m.ParentTimetable })));
+const StudentTimetable = lazy(() => import("./pages/TimetableManagement").then(m => ({ default: m.StudentTimetable })));
 
 // Lazy loaded Exam Management
 const ExamList = lazy(() => import("./pages/ExamManagement").then(m => ({ default: m.ExamList })));
@@ -106,6 +108,7 @@ const FeeCollection = lazy(() => import("./pages/FinanceManagement").then(m => (
 const ExpenseList = lazy(() => import("./pages/FinanceManagement").then(m => ({ default: m.ExpenseList })));
 const SalarySetup = lazy(() => import("./pages/FinanceManagement").then(m => ({ default: m.SalarySetup })));
 const SalaryPayments = lazy(() => import("./pages/FinanceManagement").then(m => ({ default: m.SalaryPayments })));
+const ParentFees = lazy(() => import("./pages/FinanceManagement").then(m => ({ default: m.ParentFees })));
 
 // Lazy loaded Syllabus Management
 const SyllabusList = lazy(() => import("./pages/SyllabusManagement").then(m => ({ default: m.SyllabusList })));
@@ -113,6 +116,7 @@ const SyllabusDetail = lazy(() => import("./pages/SyllabusManagement").then(m =>
 const SyllabusAnalytics = lazy(() => import("./pages/SyllabusManagement").then(m => ({ default: m.SyllabusAnalytics })));
 const StudentSyllabusView = lazy(() => import("./pages/SyllabusManagement").then(m => ({ default: m.StudentSyllabusView })));
 const StudentSyllabusDetail = lazy(() => import("./pages/SyllabusManagement").then(m => ({ default: m.StudentSyllabusDetail })));
+const ParentSyllabusView = lazy(() => import("./pages/SyllabusManagement").then(m => ({ default: m.ParentSyllabusView })));
 
 // Lazy loaded Bus Management
 const BusScanDashboard = lazy(() => import("./pages/BusManagement").then(m => ({ default: m.BusScanDashboard })));
@@ -122,6 +126,7 @@ const BusScanReport = lazy(() => import("./pages/BusManagement").then(m => ({ de
 const Assignments = lazy(() => import("./pages/AssignmentManagement").then(m => ({ default: m.Assignments })));
 const AssignmentReview = lazy(() => import("./pages/AssignmentManagement").then(m => ({ default: m.AssignmentReview })));
 const StudentAssignments = lazy(() => import("./pages/AssignmentManagement").then(m => ({ default: m.StudentAssignments })));
+const ParentAssignments = lazy(() => import("./pages/AssignmentManagement").then(m => ({ default: m.ParentAssignments })));
 const HomeworkHub = lazy(() => import("./modules/homework/pages/HomeworkHub"));
 const TeacherHomeworkPage = lazy(() => import("./modules/homework/pages/TeacherHomeworkPage"));
 const StudentHomeworkPage = lazy(() => import("./modules/homework/pages/StudentHomeworkPage"));
@@ -286,6 +291,7 @@ function AppContent() {
 
                         {/* Timetable Routes */}
                         <Route path="/timetable" element={guarded('/timetable', <TimetableList />)} />
+                        <Route path="/timetable/my-timetable" element={guarded('/timetable/my-timetable', <StudentTimetable />)} />
                         <Route path="/timetable/new" element={guarded('/timetable/new', <TimetableCreate />)} />
                         <Route path="/timetable/:id" element={guarded('/timetable/:id', <TimetableDetail />)} />
                         <Route path="/timetable/:id/edit" element={guarded('/timetable/:id/edit', <TimetableEdit />)} />
@@ -337,6 +343,11 @@ function AppContent() {
                         <Route path="/assignments" element={guarded('/assignments', <Assignments />)} />
                         <Route path="/assignments/:id/review" element={guarded('/assignments/:id/review', <AssignmentReview />)} />
                         <Route path="/assignments/my-assignments" element={guarded('/assignments/my-assignments', <StudentAssignments />)} />
+                        <Route path="/parent/assignments" element={guarded('/parent/assignments', <ParentAssignments />)} />
+                        <Route path="/parent/timetable" element={guarded('/parent/timetable', <ParentTimetable />)} />
+                        <Route path="/parent/fees" element={guarded('/parent/fees', <ParentFees />)} />
+                        <Route path="/parent/syllabus" element={guarded('/parent/syllabus', <ParentSyllabusView />)} />
+                        <Route path="/parent/syllabus/:id" element={guarded('/parent/syllabus/:id', <StudentSyllabusDetail />)} />
                         <Route path="/homework" element={guarded('/homework', <HomeworkHub />)} />
                         <Route path="/homework/teacher" element={guarded('/homework/teacher', <TeacherHomeworkPage />)} />
                         <Route path="/homework/student" element={guarded('/homework/student', <StudentHomeworkPage />)} />

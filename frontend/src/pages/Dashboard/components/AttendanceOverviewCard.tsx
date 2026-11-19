@@ -22,6 +22,7 @@ const AttendanceOverviewCard: FC = () => {
 
     const skid = user?.skid || '';
     const academicYearId = user?.current_academic_year?.id;
+    const canFetch = Boolean(skid && academicYearId);
 
     // Fetch classes on mount
     useEffect(() => {
@@ -39,10 +40,12 @@ const AttendanceOverviewCard: FC = () => {
 
     // Fetch attendance data when filters change
     useEffect(() => {
-        if (skid && academicYearId) {
+        if (canFetch) {
             fetchData();
+            return;
         }
-    }, [skid, academicYearId, selectedClass, selectedSection]);
+        setLoading(false);
+    }, [canFetch, skid, academicYearId, selectedClass, selectedSection]);
 
     const fetchClasses = async () => {
         try {
@@ -92,6 +95,17 @@ const AttendanceOverviewCard: FC = () => {
         setSelectedSection('');
         setSections([]);
     };
+
+    if (!canFetch) {
+        return (
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Weekly Attendance</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Assign an academic year to load attendance data.
+                </p>
+            </div>
+        );
+    }
 
     if (loading) {
         return (

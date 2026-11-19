@@ -16,12 +16,15 @@ const StatsCardsSection: FC<StatsCardsSectionProps> = ({ onStatsLoaded }) => {
 
     const skid = user?.skid || '';
     const academicYearId = user?.current_academic_year?.id;
+    const canFetch = Boolean(skid && academicYearId);
 
     useEffect(() => {
-        if (skid && academicYearId) {
+        if (canFetch) {
             fetchStats();
+            return;
         }
-    }, [skid, academicYearId]);
+        setLoading(false);
+    }, [canFetch, skid, academicYearId]);
 
     const fetchStats = async () => {
         try {
@@ -104,6 +107,14 @@ const StatsCardsSection: FC<StatsCardsSectionProps> = ({ onStatsLoaded }) => {
             ),
         },
     ];
+
+    if (!canFetch) {
+        return (
+            <div className="p-5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-600 dark:text-gray-300">
+                Assign an academic year to load dashboard statistics.
+            </div>
+        );
+    }
 
     if (loading) {
         return (

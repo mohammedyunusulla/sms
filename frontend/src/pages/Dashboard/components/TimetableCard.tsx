@@ -20,13 +20,16 @@ const TimetableCard: FC = () => {
 
     const skid = user?.skid || '';
     const academicYearId = user?.current_academic_year?.id;
+    const canFetch = Boolean(skid && academicYearId);
 
     // Fetch classes on mount
     useEffect(() => {
-        if (skid && academicYearId) {
+        if (canFetch) {
             fetchClasses();
+            return;
         }
-    }, [skid, academicYearId]);
+        setLoading(false);
+    }, [canFetch, skid, academicYearId]);
 
     // Fetch sections when class changes
     useEffect(() => {
@@ -37,10 +40,12 @@ const TimetableCard: FC = () => {
 
     // Fetch timetable when filters change or on initial load
     useEffect(() => {
-        if (skid && academicYearId) {
+        if (canFetch) {
             fetchTimetable();
+            return;
         }
-    }, [skid, academicYearId, selectedClass, selectedSection]);
+        setLoading(false);
+    }, [canFetch, skid, academicYearId, selectedClass, selectedSection]);
 
     const fetchClasses = async () => {
         try {
@@ -133,6 +138,17 @@ const TimetableCard: FC = () => {
     };
 
     const tableRows = getTableRows();
+
+    if (!canFetch) {
+        return (
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Class Timetable</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Assign an academic year to load timetable data.
+                </p>
+            </div>
+        );
+    }
 
     return (
         <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">

@@ -4,10 +4,13 @@ import { useSidebar } from "../context/SidebarContext";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import UserDropdown from "../components/header/UserDropdown";
 import AcademicYearDropdown from "../components/header/AcademicYearDropdown";
+import ChildSelectorDropdown from "../components/header/ChildSelectorDropdown";
 import AcademicYearManagementModal from "../components/header/AcademicYearManagementModal";
 import SearchModal from "../components/header/SearchModal";
 import { useAuthStore } from "../stores/authStore";
 import { UserRole } from "../types/common";
+import { usePermissions } from "../hooks/usePermissions";
+import { Permission } from "../config/permissions";
 
 const AppHeader: React.FC = () => {
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
@@ -17,9 +20,19 @@ const AppHeader: React.FC = () => {
 
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
   const { user } = useAuthStore();
+  const { hasAnyPermission } = usePermissions();
 
   // Check if user can manage academic years (School Admin or Principal)
   const canManageAcademicYears = user?.role === UserRole.SCHOOL_ADMIN || user?.role === UserRole.PRINCIPAL;
+  // Show child selector to anyone with a parent-view permission
+  const showChildSelector =
+    user?.role === UserRole.PARENT &&
+    hasAnyPermission([
+      Permission.VIEW_CHILD_ASSIGNMENTS,
+      Permission.VIEW_CHILD_TIMETABLE,
+      Permission.VIEW_CHILD_FEES,
+      Permission.VIEW_CHILD_SYLLABUS,
+    ]);
 
   const handleToggle = () => {
     if (window.innerWidth >= 1024) {
@@ -92,6 +105,13 @@ const AppHeader: React.FC = () => {
             )}
             {/* Cross Icon */}
           </button>
+
+          {/* Child selector — surfaced in top bar on mobile. */}
+          {showChildSelector && (
+            <div className="flex-1 min-w-0 lg:hidden">
+              <ChildSelectorDropdown />
+            </div>
+          )}
 
           <button
             onClick={toggleApplicationMenu}
@@ -181,6 +201,11 @@ const AppHeader: React.FC = () => {
           } items-center justify-between w-full gap-4 px-5 py-4 lg:flex shadow-theme-md lg:justify-end lg:px-0 lg:shadow-none`}
         >
           <div className="flex items-center gap-2 2xsm:gap-3">
+            {showChildSelector && (
+              <div className="hidden lg:block">
+                <ChildSelectorDropdown />
+              </div>
+            )}
             {/* <!-- Academic Year Dropdown --> */}
             {user && user.role !== UserRole.SUPER_ADMIN && (
               <AcademicYearDropdown

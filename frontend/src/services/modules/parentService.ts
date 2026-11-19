@@ -136,6 +136,26 @@ class ParentService {
             throw new Error(response.message || 'Failed to delete parent');
         }
     }
+
+    // Get children linked to the currently logged-in parent.
+    // Endpoint: GET /studentParent/children/{parentUserId}/{schoolId}
+    async getMyChildren(parentUserId: number): Promise<any[]> {
+        const api = getApiClient();
+        const schoolId = getSchoolId();
+
+        if (!schoolId) {
+            throw new Error('School ID not found. Please log in again.');
+        }
+
+        const response = (await api.get(`/studentParent/children/${parentUserId}/${schoolId}`)) as ApiResponse;
+        if (response?.data && Array.isArray(response.data)) {
+            return response.data;
+        }
+        if (Array.isArray(response)) {
+            return response as any[];
+        }
+        return [];
+    }
 }
 
 export const parentService = new ParentService();

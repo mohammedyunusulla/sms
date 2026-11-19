@@ -40,6 +40,8 @@ export enum Permission {
   // Timetable
   VIEW_TIMETABLE = 'view_timetable',
   MANAGE_TIMETABLE = 'manage_timetable',
+  /** Student-facing: view own daily timetable */
+  VIEW_MY_TIMETABLE = 'view_my_timetable',
 
   // Exams
   VIEW_EXAMS = 'view_exams',
@@ -64,6 +66,14 @@ export enum Permission {
   // Assignments
   VIEW_ASSIGNMENTS = 'view_assignments',
   MANAGE_ASSIGNMENTS = 'manage_assignments',
+  /** Parent-facing: view assignments for the parent's linked children */
+  VIEW_CHILD_ASSIGNMENTS = 'view_child_assignments',
+  /** Parent-facing: view timetable for the parent's linked children */
+  VIEW_CHILD_TIMETABLE = 'view_child_timetable',
+  /** Parent-facing: view fee summary for the parent's linked children */
+  VIEW_CHILD_FEES = 'view_child_fees',
+  /** Parent-facing: view syllabus progress for the parent's linked children */
+  VIEW_CHILD_SYLLABUS = 'view_child_syllabus',
 
   // Bus Scan
   VIEW_BUS_SCAN = 'view_bus_scan',
@@ -143,6 +153,7 @@ export const ROUTE_PERMISSION_MAP: Record<string, RoutePermissionConfig> = {
   '/timetable/new': { permission: Permission.MANAGE_TIMETABLE },
   '/timetable/:id': { permission: Permission.VIEW_TIMETABLE },
   '/timetable/:id/edit': { permission: Permission.MANAGE_TIMETABLE },
+  '/timetable/my-timetable': { permission: Permission.VIEW_MY_TIMETABLE },
 
   // Exam Management
   '/exams': { permission: Permission.VIEW_EXAMS },
@@ -175,6 +186,11 @@ export const ROUTE_PERMISSION_MAP: Record<string, RoutePermissionConfig> = {
   '/assignments': { permission: Permission.MANAGE_ASSIGNMENTS },
   '/assignments/:id/review': { permission: Permission.MANAGE_ASSIGNMENTS },
   '/assignments/my-assignments': { permission: Permission.VIEW_ASSIGNMENTS },
+  '/parent/assignments': { permission: Permission.VIEW_CHILD_ASSIGNMENTS },
+  '/parent/timetable': { permission: Permission.VIEW_CHILD_TIMETABLE },
+  '/parent/fees': { permission: Permission.VIEW_CHILD_FEES },
+  '/parent/syllabus': { permission: Permission.VIEW_CHILD_SYLLABUS },
+  '/parent/syllabus/:id': { permission: Permission.VIEW_CHILD_SYLLABUS },
   '/homework': { anyPermission: [Permission.MANAGE_ASSIGNMENTS, Permission.VIEW_ASSIGNMENTS] },
   '/homework/teacher': { permission: Permission.MANAGE_ASSIGNMENTS },
   '/homework/student': { permission: Permission.VIEW_ASSIGNMENTS },
@@ -263,6 +279,16 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, SidebarGroupPermissionConfig
     itemPermissions: {
       '/timetable': Permission.VIEW_TIMETABLE,
     },
+    excludeIfHasPermission: {
+      '/timetable': Permission.VIEW_MY_TIMETABLE,
+    },
+  },
+  'My Timetable': {
+    groupPermissions: [Permission.VIEW_MY_TIMETABLE],
+    itemPermissions: {
+      '/timetable/my-timetable': Permission.VIEW_MY_TIMETABLE,
+    },
+    excludeFromFullAccess: ['/timetable/my-timetable'],
   },
   'Exam Management': {
     groupPermissions: [Permission.MANAGE_EXAMS],
@@ -313,8 +339,37 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, SidebarGroupPermissionConfig
     },
     excludeFromFullAccess: ['/assignments/my-assignments'],
     excludeIfHasPermission: {
+      // Hide for users who have manage_assignments (teachers/admins).
       '/assignments/my-assignments': Permission.MANAGE_ASSIGNMENTS,
     },
+  },
+  "My Child's Assignments": {
+    groupPermissions: [Permission.VIEW_CHILD_ASSIGNMENTS],
+    itemPermissions: {
+      '/parent/assignments': Permission.VIEW_CHILD_ASSIGNMENTS,
+    },
+    excludeFromFullAccess: ['/parent/assignments'],
+  },
+  "My Child's Timetable": {
+    groupPermissions: [Permission.VIEW_CHILD_TIMETABLE],
+    itemPermissions: {
+      '/parent/timetable': Permission.VIEW_CHILD_TIMETABLE,
+    },
+    excludeFromFullAccess: ['/parent/timetable'],
+  },
+  "My Child's Fees": {
+    groupPermissions: [Permission.VIEW_CHILD_FEES],
+    itemPermissions: {
+      '/parent/fees': Permission.VIEW_CHILD_FEES,
+    },
+    excludeFromFullAccess: ['/parent/fees'],
+  },
+  "My Child's Syllabus": {
+    groupPermissions: [Permission.VIEW_CHILD_SYLLABUS],
+    itemPermissions: {
+      '/parent/syllabus': Permission.VIEW_CHILD_SYLLABUS,
+    },
+    excludeFromFullAccess: ['/parent/syllabus'],
   },
   'Homework AI': {
     groupPermissions: [Permission.MANAGE_ASSIGNMENTS, Permission.VIEW_ASSIGNMENTS],

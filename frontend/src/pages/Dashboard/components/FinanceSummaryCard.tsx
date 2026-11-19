@@ -22,12 +22,15 @@ const FinanceSummaryCard: FC = () => {
 
     const skid = user?.skid || '';
     const academicYearId = user?.current_academic_year?.id;
+    const canFetch = Boolean(skid && academicYearId);
 
     useEffect(() => {
-        if (skid && academicYearId) {
+        if (canFetch) {
             fetchData();
+            return;
         }
-    }, [skid, academicYearId]);
+        setLoading(false);
+    }, [canFetch, skid, academicYearId]);
 
     const fetchData = async () => {
         try {
@@ -41,6 +44,17 @@ const FinanceSummaryCard: FC = () => {
             setLoading(false);
         }
     };
+
+    if (!canFetch) {
+        return (
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Finance Overview</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Assign an academic year to load finance data.
+                </p>
+            </div>
+        );
+    }
 
     if (loading) {
         return (

@@ -12,12 +12,15 @@ const AnnouncementsCard: FC = () => {
 
     const skid = user?.skid || '';
     const academicYearId = user?.current_academic_year?.id;
+    const canFetch = Boolean(skid && academicYearId);
 
     useEffect(() => {
-        if (skid && academicYearId) {
+        if (canFetch) {
             fetchAnnouncements();
+            return;
         }
-    }, [skid, academicYearId]);
+        setLoading(false);
+    }, [canFetch, skid, academicYearId]);
 
     const fetchAnnouncements = async () => {
         try {
@@ -36,6 +39,17 @@ const AnnouncementsCard: FC = () => {
             setLoading(false);
         }
     };
+
+    if (!canFetch) {
+        return (
+            <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 h-full">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Announcements</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Assign an academic year to load announcements.
+                </p>
+            </div>
+        );
+    }
 
     const getPriorityStyles = (priority: string) => {
         switch (priority) {

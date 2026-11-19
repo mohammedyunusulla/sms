@@ -57,6 +57,12 @@ const allMenuItems: NavItem[] = [
         name: "Timetable",
         path: "/timetable",
     },
+    // Timetable – Student (own schedule)
+    {
+        icon: <CalenderIcon />,
+        name: "My Timetable",
+        path: "/timetable/my-timetable",
+    },
     // Assignments – Teacher / Admin
     {
         icon: <ListIcon />,
@@ -68,6 +74,30 @@ const allMenuItems: NavItem[] = [
         icon: <ListIcon />,
         name: "My Assignments",
         path: "/assignments/my-assignments",
+    },
+    // Assignments – Parent (linked child)
+    {
+        icon: <ListIcon />,
+        name: "My Child's Assignments",
+        path: "/parent/assignments",
+    },
+    // Timetable – Parent (linked child)
+    {
+        icon: <CalenderIcon />,
+        name: "My Child's Timetable",
+        path: "/parent/timetable",
+    },
+    // Fees – Parent (linked child)
+    {
+        icon: <GridIcon />,
+        name: "My Child's Fees",
+        path: "/parent/fees",
+    },
+    // Syllabus – Parent (linked child)
+    {
+        icon: <PageIcon />,
+        name: "My Child's Syllabus",
+        path: "/parent/syllabus",
     },
     // AI Homework Tracking (Teacher/Student/Admin)
     {
@@ -186,7 +216,8 @@ const AppSidebar: React.FC = () => {
 
     // const isActive = (path: string) => location.pathname === path;
     const isActive = useCallback(
-        (path: string) => location.pathname === path,
+        (path: string) =>
+            location.pathname === path || location.pathname.startsWith(`${path}/`),
         [location.pathname]
     );
 
@@ -195,7 +226,10 @@ const AppSidebar: React.FC = () => {
         allMenuItems.forEach((nav) => {
             if (nav.subItems) {
                 nav.subItems.forEach((subItem) => {
-                    if (isActive(subItem.path)) {
+                    const isCurrentOrChild =
+                        location.pathname === subItem.path ||
+                        location.pathname.startsWith(subItem.path + '/');
+                    if (isCurrentOrChild) {
                         setOpenSubmenuName(nav.name);
                         submenuMatched = true;
                     }

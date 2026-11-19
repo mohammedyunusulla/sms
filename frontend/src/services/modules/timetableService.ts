@@ -203,6 +203,24 @@ class TimetableService {
     }
 
     /**
+     * Get a student's timetable for a specific day.
+     * Endpoint: GET /timeTable/student/{schoolId}/{studentId}/{date}
+     */
+    async getStudentDailyTimetable(studentId: number, date: string): Promise<any[]> {
+        const api = getApiClient();
+        const schoolId = getSchoolId();
+
+        if (!schoolId) {
+            throw new Error('School ID not found. Please log in again.');
+        }
+
+        const response: any = await api.get(`${this.baseUrl}/student/${schoolId}/${studentId}/${date}`);
+        if (Array.isArray(response)) return response;
+        if (Array.isArray(response?.data)) return response.data;
+        return [];
+    }
+
+    /**
      * Get timetable for teacher
      */
     async getTeacherTimetable(teacherId: string, academicYear?: string): Promise<ITimetable[]> {
