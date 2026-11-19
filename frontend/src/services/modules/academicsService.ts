@@ -172,7 +172,7 @@ class AcademicsService {
             throw new Error('School ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.subjectsUrl}/create/${schoolId}`, data) as unknown as ApiResponse<ISubject>;
+        const response = await api.post(`${this.subjectsUrl}/create/subject/${schoolId}`, data) as unknown as ApiResponse<ISubject>;
         if (response.code === 200 && response.status === 'success') {
             return response.data as ISubject;
         }
@@ -189,7 +189,7 @@ class AcademicsService {
             throw new Error('School ID not found. Please log in again.');
         }
 
-        const response = await api.put(`${this.subjectsUrl}/update/${id}/${schoolId}`, data) as unknown as ApiResponse<ISubject>;
+        const response = await api.put(`${this.subjectsUrl}/update/subject/${schoolId}/${id}`, data) as unknown as ApiResponse<ISubject>;
         if (response.code === 200 && response.status === 'success') {
             return response.data as ISubject;
         }
@@ -206,7 +206,7 @@ class AcademicsService {
             throw new Error('School ID not found. Please log in again.');
         }
 
-        const response = await api.delete(`${this.subjectsUrl}/delete/${id}/${schoolId}`) as unknown as ApiResponse;
+        const response = await api.delete(`${this.subjectsUrl}/delete/subject/${schoolId}/${id}`) as unknown as ApiResponse;
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.message || 'Failed to delete subject');
         }

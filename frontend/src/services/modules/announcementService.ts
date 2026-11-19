@@ -164,7 +164,7 @@ class AnnouncementService {
             throw new Error('School ID not found. Please log in again.');
         }
 
-        const response = await api.delete(`${this.baseUrl}/delete/${id}/${schoolId}`) as unknown as ApiResponse;
+        const response = await api.delete(`${this.baseUrl}/delete/${schoolId}/${id}`) as unknown as ApiResponse;
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.message || 'Failed to delete announcement');
         }
