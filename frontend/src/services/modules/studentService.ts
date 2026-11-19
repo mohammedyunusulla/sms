@@ -120,9 +120,27 @@ class StudentService {
             throw new Error('School ID not found. Please log in again.');
         }
 
+        // Soft delete: the student becomes inactive and can't log in; all records are kept.
         const response = await api.delete(`${this.baseUrl}/delete/${id}/${schoolId}`);
         if (response.code !== 200 || response.status !== 'success') {
-            throw new Error(response.data?.message || 'Failed to delete student');
+            throw new Error(response.message || response.data?.message || 'Failed to delete student');
+        }
+    }
+
+    /**
+     * Reactivate a (soft-)deleted student: active again and login re-enabled.
+     */
+    async reactivate(id: string): Promise<void> {
+        const api = getApiClient();
+        const schoolId = getSchoolId();
+
+        if (!schoolId) {
+            throw new Error('School ID not found. Please log in again.');
+        }
+
+        const response = await api.patch(`${this.baseUrl}/reactivate/${id}/${schoolId}`);
+        if (response.code !== 200 || response.status !== 'success') {
+            throw new Error(response.message || response.data?.message || 'Failed to reactivate student');
         }
     }
 

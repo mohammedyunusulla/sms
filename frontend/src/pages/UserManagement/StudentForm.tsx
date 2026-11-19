@@ -146,7 +146,7 @@ const StudentForm: FC<IStudentFormProps> = ({ initialData, mode: propMode = 'cre
                     date_of_birth: dob,
                     address: studentData.address || '',
                     has_login: studentData.has_login || false,
-                    is_active: studentData.is_active || true,
+                    is_active: studentData.is_active ?? true,
                     // Essential fields (from profile)
                     student_photo: studentData.profile?.student_photo || studentData.photo_url || '',
                     blood_group: studentData.profile?.blood_group || '',

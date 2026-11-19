@@ -350,3 +350,31 @@ def promote_students(skid):
         return jsonify({'message': str(e)}), 400
     except Exception as e:
         return jsonify({'message': f'Failed to promote students: {str(e)}'}), 500
+
+def _set_student_active_response(skid, student_id, active):
+    result = StudentService.set_student_active(skid, student_id, active)
+    if result['success']:
+        return jsonify({'code': 200, 'status': 'success', 'message': result['message'], 'data': result['data']}), 200
+    return jsonify({'code': result['code'], 'status': 'error', 'message': result['message']}), result['code']
+
+
+@student_bp.route('/delete/<int:student_id>/<skid>', methods=['DELETE'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@log_actions('DEACTIVATE_STUDENT')
+def delete_student(student_id, skid):
+    """Soft delete: mark the student inactive and disable their login. All records are kept."""
+    try:
+        return _set_student_active_response(skid, student_id, False)
+    except Exception as e:
+        return jsonify({'code': 500, 'status': 'error', 'message': f'Failed to delete student: {str(e)}'}), 500
+
+
+@student_bp.route('/reactivate/<int:student_id>/<skid>', methods=['PATCH'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@log_actions('REACTIVATE_STUDENT')
+def reactivate_student(student_id, skid):
+    """Undo a soft delete: mark the student active and re-enable their login."""
+    try:
+        return _set_student_active_response(skid, student_id, True)
+    except Exception as e:
+        return jsonify({'code': 500, 'status': 'error', 'message': f'Failed to reactivate student: {str(e)}'}), 500
