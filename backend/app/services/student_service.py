@@ -14,9 +14,16 @@ class StudentService:
 
     @staticmethod
     def create_student_user(data, skid):
+        """
+        All-or-nothing: the login is checked first (not saved), then the school record, profile,
+        enrollment and role link are saved together, then the login. If the login save fails, the
+        school rows are removed again (see app/utils/account_create.py).
+        """
+        from app.utils.account_create import add_role_link, remove_school_user, role_for
         user = None
         school_user_id = None
-    
+        tenant_saved = False
+
         try:
             school = School.query.filter_by(skid=skid).first()
             if not school:
@@ -34,7 +41,7 @@ class StudentService:
                     first_name=data['first_name'],
                     last_name=data['last_name'],
                     phone=data.get('phone'),
-                    role=UserRole(data['role']),
+                    role=UserRole.STUDENT,  # never from the request
                     skid=skid,
                     plan=plan.value,  # Convert enum to string
                     school_id=data.get('school_id')
@@ -53,7 +60,6 @@ class StudentService:
                     phone=data.get('phone'),
                     gender=data.get('gender'),
                     date_of_birth=data.get('date_of_birth'),
-                    role_id=data.get('role_id'),
                     skid=skid,
                     is_active=True
                 )
@@ -61,6 +67,8 @@ class StudentService:
                 tenant_session.add(school_user)
                 tenant_session.flush()
                 school_user_id = school_user.id
+                # Student role, looked up by code and saved in this same transaction
+                add_role_link(tenant_session, school_user, role_for(tenant_session, 'STUDENT'))
     
                 # Create student profile + enrollment
                 student_profile = Student(
@@ -100,24 +108,15 @@ class StudentService:
                 )
                 tenant_session.add(enrollment)
     
-                # Commit tenant DB first
+                # School record + profile + enrollment + role: one commit
                 tenant_session.commit()
+                tenant_saved = True
 
             # Step 3: Commit main DB and set school_user_id (if login was created)
             if create_login and user:
                 user.school_user_id = school_user_id
                 db.session.commit()
 
-            # Step 4: Assign role in tenant DB (ALWAYS - regardless of create_login)
-            # This must happen AFTER main DB commit so the user can be found by school_user_id
-            role_data = {
-                "user_id": school_user_id,
-                "role_id": data.get("role_id"),
-                "assigned_by": 1,
-                "update_main_db": create_login  # Flag to control main DB update
-            }
-            UserRolesService.assign_role_to_user(role_data, skid)
-    
             # Step 5: Return proper object
             if create_login and user:
                 return user.to_dict()
@@ -131,15 +130,13 @@ class StudentService:
             if 'tenant_session' in locals():
                 tenant_session.rollback()
     
-            # Cleanup orphan main user if created
-            if user and user.id:
+            # Nothing half-made: remove the school rows if they were already saved
+            if tenant_saved:
                 try:
-                    db.session.delete(user)
-                    db.session.commit()
+                    remove_school_user(skid, school_user_id)
                 except Exception as cleanup_err:
-                    db.session.rollback()
-                    print(f"[Cleanup failed] Could not delete main user: {cleanup_err}")
-    
+                    print(f"[Cleanup failed] Could not remove school user {school_user_id}: {cleanup_err}")
+
             raise Exception(f"Failed to create school user: {str(e)}")
 
     
@@ -707,9 +704,11 @@ class StudentService:
             errors = []
             created_students = []
     
+            from app.utils.account_create import add_role_link, remove_school_user, role_for
             for idx, student_data in enumerate(students_data):
                 user = None  # Track main DB user
                 school_user_id = None  # Track tenant DB user ID
+                tenant_saved = False  # tenant rows saved -> remove them if the login save fails
                 
                 try:
                     # Validate required fields
@@ -775,7 +774,6 @@ class StudentService:
                             phone=student_data.get('phone'),
                             gender=student_data.get('gender'),
                             date_of_birth=StudentService._parse_excel_date(student_data.get('date_of_birth'), 'date_of_birth'),
-                            role_id=student_data.get('role_id', 4),  # Default student role
                             skid=skid,
                             is_active=True
                         )
@@ -783,6 +781,8 @@ class StudentService:
                         tenant_session.add(school_user)
                         tenant_session.flush()
                         school_user_id = school_user.id
+                        # Student role, looked up by code and saved in this same transaction
+                        add_role_link(tenant_session, school_user, role_for(tenant_session, 'STUDENT'))
     
                         # Create student profile
                         student_profile = Student(
@@ -823,23 +823,14 @@ class StudentService:
                         )
                         tenant_session.add(enrollment)
                         
-                        # Commit tenant DB
+                        # School record + profile + enrollment + role: one commit
                         tenant_session.commit()
+                        tenant_saved = True
 
                     # Step 3: Commit main DB and set school_user_id (if login was created)
                     if create_login and user:
                         user.school_user_id = school_user_id
                         db.session.commit()
-
-                    # Step 4: Assign role (ALWAYS - regardless of create_login)
-                    # This must happen AFTER main DB commit so the user can be found by school_user_id
-                    role_data = {
-                        "user_id": school_user_id,
-                        "role_id": student_data.get("role_id", 4),
-                        "assigned_by": 1,
-                        "update_main_db": create_login  # Flag to control main DB update
-                    }
-                    UserRolesService.assign_role_to_user(role_data, skid)
     
                     successful += 1
                     created_students.append({
@@ -857,14 +848,12 @@ class StudentService:
                     if 'tenant_session' in locals():
                         tenant_session.rollback()
 
-                    # Cleanup orphan main user if created
-                    if user and user.id:
+                    # The login was never saved (rolled back above); remove this row's school records if saved
+                    if tenant_saved:
                         try:
-                            db.session.delete(user)
-                            db.session.commit()
-                        except Exception as delete_error:
-                            db.session.rollback()
-                            print(f"Failed to clean up user from main DB: {delete_error}")
+                            remove_school_user(skid, school_user_id)
+                        except Exception as cleanup_err:
+                            print(f"[Cleanup failed] Could not remove school user {school_user_id}: {cleanup_err}")
 
                     # Translate noisy DB errors into a friendly message.
                     if isinstance(e, IntegrityError):

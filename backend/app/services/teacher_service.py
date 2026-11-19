@@ -10,22 +10,29 @@ from sqlalchemy.orm import joinedload
 class TeacherService:
     @staticmethod
     def create_teacher_user(data, skid):
-        user = None  # Track user so we can delete if needed
-        school_user_id = None # New variable to store the ID from the tenant DB
+        """
+        All-or-nothing (see app/utils/account_create.py): the login is checked but saved last; the
+        school record, teacher profile and role link are saved together in between.
+        """
+        from app.utils.account_create import add_role_link, remove_school_user, role_for
+        user = None
+        school_user_id = None
+        tenant_saved = False
         try:
-            # Create in main DB
+            # Main DB: add + flush only (saved at the end)
             user = User(
                 username=data['username'],
                 email=data['email'],
                 first_name=data['first_name'],
                 last_name=data['last_name'],
                 phone=data.get('phone'),
-                role=UserRole(data['role']),
+                role=UserRole.TEACHER,  # never from the request
                 skid=skid,
                 school_id=data.get('school_id')
             )
             user.set_password(data['password'])
-            user.save()
+            db.session.add(user)
+            db.session.flush()
 
             # Insert into tenant DB
             with switch_to_school_db(skid) as tenant_session:
@@ -38,42 +45,28 @@ class TeacherService:
                     gender=data.get('gender'),
                     date_of_birth=data.get('date_of_birth'),
                     address=data.get('address'),
-                    role_id = data.get('role_id'),
                     skid=skid,
                     is_active=True
                 )
                 tenant_session.add(school_user)
                 tenant_session.flush()
-                
-                # Get the ID of the school user before the session closes
                 school_user_id = school_user.id
+                # Teacher role, looked up by code and saved in this same transaction
+                add_role_link(tenant_session, school_user, role_for(tenant_session, 'TEACHER'))
 
-                # Create respective profile
-                if user.role == UserRole.TEACHER:
-                    profile = Teacher(
-                        user_id=school_user_id,
-                        employee_id=data.get('employee_id'),
-                        designation=data.get('designation'),
-                        date_of_joining=data.get('date_of_joining'),
-                        qualifications=data.get('qualifications'),
-                        salary=data.get('salary')
-                    )
-                else:
-                    raise ValueError("Only teacher/student logic implemented. Add parent/staff if needed.")
-
-                tenant_session.add(profile)
+                tenant_session.add(Teacher(
+                    user_id=school_user_id,
+                    employee_id=data.get('employee_id'),
+                    designation=data.get('designation'),
+                    date_of_joining=data.get('date_of_joining'),
+                    qualifications=data.get('qualifications'),
+                    salary=data.get('salary')
+                ))
                 tenant_session.commit()
+                tenant_saved = True
 
             user.school_user_id = school_user_id
             db.session.commit()
-            
-            # Assign the role after creating the teacher on the basis of role_id
-            role_data = {
-                "user_id": school_user_id,
-                "role_id": data.get("role_id"),
-                "assigned_by": 1
-            }
-            UserRolesService.assign_role_to_user(role_data, skid)
 
             return user.to_dict()
 
@@ -83,15 +76,13 @@ class TeacherService:
             if 'tenant_session' in locals():
                 tenant_session.rollback()
     
-            # Delete user from main DB if already created
-            if user and user.id:
+            # The login was never saved (rolled back above); remove the school rows if they were
+            if tenant_saved:
                 try:
-                    db.session.delete(user)
-                    db.session.commit()
-                except Exception as delete_error:
-                    db.session.rollback()
-                    print(f"Failed to clean up user from main DB: {delete_error}")
-    
+                    remove_school_user(skid, school_user_id)
+                except Exception as cleanup_err:
+                    print(f"[Cleanup failed] Could not remove school user {school_user_id}: {cleanup_err}")
+
             raise Exception(f"Failed to create school user: {str(e)}")
             
     @staticmethod

@@ -18,9 +18,11 @@ class ParentService:
         Create a new parent user in both main and tenant databases
         Based on school plan: BASIC (no login), STANDARD/PREMIUM (with login)
         """
+        from app.utils.account_create import add_role_link, remove_school_user, role_for
         user = None
         school_user_id = None
-        
+        tenant_saved = False
+
         try:
             # Get school information
             school = School.query.filter_by(skid=skid).first()
@@ -41,7 +43,7 @@ class ParentService:
                     phone=data.get('phone'),
                     role=UserRole.PARENT,
                     skid=skid,
-                    plan=plan,
+                    plan=getattr(plan, 'value', plan),  # store the plan name, not the enum object
                     school_id=school.id
                 )
                 user.set_password(data['password'])
@@ -58,7 +60,6 @@ class ParentService:
                     phone=data.get('phone'),
                     gender=data.get('gender'),
                     date_of_birth=data.get('date_of_birth'),
-                    role_id=data.get('role_id', 5),  # Assuming 5 is parent role
                     skid=skid,
                     is_active=True
                 )
@@ -66,6 +67,8 @@ class ParentService:
                 tenant_session.add(school_user)
                 tenant_session.flush()
                 school_user_id = school_user.id
+                # Parent role, looked up by code and saved in this same transaction
+                add_role_link(tenant_session, school_user, role_for(tenant_session, 'PARENT'))
                 
                 # Create parent profile
                 parent_profile = Parent(
@@ -86,19 +89,11 @@ class ParentService:
                 )
                 tenant_session.add(parent_profile)
                 
-                # Commit tenant DB first
+                # School record + profile + role: one commit
                 tenant_session.commit()
-            
-            # Step 3: Assign role in tenant DB (ALWAYS - regardless of create_login)
-            role_data = {
-                "user_id": school_user_id,
-                "role_id": data.get("role_id", 5),  # Parent role
-                "assigned_by": 1,
-                "update_main_db": create_login  # Flag to control main DB update
-            }
-            UserRolesService.assign_role_to_user(role_data, skid)
-            
-            # Step 4: Commit main DB only if login was created
+                tenant_saved = True
+
+            # Step 3: Commit main DB only if login was created
             if create_login and user:
                 user.school_user_id = school_user_id
                 db.session.commit()
@@ -118,14 +113,12 @@ class ParentService:
             if 'tenant_session' in locals():
                 tenant_session.rollback()
             
-            # Cleanup orphan main user if created
-            if user and user.id:
+            # The login was never saved (rolled back above); remove the school rows if they were
+            if tenant_saved:
                 try:
-                    db.session.delete(user)
-                    db.session.commit()
+                    remove_school_user(skid, school_user_id)
                 except Exception as cleanup_err:
-                    db.session.rollback()
-                    print(f"[Cleanup failed] Could not delete main user: {cleanup_err}")
+                    print(f"[Cleanup failed] Could not remove school user {school_user_id}: {cleanup_err}")
             raise Exception(f"Failed to create parent user: {str(e)}")
 
 
