@@ -134,5 +134,8 @@ def delete_role(skid, role_id):
         
         RolesService.delete_role(role_id, skid)
         return jsonify({'message': 'Role deleted', 'status': 'success', 'code':200}), 200
+    except ValueError as e:
+        code = 404 if 'not found' in str(e).lower() else 400
+        return jsonify({'message': str(e), 'status': 'error', 'code': code}), code
     except Exception as e:
         return jsonify({'message': str(e), 'status': 'error'}), 500

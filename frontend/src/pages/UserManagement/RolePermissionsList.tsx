@@ -224,7 +224,8 @@ const RolePermissionsList: FC = () => {
                                 Manage Permissions
                             </button>
                         )}
-                        {hasPermission(Permission.MANAGE_ROLES) && (
+                        {/* Built-in roles can't be deleted (the server refuses) */}
+                        {hasPermission(Permission.MANAGE_ROLES) && !rows.find(r => r.id === showActionsMenu)?.is_system_role && (
                             <button
                                 onClick={() => handleDelete(rows.find(r => r.id === showActionsMenu)!)}
                                 className="w-full text-left px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2 text-red-600 dark:text-red-400 last:rounded-b-lg"

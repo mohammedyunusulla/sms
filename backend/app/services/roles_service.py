@@ -148,10 +148,24 @@ class RolesService:
                 role = tenant_session.query(Role).get(role_id)
                 if not role:
                     raise ValueError("Role not found")
+                # Built-in roles (Principal, Teacher, Student, Parent, Bus Staff, Clerk, ...) are what accounts are
+                # created with, and a role people hold can't go either (it used to delete anything, QA A14)
+                if role.is_system_role:
+                    raise ValueError(f"'{role.role_name}' is a built-in role and can't be deleted. You can change its permissions instead.")
+                from app.models.tenant.SchoolUsers import SchoolUsers
+                from app.models.tenant.UserRoles import UserRoles
+                holders = {uid for (uid,) in tenant_session.query(SchoolUsers.id).filter(SchoolUsers.role_id == role.id)}
+                holders |= {uid for (uid,) in tenant_session.query(UserRoles.user_id).filter(UserRoles.role_id == role.id)}
+                if holders:
+                    count = len(holders)
+                    raise ValueError(f"'{role.role_name}' is assigned to {count} {'person' if count == 1 else 'people'}. "
+                                     "Give them another role first.")
 
                 tenant_session.delete(role)
                 tenant_session.commit()
                 return {"message": "Role deleted successfully"}
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to delete role: {str(e)}")
