@@ -496,9 +496,24 @@ def update_school_user(skid, school_user_id):
 def delete_school_user(skid, school_user_id):
     """Soft delete: inactive + login disabled; records kept, can be reactivated."""
     from app.utils.user_status import set_school_user_active, status_response
-    _, denied = _school_user_guard(skid, school_user_id, 'delete')
+    target, denied = _school_user_guard(skid, school_user_id, 'delete')
     if denied:
         return denied
+    # A school must never be left without an active admin
+    if target.get('role') == 'SCHOOL_ADMIN' and target.get('is_active'):
+        from app.models.main.User import User
+        others = User.query.filter(
+            User.skid == skid,
+            User.role == UserRole.SCHOOL_ADMIN,
+            User.is_active.is_(True),
+            User.school_user_id != int(school_user_id),
+        ).count()
+        if others == 0:
+            return jsonify({
+                'message': "This is the school's only active admin. Create another admin first.",
+                'status': 'error',
+                'code': 409,
+            }), 409
     return status_response(set_school_user_active(skid, school_user_id, False, None, 'User'))
 
 

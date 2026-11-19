@@ -166,6 +166,29 @@ class SchoolService {
     }
 
     /**
+     * Soft delete a school admin (inactive + login disabled; can be reactivated).
+     * Uses the admin's own school id: a super admin doesn't belong to a school.
+     */
+    async deactivateSchoolAdmin(skid: string, schoolUserId: number | string): Promise<string> {
+        const api = getApiClient();
+        const response = await api.delete(`/users/delete/${skid}/${schoolUserId}`);
+        if (response.code === 200 && response.status === 'success') {
+            return response.message || 'School admin deleted';
+        }
+        throw new Error(response.message || 'Failed to delete school admin');
+    }
+
+    /** Reactivate a (soft-)deleted school admin. */
+    async reactivateSchoolAdmin(skid: string, schoolUserId: number | string): Promise<string> {
+        const api = getApiClient();
+        const response = await api.patch(`/users/reactivate/${skid}/${schoolUserId}`);
+        if (response.code === 200 && response.status === 'success') {
+            return response.message || 'School admin reactivated';
+        }
+        throw new Error(response.message || 'Failed to reactivate school admin');
+    }
+
+    /**
      * Change school admin password
      */
     async changeAdminPassword(adminId: string, newPassword: string): Promise<void> {

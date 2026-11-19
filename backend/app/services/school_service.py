@@ -479,10 +479,10 @@ class SchoolService:
         """Get list of all school admins"""
         try:
             # Query users with SCHOOL_ADMIN role
+            # Active and inactive (deleted) admins, so a deleted admin can be reactivated here
             admins = User.query.filter(
                 User.role == UserRole.SCHOOL_ADMIN,
-                User.is_active == True
-            ).order_by(User.first_name).all()
+            ).order_by(User.is_active.desc(), User.first_name).all()
             
             admins_data = []
             for admin in admins:

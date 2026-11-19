@@ -128,15 +128,31 @@ const SchoolAdminsList: FC = () => {
     setShowActionsMenu(null);
   };
 
+  // Soft delete: the admin is marked inactive and can't log in; records are kept and it can be undone
   const handleConfirmDelete = async () => {
+    if (!selectedAdmin) return;
     try {
       setLoading(true);
-      toast.success('School admin deleted successfully!');
+      await schoolService.deactivateSchoolAdmin(selectedAdmin.skid, selectedAdmin.school_user_id);
+      toast.success(`${selectedAdmin.first_name} ${selectedAdmin.last_name} deleted. They can be reactivated from this list.`);
       setDeleteConfirmOpen(false);
       fetchAdmins();
-    } catch (err: any) {
-      console.error('Delete error:', err);
-      toast.error(err.message || 'Failed to delete admin.');
+    } catch (err: unknown) {
+      toast.error((err as { message?: string })?.message || 'Failed to delete admin.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReactivate = async (admin: { skid: string; school_user_id: number; first_name?: string; last_name?: string }) => {
+    setShowActionsMenu(null);
+    try {
+      setLoading(true);
+      await schoolService.reactivateSchoolAdmin(admin.skid, admin.school_user_id);
+      toast.success(`${admin.first_name ?? ''} ${admin.last_name ?? ''} reactivated`.trim());
+      fetchAdmins();
+    } catch (err: unknown) {
+      toast.error((err as { message?: string })?.message || 'Failed to reactivate admin.');
     } finally {
       setLoading(false);
     }
@@ -272,15 +288,27 @@ const SchoolAdminsList: FC = () => {
               </svg>
               Change Password
             </button>
-            <button
-              onClick={() => handleDelete(rows.find(r => r.id === showActionsMenu))}
-              className="w-full text-left px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2 text-red-600 dark:text-red-400 last:rounded-b-lg"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              Delete
-            </button>
+            {rows.find(r => r.id === showActionsMenu)?.is_active === false ? (
+              <button
+                onClick={() => handleReactivate(rows.find(r => r.id === showActionsMenu))}
+                className="w-full text-left px-4 py-2 hover:bg-green-50 dark:hover:bg-green-900/20 transition-colors flex items-center gap-2 text-green-700 dark:text-green-400 last:rounded-b-lg"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Reactivate
+              </button>
+            ) : (
+              <button
+                onClick={() => handleDelete(rows.find(r => r.id === showActionsMenu))}
+                className="w-full text-left px-4 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex items-center gap-2 text-red-600 dark:text-red-400 last:rounded-b-lg"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Delete
+              </button>
+            )}
           </div>
         </>
       )}
@@ -368,7 +396,7 @@ const SchoolAdminsList: FC = () => {
       <ConfirmDialog
         isOpen={deleteConfirmOpen}
         title="Delete School Admin"
-        message={`Are you sure you want to delete ${selectedAdmin?.first_name} ${selectedAdmin?.last_name}? This action cannot be undone.`}
+        message={`Delete ${selectedAdmin?.first_name} ${selectedAdmin?.last_name}? They will be marked inactive and can no longer log in. Their records are kept, and you can reactivate them from this list.`}
         type="danger"
         confirmText="Delete"
         cancelText="Cancel"
