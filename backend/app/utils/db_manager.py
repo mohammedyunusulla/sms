@@ -1,4 +1,5 @@
 import psycopg2
+import psycopg2.errors
 import logging
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from sqlalchemy import create_engine
@@ -100,15 +101,27 @@ class DatabaseManager:
             conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
             cursor = conn.cursor()
             
-            # Terminate all connections to the database first
-            cursor.execute("""
-                SELECT pg_terminate_backend(pid)
-                FROM pg_stat_activity
-                WHERE datname = %s AND pid <> pg_backend_pid()
-            """, (db_name,))
-            
-            # Drop the database
-            cursor.execute(f'DROP DATABASE IF EXISTS "{db_name}"')
+            # Drop the database even while someone is connected to it. Ending connections and dropping
+            # used to be two steps, and the drop could run before the connections had closed
+            # ("database is being accessed by other users").
+            try:
+                cursor.execute(f'DROP DATABASE IF EXISTS "{db_name}" WITH (FORCE)')  # PostgreSQL 13+
+            except psycopg2.errors.SyntaxError:
+                # Older PostgreSQL: end connections, then retry the drop while they close
+                import time
+                for attempt in range(6):
+                    cursor.execute("""
+                        SELECT pg_terminate_backend(pid)
+                        FROM pg_stat_activity
+                        WHERE datname = %s AND pid <> pg_backend_pid()
+                    """, (db_name,))
+                    try:
+                        cursor.execute(f'DROP DATABASE IF EXISTS "{db_name}"')
+                        break
+                    except psycopg2.errors.ObjectInUse:
+                        if attempt == 5:
+                            raise
+                        time.sleep(0.5)
             
             cursor.close()
             conn.close()
