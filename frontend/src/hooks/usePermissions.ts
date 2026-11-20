@@ -8,7 +8,7 @@
 import { useCallback, useMemo } from 'react';
 import { useAuth } from './useAuth';
 import { UserRole } from '../types/common';
-import { Permission } from '../config/permissions';
+import { ROUTE_PERMISSION_MAP, Permission } from '../config/permissions';
 
 const FULL_ACCESS_ROLES: UserRole[] = [UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN];
 
@@ -21,6 +21,8 @@ export interface UsePermissionsReturn {
     isFullAccess: boolean;
     /** True only for SUPER_ADMIN */
     isSuperAdmin: boolean;
+    /** True if the user may open this route (same rules as the route's PermissionGuard) */
+    canOpen: (path: string) => boolean;
 }
 
 export const usePermissions = (): UsePermissionsReturn => {
@@ -60,5 +62,17 @@ export const usePermissions = (): UsePermissionsReturn => {
         [isFullAccess, userPermissions]
     );
 
-    return { hasPermission, hasAnyPermission, isFullAccess, isSuperAdmin };
+    const canOpen = useCallback(
+        (path: string): boolean => {
+            const config = ROUTE_PERMISSION_MAP[path];
+            if (!config) return true;
+            if (config.superAdminOnly) return isSuperAdmin;
+            if (config.anyPermission && config.anyPermission.length > 0 && !hasAnyPermission(config.anyPermission)) return false;
+            if (config.permission && !hasPermission(config.permission)) return false;
+            return true;
+        },
+        [isSuperAdmin, hasAnyPermission, hasPermission]
+    );
+
+    return { hasPermission, hasAnyPermission, isFullAccess, isSuperAdmin, canOpen };
 };
