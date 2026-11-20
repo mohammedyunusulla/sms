@@ -7,7 +7,7 @@ class_bp = Blueprint('classes', __name__)
 
 # CREATE CLASS
 @class_bp.route('/create/class/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_classes')
 def create_class(skid):
     try:
         data = request.get_json()
@@ -26,7 +26,7 @@ def create_class(skid):
 
 
 @class_bp.route('/update/class/<skid>/<int:class_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_classes')
 def update_class(skid, class_id):
     """
     Update a class
@@ -56,7 +56,7 @@ def update_class(skid, class_id):
 
 
 @class_bp.route('/class/delete/<skid>/<int:class_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_classes')
 def delete_class(skid, class_id):
     """
     Delete a class and all its sections
@@ -79,7 +79,7 @@ def delete_class(skid, class_id):
 
 
 @class_bp.route('/list/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'], permission=('view_classes', 'manage_classes'))
 def get_classes(skid):
     """
     Get all classes for the current user's school
@@ -99,7 +99,7 @@ def get_classes(skid):
         return jsonify({'message': f'Failed to retrieve classes: {str(e)}', 'status': 'error', 'code': 500}), 500
         
 @class_bp.route('/<int:class_id>/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'], permission=('view_classes', 'manage_classes'))
 def get_class_by_id(class_id, skid):
     """
     Get a specific class by ID with student count
@@ -126,7 +126,7 @@ def get_class_by_id(class_id, skid):
 
 
 @class_bp.route('/create/section/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_classes')
 def create_section(skid):
     """
     Create a new section
@@ -157,7 +157,7 @@ def create_section(skid):
 
 
 @class_bp.route('/update/section/<skid>/<int:section_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_classes')
 def update_section(skid, section_id):
     """
     Update a section
@@ -186,7 +186,7 @@ def update_section(skid, section_id):
 
 
 @class_bp.route('/section/delete/<skid>/<int:section_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_classes')
 def delete_section(skid, section_id):
     """
     Delete a section
@@ -210,7 +210,7 @@ def delete_section(skid, section_id):
 
 
 @class_bp.route('/sections/<skid>/<int:class_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'], permission=('view_classes', 'manage_classes'))
 def get_sections_by_class(skid, class_id):
     """
     Get all sections for a specific class
@@ -230,7 +230,7 @@ def get_sections_by_class(skid, class_id):
 
 
 @class_bp.route('/add-to-section/<skid>/<int:section_id>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_students')
 def add_students_to_section(skid, section_id):
     """
     Add one or multiple students to a specific section
@@ -295,7 +295,7 @@ def add_students_to_section(skid, section_id):
 
 
 @class_bp.route('/remove-from-section/<skid>/<int:section_id>/<int:student_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_students')
 def remove_student_from_section(skid, section_id, student_id):
     """
     Remove a student from a specific class or its sections
@@ -319,7 +319,7 @@ def remove_student_from_section(skid, section_id, student_id):
 
 
 @class_bp.route('/move-to-section/<skid>/<int:new_section_id>/<int:student_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_students')
 def move_student_to_section(skid, new_section_id, student_id):
     """
     Move a student from current section to a new section
@@ -352,7 +352,7 @@ def move_student_to_section(skid, new_section_id, student_id):
 
 
 @class_bp.route('/remove-subject-from-section/<skid>/<int:section_id>/<int:subject_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_classes')
 def remove_subject_from_section(skid, section_id, subject_id):
     """
     Remove a subject from a specific class or its sections

@@ -20,6 +20,7 @@ import {
 } from '@/components';
 import { roomService } from '@/services/modules/roomService';
 import { usePermissions } from '@/hooks/usePermissions';
+import { Permission } from '@/config/permissions';
 
 // ──────────── Constants ────────────
 
@@ -64,8 +65,9 @@ interface IRoom {
 
 const RoomList: FC = () => {
     const navigate = useNavigate();
-    const { isFullAccess, isSuperAdmin } = usePermissions();
-    const canManage = isFullAccess || isSuperAdmin;
+    const { isFullAccess, isSuperAdmin, hasPermission } = usePermissions();
+    // the same tick the server checks for adding / editing / deleting rooms
+    const canManage = isFullAccess || isSuperAdmin || hasPermission(Permission.MANAGE_ROOMS);
 
     const [filterType, setFilterType] = useState<string>('');
     const [filterBuilding, setFilterBuilding] = useState<string>('');

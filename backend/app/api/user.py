@@ -6,7 +6,7 @@ from app.models.main.User import UserRole
 user_bp = Blueprint('users', __name__)
 
 @user_bp.route('/create', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], full_access_only=True)
 @log_actions('CREATE_USER')
 def create_school_admin():
     """
@@ -34,7 +34,7 @@ def create_school_admin():
         return jsonify({'message': f'Failed to create user: {str(e)}'}), 500
 
 @user_bp.route('/update/<int:user_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], full_access_only=True)
 @log_actions('UPDATE_USER')
 def update_user(user_id):
     """
@@ -85,7 +85,7 @@ def update_user(user_id):
         return jsonify({'message': f'Failed to update user: {str(e)}'}), 500
 
 @user_bp.route('/<int:user_id>/deactivate', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], full_access_only=True)
 @log_actions('DEACTIVATE_USER')
 def deactivate_user(user_id):
     """
@@ -129,7 +129,7 @@ def deactivate_user(user_id):
         return jsonify({'message': f'Failed to deactivate user: {str(e)}'}), 500
 
 @user_bp.route('/<int:user_id>/activate', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], full_access_only=True)
 @log_actions('ACTIVATE_USER')
 def activate_user(user_id):
     """
@@ -213,7 +213,7 @@ def create_super_admin():
 
 @user_bp.route('/list/<skid>', methods=['GET'])
 # Not teachers: every account in the school (only the admin Users page uses it) - QA D17
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission=('view_users', 'manage_users'))
 @log_actions('GET_USERS')
 def get_school_users(skid):
     """
@@ -270,7 +270,7 @@ def get_school_users(skid):
 
 
 @user_bp.route('/list/staff/<skid>', methods=['GET'])
-@login_required(['SCHOOL_ADMIN'])
+@login_required(['SCHOOL_ADMIN'], permission=('view_users', 'manage_users', 'manage_salaries'))
 @log_actions('GET_STAFF')
 def get_school_staff(skid):
     """
@@ -293,7 +293,7 @@ def get_school_staff(skid):
 
 
 @user_bp.route('/schoolAdmin/<skid>/<int:user_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], full_access_only=True)
 @log_actions('GET_USER')
 def get_user(skid, user_id):
     """
@@ -326,7 +326,7 @@ def get_user(skid, user_id):
 
 
 @user_bp.route('/provision-login', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_users')
 @log_actions('PROVISION_LOGIN')
 def provision_login():
     """
@@ -370,7 +370,7 @@ def provision_login():
 
 
 @user_bp.route('/provision-bulk-logins', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_users')
 @log_actions('PROVISION_BULK_LOGINS')
 def provision_bulk_logins():
     """
@@ -413,7 +413,7 @@ def provision_bulk_logins():
 
 
 @user_bp.route('/provisioning-report/<skid>/<int:school_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_users')
 @log_actions('GET_PROVISIONING_REPORT')
 def get_provisioning_report(skid, school_id):
     """
@@ -465,7 +465,7 @@ def _school_user_guard(skid, school_user_id, action):
 
 
 @user_bp.route('/get/<skid>/<int:school_user_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission=('view_users', 'manage_users'))
 def get_school_user(skid, school_user_id):
     target, denied = _school_user_guard(skid, school_user_id, 'view')
     if denied:
@@ -474,7 +474,7 @@ def get_school_user(skid, school_user_id):
 
 
 @user_bp.route('/update-school/<skid>/<int:school_user_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_users')
 @log_actions('UPDATE_SCHOOL_USER')
 def update_school_user(skid, school_user_id):
     _, denied = _school_user_guard(skid, school_user_id, 'edit')
@@ -492,7 +492,7 @@ def update_school_user(skid, school_user_id):
 
 
 @user_bp.route('/delete/<skid>/<int:school_user_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='delete_users')
 @log_actions('DEACTIVATE_SCHOOL_USER')
 def delete_school_user(skid, school_user_id):
     """Soft delete: inactive + login disabled; records kept, can be reactivated."""
@@ -519,7 +519,7 @@ def delete_school_user(skid, school_user_id):
 
 
 @user_bp.route('/reactivate/<skid>/<int:school_user_id>', methods=['PATCH'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_users')
 @log_actions('REACTIVATE_SCHOOL_USER')
 def reactivate_school_user(skid, school_user_id):
     from app.utils.user_status import set_school_user_active, status_response
@@ -530,7 +530,7 @@ def reactivate_school_user(skid, school_user_id):
 
 
 @user_bp.route('/<int:school_user_id>/reset-password/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_users')
 @log_actions('ADMIN_RESET_PASSWORD')
 def admin_reset_password(school_user_id, skid):
     """

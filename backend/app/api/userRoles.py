@@ -6,7 +6,7 @@ user_roles_bp  = Blueprint('user-roles', __name__)
 
 # 1. CREATE USER-ROLE
 @user_roles_bp.route('/assign-role/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], full_access_only=True)
 def assign_role_to_user(skid):
     try:
         data = request.get_json()

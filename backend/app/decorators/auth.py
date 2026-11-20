@@ -19,7 +19,7 @@ def _requested_skid(view_kwargs):
     return None
 
 
-def login_required(allowed_roles=None, permission=None, self_service=False):
+def login_required(allowed_roles=None, permission=None, self_service=False, own_roles=None, full_access_only=False):
     """
     Decorator to require login and check access.
     Attaches the authenticated user to request.current_user and g.current_user.
@@ -30,7 +30,13 @@ def login_required(allowed_roles=None, permission=None, self_service=False):
                    always pass). See app/utils/role_permissions.py.
     self_service:  the route is about the caller themselves (sign-in, a student's / parent's own pages, ...),
                    so it stays decided by role. Used by check_route_permissions.py.
+    full_access_only: only School Admin / Super Admin, whatever the tick boxes (e.g. creating a School Admin,
+                   changing someone's role) - so no tick can let a role raise itself above School Admin.
+    own_roles:     roles that use this route for their OWN data (e.g. STUDENT / PARENT on a student's attendance):
+                   they stay decided by the role list (plus the route's own-record checks); everyone else needs
+                   the permission.
     """
+    own_roles = tuple(own_roles or ())
     permissions = tuple([permission] if isinstance(permission, str) else (permission or ()))
 
     def decorator(f):
@@ -59,7 +65,9 @@ def login_required(allowed_roles=None, permission=None, self_service=False):
                 # Access: the role list, or the role's tick boxes (see app/utils/role_permissions.py)
                 user_role = user.role.value if hasattr(user.role, 'value') else user.role
                 from app.utils.role_permissions import decide
-                if not decide(user, user_role, allowed_roles, permissions):
+                if full_access_only and user_role not in ('SUPER_ADMIN', 'SCHOOL_ADMIN'):
+                    return jsonify({'message': 'Insufficient permissions'}), 403
+                if not decide(user, user_role, allowed_roles, permissions, own_roles):
                     return jsonify({'message': 'Insufficient permissions'}), 403
 
                 # Tenant isolation: non-super-admins may only touch their own school's data.
@@ -87,6 +95,8 @@ def login_required(allowed_roles=None, permission=None, self_service=False):
             'roles': list(allowed_roles or []),
             'permissions': list(permissions),
             'self_service': bool(self_service),
+            'own_roles': list(own_roles),
+            'full_access_only': bool(full_access_only),
         }
         return decorated_function
     return decorator

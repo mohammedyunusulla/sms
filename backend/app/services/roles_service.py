@@ -14,6 +14,14 @@ def _base_role(value):
     return base
 
 
+def _is_built_in(role):
+    """Built-in roles (School Admin, Principal, Teacher, Student, Parent, Bus Staff, Clerk): only their permissions change."""
+    return bool(role.is_system_role) or str(role.role_code or '').upper() in BUILT_IN_ROLES
+
+
+BUILT_IN_ONLY_PERMISSIONS = "is a built-in role: only its permissions can be changed"
+
+
 def _role_holders(tenant_session, role_id):
     from app.models.tenant.SchoolUsers import SchoolUsers
     from app.models.tenant.UserRoles import UserRoles
@@ -63,6 +71,14 @@ class RolesService:
                 if not role:
                     raise ValueError("Role not found")
 
+                if _is_built_in(role):
+                    # owner's rule: a built-in role keeps its name, description and base; only the tick boxes change
+                    renamed = 'role_name' in data and (data.get('role_name') or '').strip() != (role.role_name or '')
+                    redescribed = 'description' in data and (data.get('description') or '') != (role.description or '')
+                    if renamed or redescribed:
+                        raise ValueError(f"'{role.role_name}' {BUILT_IN_ONLY_PERMISSIONS}")
+                    return role.to_dict()
+
                 role.role_name = data.get('role_name', role.role_name)
                 role.description = data.get('description', role.description)
                 if data.get('base_role') is not None and not role.is_system_role:
@@ -105,6 +121,8 @@ class RolesService:
                 if not role:
                     raise ValueError("Role not found")
     
+                if _is_built_in(role):
+                    raise ValueError(f"'{role.role_name}' {BUILT_IN_ONLY_PERMISSIONS} (it can't be switched off)")
                 role.is_active = not role.is_active
 
                 tenant_session.commit()
@@ -112,6 +130,8 @@ class RolesService:
                 forget_cached_permissions(skid)
                 return role.to_dict()
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to toggle role status: {str(e)}")
 
@@ -189,7 +209,7 @@ class RolesService:
                     raise ValueError("Role not found")
                 # Built-in roles (Principal, Teacher, Student, Parent, Bus Staff, Clerk, ...) are what accounts are
                 # created with, and a role people hold can't go either (it used to delete anything, QA A14)
-                if role.is_system_role:
+                if _is_built_in(role):
                     raise ValueError(f"'{role.role_name}' is a built-in role and can't be deleted. You can change its permissions instead.")
                 holders = _role_holders(tenant_session, role.id)
                 if holders:

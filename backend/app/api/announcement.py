@@ -8,7 +8,7 @@ from app.models.tenant.Announcement import Announcement as AnnouncementModel
 announcement_bp = Blueprint('announcements', __name__)
 
 @announcement_bp.route('/create/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_announcements')
 def create_announcement(skid):
     """Create a new Announcement"""
     try:
@@ -50,7 +50,7 @@ def create_announcement(skid):
         }), 500
 
 @announcement_bp.route('/get-by-id/<skid>/<int:announcement_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_announcements', 'manage_announcements'))
 def get_announcement_by_id(skid, announcement_id):
     """Get a single announcement by ID"""
     try:
@@ -77,7 +77,7 @@ def get_announcement_by_id(skid, announcement_id):
 
 
 @announcement_bp.route('/list/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT'], permission=('view_announcements', 'manage_announcements'), own_roles=('STUDENT', 'PARENT'))
 def get_announcements(skid):
     """Get announcements list"""
     try:
@@ -136,7 +136,7 @@ def get_announcements(skid):
 
 
 @announcement_bp.route('/update/<skid>/<int:announcement_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_announcements')
 def update_announcement(skid, announcement_id):
     """Update a Announcement"""
     try:
@@ -175,7 +175,7 @@ def update_announcement(skid, announcement_id):
 
 
 @announcement_bp.route('/delete/<skid>/<int:announcement_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_announcements')
 def delete_announcement(skid, announcement_id):
     """Delete a Announcement"""
     try:

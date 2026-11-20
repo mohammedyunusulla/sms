@@ -20,10 +20,11 @@ const AppHeader: React.FC = () => {
 
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
   const { user } = useAuthStore();
-  const { hasAnyPermission } = usePermissions();
+  const { hasAnyPermission, hasPermission } = usePermissions();
 
   // Check if user can manage academic years (School Admin or Principal)
-  const canManageAcademicYears = user?.role === UserRole.SCHOOL_ADMIN || user?.role === UserRole.PRINCIPAL;
+  // the same tick the server checks (School Admin always has it)
+  const canManageAcademicYears = hasPermission(Permission.MANAGE_ACADEMIC_YEARS);
   // Show child selector to anyone with a parent-view permission
   const showChildSelector =
     user?.role === UserRole.PARENT &&

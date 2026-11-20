@@ -6,7 +6,7 @@ roles_bp = Blueprint('roles', __name__)
 
 # 1. CREATE ROLE
 @roles_bp.route('/create/role/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_roles')
 def create_role(skid):
     try:
         data = request.get_json()
@@ -23,7 +23,7 @@ def create_role(skid):
 
 # 2. GET ALL ROLES (Paginated)
 @roles_bp.route('/list/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_roles')
 def get_all_roles_paginated(skid):
     """
     Get paginated list of roles in the specific school with filtering and sorting
@@ -69,7 +69,7 @@ def get_all_roles_paginated(skid):
 
 # 3. GET SINGLE ROLE BY ID
 @roles_bp.route('/role/<skid>/<int:role_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_roles')
 def get_role_by_id(skid, role_id):
     try:
         if not skid:
@@ -83,7 +83,7 @@ def get_role_by_id(skid, role_id):
 
 # 4. UPDATE ROLE
 @roles_bp.route('/update/role/<skid>/<int:role_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_roles')
 def update_role(skid, role_id):
     try:
         data = request.get_json()
@@ -100,7 +100,7 @@ def update_role(skid, role_id):
 
 # 5. ASSIGN PERMISSIONS TO ROLE
 @roles_bp.route('/addPermissionsToRole/<skid>/<int:role_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_roles')
 def assign_permissions(skid, role_id):
     try:
         data = request.get_json()
@@ -116,7 +116,7 @@ def assign_permissions(skid, role_id):
 
 # 6. TOGGLE ACTIVE/INACTIVE
 @roles_bp.route('/toggleRole/<skid>/<int:role_id>', methods=['PATCH'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_roles')
 def toggle_role_status(skid, role_id):
     try:
         if not skid:
@@ -124,13 +124,15 @@ def toggle_role_status(skid, role_id):
             
         updated = RolesService.toggle_role_status(role_id, skid)
         return jsonify({'message': 'Role status updated', 'data': updated, 'status': 'success', 'code':200}), 200
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': str(e), 'status': 'error'}), 500
 
 
 # 7. DELETE ROLE
 @roles_bp.route('/delete/role/<skid>/<int:role_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_roles')
 def delete_role(skid, role_id):
     try:
         if not skid:

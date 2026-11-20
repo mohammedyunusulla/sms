@@ -7,7 +7,7 @@ room_bp = Blueprint('rooms', __name__)
 
 # CREATE ROOM
 @room_bp.route('/create/room/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_rooms')
 def create_room(skid):
     try:
         data = request.get_json()
@@ -37,7 +37,7 @@ def create_room(skid):
 
 # UPDATE ROOM
 @room_bp.route('/update/room/<skid>/<int:room_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_rooms')
 def update_room(skid, room_id):
     try:
         data = request.get_json()
@@ -59,7 +59,7 @@ def update_room(skid, room_id):
 
 # DELETE ROOM
 @room_bp.route('/delete/room/<skid>/<int:room_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_rooms')
 def delete_room(skid, room_id):
     try:
         if not skid:
@@ -78,7 +78,7 @@ def delete_room(skid, room_id):
 
 # LIST ALL ROOMS
 @room_bp.route('/list/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_classes', 'manage_rooms', 'manage_exams'))
 def get_all_rooms(skid):
     try:
         if not skid:
@@ -107,7 +107,7 @@ def get_all_rooms(skid):
 
 # GET ROOM BY ID
 @room_bp.route('/<int:room_id>/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_classes', 'manage_rooms', 'manage_exams'))
 def get_room_by_id(room_id, skid):
     try:
         if not skid:
@@ -127,7 +127,7 @@ def get_room_by_id(room_id, skid):
 
 # GET AVAILABLE ROOMS
 @room_bp.route('/available/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_classes', 'manage_rooms', 'manage_exams'))
 def get_available_rooms(skid):
     try:
         if not skid:

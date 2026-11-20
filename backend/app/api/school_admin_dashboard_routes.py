@@ -6,7 +6,7 @@ from app.decorators import login_required
 school_admin_dashboard_bp = Blueprint('schoolAdminDashboard', __name__)
 
 @school_admin_dashboard_bp.route('/stats/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], self_service=True)
 def get_dashboard_stats(skid):
     """Get school admin dashboard stats"""
     try:
@@ -45,7 +45,7 @@ def get_dashboard_stats(skid):
 
 
 @school_admin_dashboard_bp.route('/announcements', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], self_service=True)
 def get_announcements(skid):
     """Get announcements for school admin dashboard"""
     try:
@@ -86,7 +86,7 @@ def get_announcements(skid):
 
 
 @school_admin_dashboard_bp.route('/breakdown/monthly/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], self_service=True)
 def get_monthly_expense_breakdown(skid):
     try:
         academic_year_id = request.args.get('academic_year_id')
@@ -108,7 +108,7 @@ def get_monthly_expense_breakdown(skid):
 
 
 @school_admin_dashboard_bp.route('/attendance-overview/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], self_service=True)
 def get_attendance_overview(skid):
     """Get attendance overview for the current week"""
     try:
@@ -142,7 +142,7 @@ def get_attendance_overview(skid):
 
 
 @school_admin_dashboard_bp.route('/finance-summary/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], self_service=True)
 def get_finance_summary(skid):
     """Get finance summary for school admin dashboard"""
     try:
@@ -174,7 +174,7 @@ def get_finance_summary(skid):
 
 
 @school_admin_dashboard_bp.route('/timetable/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], self_service=True)
 def get_timetable(skid):
     """Get timetable for a class and section"""
     try:

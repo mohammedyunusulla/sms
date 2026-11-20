@@ -8,7 +8,7 @@ studentParent_bp = Blueprint('studentParent', __name__)
 
 # ASSIGN STUDENTS TO PARENT
 @studentParent_bp.route('/assign/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_students')
 def assign_students_to_parent(skid):
     try:
         data = request.get_json()
@@ -38,7 +38,7 @@ def assign_students_to_parent(skid):
 
 # UPDATE STUDENT PARENT LINK
 @studentParent_bp.route('/update/<skid>/<int:student_user_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_students')
 def update_student_parent_link(skid, student_user_id):
     """
     Update parent link for a student
@@ -74,7 +74,7 @@ def update_student_parent_link(skid, student_user_id):
 
 # GET PARENT'S CHILDREN (for parent mobile app - returns full details)
 @studentParent_bp.route('/children/<int:parent_user_id>/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'PARENT'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'PARENT'], permission=('view_students', 'manage_students'), own_roles=('PARENT',))
 @own_parent_required('parent_user_id')
 def get_parent_children(parent_user_id, skid):
     try:
@@ -95,7 +95,7 @@ def get_parent_children(parent_user_id, skid):
 
 # GET PARENT'S STUDENTS
 @studentParent_bp.route('/parent/<int:parent_user_id>/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_students', 'manage_students'))
 def get_parent_students(parent_user_id, skid):
     try:
         if not skid:
@@ -116,7 +116,7 @@ def get_parent_students(parent_user_id, skid):
 
 # GET STUDENT'S PARENTS
 @studentParent_bp.route('/student/<int:student_user_id>/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_students', 'manage_students'))
 def get_student_parents(student_user_id, skid):
     try:
         if not skid:
@@ -137,7 +137,7 @@ def get_student_parents(student_user_id, skid):
 
 # REMOVE STUDENT FROM PARENT
 @studentParent_bp.route('/remove/<skid>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_students')
 def remove_student_from_parent(skid):
     try:
         data = request.get_json()
@@ -171,7 +171,7 @@ def remove_student_from_parent(skid):
 
 # UPDATE RELATION TYPE
 @studentParent_bp.route('/update-relation/<skid>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_students')
 def update_relation_type(skid):
     try:
         data = request.get_json()
@@ -207,7 +207,7 @@ def update_relation_type(skid):
 
 # GET ALL PARENT-STUDENT RELATIONSHIPS FOR A SCHOOL
 @studentParent_bp.route('/all/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission=('view_students', 'manage_students'))
 def get_all_parent_student_relationships(skid):
     try:
         if not skid:

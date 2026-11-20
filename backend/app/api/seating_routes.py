@@ -6,7 +6,7 @@ seating_bp = Blueprint('seating', __name__)
 
 
 @seating_bp.route('/create/config/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_exams')
 def create_config(skid):
     try:
         data = request.get_json()
@@ -25,7 +25,7 @@ def create_config(skid):
 
 
 @seating_bp.route('/fetch/configs/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_exams', 'manage_exams'))
 def get_configs(skid):
     try:
         filters = {
@@ -41,7 +41,7 @@ def get_configs(skid):
 
 
 @seating_bp.route('/config/<int:config_id>/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_exams', 'manage_exams'))
 def get_config(skid, config_id):
     try:
         result = SeatingService.get_config_by_id(config_id, skid)
@@ -53,7 +53,7 @@ def get_config(skid, config_id):
 
 
 @seating_bp.route('/update/config/<skid>/<int:config_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_exams')
 def update_config(skid, config_id):
     try:
         data = request.get_json()
@@ -66,7 +66,7 @@ def update_config(skid, config_id):
 
 
 @seating_bp.route('/delete/config/<skid>/<int:config_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_exams')
 def delete_config(skid, config_id):
     try:
         SeatingService.delete_config(config_id, skid)
@@ -78,7 +78,7 @@ def delete_config(skid, config_id):
 
 
 @seating_bp.route('/generate/<int:config_id>/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_exams')
 def generate_seating(skid, config_id):
     try:
         result = SeatingService.generate_seating(config_id, skid)
@@ -90,7 +90,7 @@ def generate_seating(skid, config_id):
 
 
 @seating_bp.route('/clear/<int:config_id>/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_exams')
 def clear_seating(skid, config_id):
     try:
         result = SeatingService.clear_seating(config_id, skid)
@@ -102,7 +102,7 @@ def clear_seating(skid, config_id):
 
 
 @seating_bp.route('/validate/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_exams')
 def validate_config(skid):
     """
     Validate a config payload for conflicts before saving.
@@ -123,7 +123,7 @@ def validate_config(skid):
 
 
 @seating_bp.route('/swap/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_exams')
 def swap_seats(skid):
     """
     Move or swap students between seats.

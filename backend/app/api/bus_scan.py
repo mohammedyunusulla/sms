@@ -10,7 +10,7 @@ ALLOWED_ROLES = ['SCHOOL_ADMIN', 'PRINCIPAL', 'BUS_STAFF']
 
 
 @bus_scan_bp.route('/scan/<skid>', methods=['POST'])
-@login_required(allowed_roles=ALLOWED_ROLES)
+@login_required(allowed_roles=ALLOWED_ROLES, permission='manage_bus_scan')
 def record_scan(skid):
     """Record a bus check-in or check-out scan."""
     data = request.get_json() or {}
@@ -33,7 +33,7 @@ def record_scan(skid):
 
 
 @bus_scan_bp.route('/scan-qr/<skid>', methods=['POST'])
-@login_required(allowed_roles=ALLOWED_ROLES)
+@login_required(allowed_roles=ALLOWED_ROLES, permission='manage_bus_scan')
 def scan_qr(skid):
     """Resolve a QR code payload and record the scan."""
     data = request.get_json() or {}
@@ -64,7 +64,7 @@ def scan_qr(skid):
 
 # School-wide lists: not for parents (they see their own child's history via /student/<id>)
 @bus_scan_bp.route('/today/<skid>', methods=['GET'])
-@login_required(allowed_roles=['SCHOOL_ADMIN', 'PRINCIPAL', 'BUS_STAFF', 'TEACHER'])
+@login_required(allowed_roles=['SCHOOL_ADMIN', 'PRINCIPAL', 'BUS_STAFF', 'TEACHER'], permission=('view_bus_scan', 'manage_bus_scan'))
 def get_today(skid):
     """Get all bus scan records for a given date (defaults to today)."""
     academic_year_id = request.args.get('academic_year_id', type=int)
@@ -80,7 +80,7 @@ def get_today(skid):
 
 
 @bus_scan_bp.route('/status/<skid>', methods=['GET'])
-@login_required(allowed_roles=['SCHOOL_ADMIN', 'PRINCIPAL', 'BUS_STAFF', 'TEACHER'])
+@login_required(allowed_roles=['SCHOOL_ADMIN', 'PRINCIPAL', 'BUS_STAFF', 'TEACHER'], permission=('view_bus_scan', 'manage_bus_scan'))
 def get_status(skid):
     """Get current bus status — last scan per student today."""
     academic_year_id = request.args.get('academic_year_id', type=int)
@@ -89,7 +89,7 @@ def get_status(skid):
 
 
 @bus_scan_bp.route('/student/<skid>/<int:student_user_id>', methods=['GET'])
-@login_required(allowed_roles=['SCHOOL_ADMIN', 'PRINCIPAL', 'BUS_STAFF', 'PARENT', 'TEACHER'])
+@login_required(allowed_roles=['SCHOOL_ADMIN', 'PRINCIPAL', 'BUS_STAFF', 'PARENT', 'TEACHER'], permission=('view_bus_scan', 'manage_bus_scan'), own_roles=('PARENT',))
 @student_access_required('student_user_id')
 def get_student_history(skid, student_user_id):
     """Get bus scan history for a specific student."""
@@ -99,7 +99,7 @@ def get_student_history(skid, student_user_id):
 
 
 @bus_scan_bp.route('/search-students/<skid>', methods=['GET'])
-@login_required(allowed_roles=['SCHOOL_ADMIN', 'PRINCIPAL', 'BUS_STAFF'])
+@login_required(allowed_roles=['SCHOOL_ADMIN', 'PRINCIPAL', 'BUS_STAFF'], permission='manage_bus_scan')
 def search_students(skid):
     """Search students by name or admission number for manual scan entry."""
     q = request.args.get('q', '').strip()

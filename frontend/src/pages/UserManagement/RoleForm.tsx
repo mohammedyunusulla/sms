@@ -241,11 +241,14 @@ const RoleForm: FC = () => {
         try {
             setIsSubmitting(true);
             if (isEditMode) {
-                await roleService.update(id!, {
-                    role_name: formData.role_name,
-                    description: formData.description,
-                    ...(!isSystemRole ? { base_role: formData.base_role } : {}),
-                });
+                // built-in roles: only their permissions can change
+                if (!isSystemRole) {
+                    await roleService.update(id!, {
+                        role_name: formData.role_name,
+                        description: formData.description,
+                        base_role: formData.base_role,
+                    });
+                }
                 await roleService.assignPermissions(id!, selectedPermissions);
                 toast.success('Role updated successfully');
             } else {
@@ -289,6 +292,11 @@ const RoleForm: FC = () => {
                     {/* Role Details */}
                     <div className="lg:col-span-1 bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 space-y-5 self-start">
                         <h3 className="text-base font-semibold text-gray-900 dark:text-white">Role Details</h3>
+                        {isSystemRole && (
+                            <p className="text-sm text-amber-700 dark:text-amber-400" data-testid="built-in-note">
+                                Built-in role: its name and description can't be changed. Only its permissions can.
+                            </p>
+                        )}
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
@@ -299,7 +307,8 @@ const RoleForm: FC = () => {
                                 name="role_name"
                                 value={formData.role_name}
                                 onChange={handleNameChange}
-                                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                disabled={isSystemRole}
+                                className="disabled:opacity-60 disabled:cursor-not-allowed w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 placeholder="e.g. Class Teacher"
                             />
                         </div>
@@ -353,6 +362,7 @@ const RoleForm: FC = () => {
                                 name="description"
                                 value={formData.description}
                                 onChange={handleInputChange}
+                                disabled={isSystemRole}
                                 rows={3}
                                 className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                                 placeholder="Describe what this role can do"

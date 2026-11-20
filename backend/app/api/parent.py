@@ -18,7 +18,7 @@ PARENT_REQUIRED_FIELDS = (('username', 'Username'), ('password', 'Password'), ('
 
 
 @parent_bp.route('/create/details/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_students')
 @log_actions('CREATE_PARENT_USER')  
 def create_parent(skid):
     """
@@ -78,7 +78,7 @@ def create_parent(skid):
 
 
 @parent_bp.route('/update/<skid>/<parent_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_students')
 @log_actions('UPDATE_PARENT_USER')
 def update_parent(skid, parent_id):
     """
@@ -115,7 +115,7 @@ def update_parent(skid, parent_id):
 
 
 @parent_bp.route('/delete/<skid>/<parent_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission=('delete_students', 'manage_students'))
 @log_actions('DELETE_PARENT_USER')
 def delete_parent(skid, parent_id):
     """
@@ -139,7 +139,7 @@ def delete_parent(skid, parent_id):
 
 
 @parent_bp.route('/list/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_students', 'manage_students'))
 def get_parents_paginated(skid):
     """
     Get paginated list of parents in the specific school with filtering and sorting
@@ -195,7 +195,7 @@ def get_parents_paginated(skid):
 
 
 @parent_bp.route('/<skid>/<int:parent_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission=('view_students', 'manage_students'))
 def get_parent_detail(parent_id, skid):
     """
     Get parent details
@@ -219,7 +219,7 @@ def get_parent_detail(parent_id, skid):
 
 
 @parent_bp.route('/link-student/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_students')
 @log_actions('LINK_PARENT_STUDENT')
 def link_parent_student(skid):
     """
@@ -258,7 +258,7 @@ def link_parent_student(skid):
         }), 500
 
 @parent_bp.route('/student/<int:student_id>/parents/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission=('view_students', 'manage_students'))
 def get_student_parents(student_id, skid):
     """
     Get all parents for a student
@@ -282,7 +282,7 @@ def get_student_parents(student_id, skid):
 
 
 @parent_bp.route('/reactivate/<skid>/<parent_id>', methods=['PATCH'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_students')
 @log_actions('REACTIVATE_PARENT_USER')
 def reactivate_parent(skid, parent_id):
     """Undo a soft delete: active again and login re-enabled."""

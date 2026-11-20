@@ -9,7 +9,7 @@ from datetime import datetime
 timeTable_bp = Blueprint('timeTable', __name__)
 
 @timeTable_bp.route('/generate/time-slots', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_timetable')
 @log_actions('GENERATE_TIME_SLOTS')
 def generate_time_slots():
     """Generate time slots based on configuration"""
@@ -44,7 +44,7 @@ def generate_time_slots():
         }), 500
         
 @timeTable_bp.route('/check-teacher-conflict', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_timetable')
 @log_actions('CHECK_TEACHER_CONFLICT')
 def check_teacher_conflict():
     """Check if a teacher has scheduling conflicts for a specific time slot"""
@@ -90,7 +90,7 @@ def check_teacher_conflict():
 
 
 @timeTable_bp.route('/create', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_timetable')
 def create_timetable():
     """Create or update a timetable with draft support"""
     try:
@@ -170,7 +170,7 @@ def create_timetable():
         }), 500
 
 @timeTable_bp.route('/save-draft', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_timetable')
 @log_actions('SAVE_TIMETABLE_DRAFT')
 def save_draft():
     """Save timetable as draft without validation"""
@@ -238,7 +238,7 @@ def save_draft():
         }), 500
 
 @timeTable_bp.route('/publish-draft', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_timetable')
 @log_actions('PUBLISH_TIMETABLE_DRAFT')
 def publish_draft():
     """Convert draft timetable to final published version"""
@@ -284,7 +284,7 @@ def publish_draft():
         }), 500
         
 @timeTable_bp.route('/view/<skid>/<int:timetable_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_timetable', 'manage_timetable'))
 @log_actions('VIEW_TIMETABLE')
 def get_timetable_by_id(skid, timetable_id):
     """Get timetable by ID"""
@@ -318,7 +318,7 @@ def get_timetable_by_id(skid, timetable_id):
 
 
 @timeTable_bp.route('/list/<skid>/<academic_year_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_timetable', 'manage_timetable'))
 def list_timetables(skid, academic_year_id):
     """Get all timetables for a school"""
     try:
@@ -346,7 +346,7 @@ def list_timetables(skid, academic_year_id):
         }), 500
 
 @timeTable_bp.route('/drafts/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_timetable')
 def list_draft_timetables(skid):
     """Get all draft timetables for a school"""
     try:
@@ -372,7 +372,7 @@ def list_draft_timetables(skid):
         }), 500
 
 @timeTable_bp.route('/teacher-schedule/<int:teacher_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission=('view_timetable', 'manage_timetable'))
 def get_teacher_schedule(teacher_id):
     """Get teacher's complete schedule"""
     try:
@@ -406,7 +406,7 @@ def get_teacher_schedule(teacher_id):
         }), 500
 
 @timeTable_bp.route('/delete/<int:timetable_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_timetable')
 def delete_timetable(timetable_id):
     """Delete a timetable"""
     try:
@@ -447,7 +447,7 @@ def delete_timetable(timetable_id):
         }), 500
 
 @timeTable_bp.route('/student/<skid>/<student_id>/<date>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT'], permission=('view_timetable', 'view_my_timetable', 'view_child_timetable', 'manage_timetable'), own_roles=('STUDENT', 'PARENT'))
 @student_access_required('student_id')
 def get_student_timetable(skid, student_id, date):
     """
@@ -506,7 +506,7 @@ def get_student_timetable(skid, student_id, date):
 
 
 @timeTable_bp.route('/validate-conflicts', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_timetable')
 def validate_conflicts():
     """Validate timetable for conflicts"""
     try:

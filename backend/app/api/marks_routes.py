@@ -12,7 +12,7 @@ marks_bp = Blueprint('marks', __name__)
 
 # FETCH STUDENTS WITH EXISTING MARKS
 @marks_bp.route('/fetch-students/<skid>/<academic_year_id>', methods=['POST'])
-@login_required(['TEACHER', 'CLASS_TEACHER', 'SCHOOL_ADMIN'])
+@login_required(['TEACHER', 'CLASS_TEACHER', 'SCHOOL_ADMIN'], permission='manage_marks')
 def fetch_students_for_marks_entry(skid, academic_year_id):
     """
     Fetch students list with existing marks
@@ -35,7 +35,7 @@ def fetch_students_for_marks_entry(skid, academic_year_id):
 
 # ENTER/UPDATE MARKS
 @marks_bp.route('/entry/<skid>/<academic_year_id>', methods=['POST'])
-@login_required(['TEACHER', 'CLASS_TEACHER', 'SCHOOL_ADMIN'])
+@login_required(['TEACHER', 'CLASS_TEACHER', 'SCHOOL_ADMIN'], permission='manage_marks')
 def enter_marks(skid, academic_year_id):
     """
     Bulk marks entry/update

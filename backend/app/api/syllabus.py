@@ -11,7 +11,7 @@ syllabus_bp = Blueprint('syllabus', __name__)
 # ============== SYLLABUS ENDPOINTS ==============
 
 @syllabus_bp.route('/get/list/<skid>', methods=['GET'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_syllabus_and_progress', 'manage_syllabus'))
 def fetch_all_syllabus(skid):
     """Fetch all syllabi for a school"""
     try:
@@ -24,7 +24,7 @@ def fetch_all_syllabus(skid):
 
 
 @syllabus_bp.route('/create/<skid>', methods=['POST'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
 def create_syllabus(skid):
     """Create new syllabus"""
     try:
@@ -60,7 +60,7 @@ def create_syllabus(skid):
 
 
 @syllabus_bp.route('/get/<skid>/<int:syllabus_id>', methods=['GET'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_syllabus_and_progress', 'manage_syllabus'))
 def get_syllabus_by_id(skid, syllabus_id):
     """Get syllabus by ID with teacher-specific progress"""
     try:
@@ -103,7 +103,7 @@ def get_syllabus_by_id(skid, syllabus_id):
 
 
 @syllabus_bp.route('/teachers-for-syllabus/<skid>/<int:syllabus_id>', methods=['GET'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
 def get_teachers_for_syllabus(skid, syllabus_id):
     """Get all teachers assigned to a syllabus's subject with their progress summary"""
     try:
@@ -119,7 +119,7 @@ def get_teachers_for_syllabus(skid, syllabus_id):
 
 
 @syllabus_bp.route('/assign-teacher/<skid>/<int:syllabus_id>', methods=['POST'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
 def assign_teacher(skid, syllabus_id):
     """Assign a teacher to a syllabus for a specific section"""
     try:
@@ -139,7 +139,7 @@ def assign_teacher(skid, syllabus_id):
 
 
 @syllabus_bp.route('/unassign-teacher/<skid>/<int:assignment_id>', methods=['PUT'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
 def unassign_teacher(skid, assignment_id):
     """Unassign a teacher from a syllabus section (preserves history)"""
     try:
@@ -152,7 +152,7 @@ def unassign_teacher(skid, assignment_id):
 
 
 @syllabus_bp.route('/assignments/<skid>/<int:syllabus_id>', methods=['GET'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
 def get_syllabus_assignments(skid, syllabus_id):
     """Get all teacher assignments (active and former) for a syllabus"""
     try:
@@ -165,7 +165,7 @@ def get_syllabus_assignments(skid, syllabus_id):
 
 
 @syllabus_bp.route('/teachers-by-subject/<skid>/<int:subject_id>', methods=['GET'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
 def get_teachers_by_subject(skid, subject_id):
     """Get all teachers assigned to a subject via TeacherSubject"""
     try:
@@ -176,7 +176,7 @@ def get_teachers_by_subject(skid, subject_id):
 
 
 @syllabus_bp.route('/list/subject/<skid>/<int:subject_id>', methods=['GET'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_syllabus_and_progress', 'manage_syllabus'))
 def get_syllabi_by_subject(skid, subject_id):
     """Get all syllabi for a subject"""
     try:
@@ -188,7 +188,7 @@ def get_syllabi_by_subject(skid, subject_id):
 
 
 @syllabus_bp.route('/list/teacher/<skid>/<int:teacher_id>', methods=['GET'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_syllabus_and_progress', 'manage_syllabus'))
 def get_syllabi_by_teacher(skid, teacher_id):
     """Get all syllabi for a teacher"""
     try:
@@ -200,7 +200,7 @@ def get_syllabi_by_teacher(skid, teacher_id):
 
 
 @syllabus_bp.route('/update/<skid>/<int:syllabus_id>', methods=['PUT'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
 def update_syllabus(skid, syllabus_id):
     """Update syllabus"""
     try:
@@ -222,7 +222,7 @@ def update_syllabus(skid, syllabus_id):
 
 
 @syllabus_bp.route('/delete/<skid>/<int:syllabus_id>', methods=['DELETE'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
 def delete_syllabus(skid, syllabus_id):
     """Delete syllabus"""
     try:
@@ -238,7 +238,7 @@ def delete_syllabus(skid, syllabus_id):
 
 
 @syllabus_bp.route('/lesson/create/<skid>/<int:syllabus_id>', methods=['POST'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
 def create_lesson_or_chapter(skid, syllabus_id):
     """Create new lesson"""
     try:
@@ -264,7 +264,7 @@ def create_lesson_or_chapter(skid, syllabus_id):
 
 
 @syllabus_bp.route('/lesson/update/<skid>/<int:lesson_id>', methods=['PUT'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
 def update_lesson(skid, lesson_id):
     """Update lesson (Shared content or teacher-specific progress)"""
     try:
@@ -293,7 +293,7 @@ def update_lesson(skid, lesson_id):
 
 
 @syllabus_bp.route('/lesson/delete/<skid>/<int:lesson_id>', methods=['DELETE'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
 def delete_lesson(skid, lesson_id):
     """Delete lesson"""
     try:
@@ -309,7 +309,7 @@ def delete_lesson(skid, lesson_id):
 
 
 @syllabus_bp.route('/topic/create/<skid>/<int:lesson_id>', methods=['POST'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
 def create_topic(skid, lesson_id):
     """Create new topic"""
     try:
@@ -335,7 +335,7 @@ def create_topic(skid, lesson_id):
 
 
 @syllabus_bp.route('/topic/update/<skid>/<int:topic_id>', methods=['PUT'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
 def update_topic(skid, topic_id):
     """Update topic (Shared content or teacher-specific progress)"""
     try:
@@ -364,7 +364,7 @@ def update_topic(skid, topic_id):
 
 
 @syllabus_bp.route('/topic/delete/<skid>/<int:topic_id>', methods=['DELETE'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
 def delete_topic(skid, topic_id):
     """Delete topic"""
     try:
@@ -380,7 +380,7 @@ def delete_topic(skid, topic_id):
 
 
 @syllabus_bp.route('/subtopic/create/<skid>/<int:topic_id>', methods=['POST'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
 def create_subtopic(skid, topic_id):
     """Create new subtopic"""
     try:
@@ -406,7 +406,7 @@ def create_subtopic(skid, topic_id):
 
 
 @syllabus_bp.route('/subtopic/update/<skid>/<int:subtopic_id>', methods=['PUT'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
 def update_subtopic(skid, subtopic_id):
     """Update subtopic (Shared content or teacher-specific progress)"""
     try:
@@ -435,7 +435,7 @@ def update_subtopic(skid, subtopic_id):
 
 
 @syllabus_bp.route('/subtopic/delete/<skid>/<int:subtopic_id>', methods=['DELETE'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
 def delete_subtopic(skid, subtopic_id):
     """Delete subtopic"""
     try:
@@ -451,7 +451,7 @@ def delete_subtopic(skid, subtopic_id):
 
 
 @syllabus_bp.route('/analytics/<skid>/<int:syllabus_id>', methods=['GET'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_syllabus_and_progress', 'manage_syllabus'))
 def get_syllabus_analytics(skid, syllabus_id):
     """Get syllabus analytics with teacher-specific progress"""
     try:
@@ -471,7 +471,7 @@ def get_syllabus_analytics(skid, syllabus_id):
 
 
 @syllabus_bp.route('/analytics/teacher/<skid>/<int:teacher_id>', methods=['GET'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_syllabus_and_progress', 'manage_syllabus'))
 def get_teacher_progress_summary(skid, teacher_id):
     """Get teacher progress summary"""
     try:
@@ -489,7 +489,7 @@ def get_teacher_progress_summary(skid, teacher_id):
 
 
 @syllabus_bp.route('/progress/configure/<skid>', methods=['POST'])
-@login_required(['TEACHER'])
+@login_required(['TEACHER'], self_service=True)
 def configure_timeline(skid):
     """Configure planned dates and notes for a syllabus item"""
     try:
@@ -524,7 +524,7 @@ def configure_timeline(skid):
 
 
 @syllabus_bp.route('/progress/start/<skid>', methods=['POST'])
-@login_required(['TEACHER'])
+@login_required(['TEACHER'], self_service=True)
 def start_item(skid):
     """Start teaching a syllabus item (must be configured first)"""
     try:
@@ -559,7 +559,7 @@ def start_item(skid):
 
 
 @syllabus_bp.route('/progress/mark/<skid>', methods=['POST'])
-@login_required(['TEACHER'])
+@login_required(['TEACHER'], self_service=True)
 def mark_progress(skid):
     """Mark a syllabus item as complete/incomplete with bidirectional cascade"""
     try:
@@ -595,7 +595,7 @@ def mark_progress(skid):
 
 
 @syllabus_bp.route('/student-view/<skid>', methods=['GET'])
-@login_required(['STUDENT', 'SCHOOL_ADMIN', 'PRINCIPAL', 'PARENT', 'TEACHER'])
+@login_required(['STUDENT', 'SCHOOL_ADMIN', 'PRINCIPAL', 'PARENT', 'TEACHER'], permission=('view_syllabus_and_progress', 'view_child_syllabus', 'manage_syllabus'), own_roles=('STUDENT', 'PARENT'))
 @student_access_required('student_user_id', source='query')
 def get_student_syllabus_view(skid):
     """Get syllabus progress view. Teachers see their own syllabi; students resolve via timetable."""
@@ -632,7 +632,7 @@ def get_student_syllabus_view(skid):
 
 
 @syllabus_bp.route('/student-view/<skid>/<int:syllabus_id>', methods=['GET'])
-@login_required(['STUDENT', 'SCHOOL_ADMIN', 'PRINCIPAL', 'PARENT', 'TEACHER'])
+@login_required(['STUDENT', 'SCHOOL_ADMIN', 'PRINCIPAL', 'PARENT', 'TEACHER'], permission=('view_syllabus_and_progress', 'view_child_syllabus', 'manage_syllabus'), own_roles=('STUDENT', 'PARENT'))
 def get_student_syllabus_detail(skid, syllabus_id):
     """Get full syllabus hierarchy with teacher's progress overlay"""
     try:

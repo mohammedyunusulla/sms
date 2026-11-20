@@ -46,7 +46,7 @@ def _admission_number_taken(skid, admission_number, exclude_user_id=None):
         return q.first() is not None
 
 @student_bp.route('/create/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_students')
 @log_actions('CREATE_TEACHER_USER')
 def create_student(skid):
     """
@@ -100,7 +100,7 @@ def create_student(skid):
 
 
 @student_bp.route('/bulk-create/<skid>', methods=['POST'])
-@login_required(['PRINCIPAL', 'SCHOOL_ADMIN'])
+@login_required(['PRINCIPAL', 'SCHOOL_ADMIN'], permission='manage_students')
 def bulk_create_students(skid):
     """
     Bulk create students from uploaded data
@@ -144,7 +144,7 @@ def bulk_create_students(skid):
 
 
 @student_bp.route('/update/<skid>/<student_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_students')
 @log_actions('UPDATE-STUDENT')
 def update_student(skid, student_id):
     """
@@ -211,7 +211,7 @@ def update_student(skid, student_id):
 
 
 @student_bp.route('/list/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER', 'CLERK'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER', 'CLERK'], permission=('view_students', 'manage_students'))
 @log_actions('GET_STUDENTS')
 def get_students_paginated(skid):
     """
@@ -264,7 +264,7 @@ def get_students_paginated(skid):
 
 
 @student_bp.route('/list/<skid>/<academic_year_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLERK'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLERK'], permission=('view_students', 'manage_students'))
 @log_actions('GET_STUDENTS')
 def get_students(skid, academic_year_id):
     """
@@ -287,7 +287,7 @@ def get_students(skid, academic_year_id):
 
 # Fetch student list for the section based on the sectionId
 @student_bp.route('/list/inSection/<skid>/<academic_year_id>/<int:section_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'], permission=('view_students', 'manage_students'))
 def get_students_for_section(skid, academic_year_id, section_id):
     """
     Get all students for a specific class-section with pagination and filtering
@@ -348,7 +348,7 @@ def get_students_for_section(skid, academic_year_id, section_id):
         return jsonify({'message': f'Failed to retrieve students: {str(e)}', 'status': 'error', 'code': 500}), 500
 
 @student_bp.route('/get-by-id/<skid>/<int:id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLERK'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLERK'], permission=('view_students', 'manage_students'))
 @log_actions('GET_STUDENTS')
 def get_student_by_id(skid, id):
     """
@@ -371,7 +371,7 @@ def get_student_by_id(skid, id):
         
 
 @student_bp.route('/promote/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_students')
 @log_actions('PROMOTE_STUDENTS')
 def promote_students(skid):
     """
@@ -460,7 +460,7 @@ def _set_student_active_response(skid, student_id, active):
 
 
 @student_bp.route('/delete/<int:student_id>/<skid>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='delete_students')
 @log_actions('DEACTIVATE_STUDENT')
 def delete_student(student_id, skid):
     """Soft delete: mark the student inactive and disable their login. All records are kept."""
@@ -471,7 +471,7 @@ def delete_student(student_id, skid):
 
 
 @student_bp.route('/reactivate/<int:student_id>/<skid>', methods=['PATCH'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_students')
 @log_actions('REACTIVATE_STUDENT')
 def reactivate_student(student_id, skid):
     """Undo a soft delete: mark the student active and re-enable their login."""

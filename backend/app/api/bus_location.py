@@ -7,7 +7,7 @@ bus_location_bp = Blueprint('bus_location', __name__)
 
 
 @bus_location_bp.route('/update/<skid>', methods=['POST'])
-@login_required(allowed_roles=['BUS_STAFF'])
+@login_required(allowed_roles=['BUS_STAFF'], self_service=True)
 def update_location(skid):
     """REST fallback: bus staff pushes GPS coords when WebSocket is unavailable."""
     data = request.get_json() or {}
@@ -27,7 +27,7 @@ def update_location(skid):
 
 
 @bus_location_bp.route('/stop/<skid>', methods=['POST'])
-@login_required(allowed_roles=['BUS_STAFF'])
+@login_required(allowed_roles=['BUS_STAFF'], self_service=True)
 def stop_tracking(skid):
     """Bus staff stops broadcasting."""
     result = BusLocationService.stop_tracking(skid, request.current_user.school_user_id)
@@ -35,7 +35,7 @@ def stop_tracking(skid):
 
 
 @bus_location_bp.route('/live/<skid>/<int:bus_staff_user_id>', methods=['GET'])
-@login_required(allowed_roles=['SCHOOL_ADMIN', 'PRINCIPAL', 'PARENT', 'BUS_STAFF'])
+@login_required(allowed_roles=['SCHOOL_ADMIN', 'PRINCIPAL', 'PARENT', 'BUS_STAFF'], permission=('view_bus_scan', 'manage_bus_scan'), own_roles=('PARENT', 'BUS_STAFF'))
 def get_live(skid, bus_staff_user_id):
     """Get last known position for a specific bus staff."""
     result = BusLocationService.get_live_location(skid, bus_staff_user_id)
@@ -45,7 +45,7 @@ def get_live(skid, bus_staff_user_id):
 
 
 @bus_location_bp.route('/my-child-bus/<skid>/<int:student_user_id>', methods=['GET'])
-@login_required(allowed_roles=['PARENT'])
+@login_required(allowed_roles=['PARENT'], self_service=True)
 @student_access_required('student_user_id')
 def get_child_bus(skid, student_user_id):
     """Parent endpoint: get the bus location for their child."""

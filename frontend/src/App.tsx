@@ -289,8 +289,8 @@ function AppContent() {
 
                         {/* Room Management Routes */}
                         <Route path="/rooms" element={guarded('/rooms', <RoomList />)} />
-                        <Route path="/rooms/new" element={guarded('/rooms', <RoomForm />)} />
-                        <Route path="/rooms/:id/edit" element={guarded('/rooms', <RoomForm />)} />
+                        <Route path="/rooms/new" element={guarded('/rooms/new', <RoomForm />)} />
+                        <Route path="/rooms/:id/edit" element={guarded('/rooms/:id/edit', <RoomForm />)} />
                         <Route path="/rooms/:id" element={guarded('/rooms', <RoomDetail />)} />
 
                         {/* Attendance Routes */}

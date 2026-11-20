@@ -47,7 +47,7 @@ def _missing_teacher_fields(data):
     return f"{', '.join(missing)} {'is' if len(missing) == 1 and missing[0] != 'Qualifications' else 'are'} required"
 
 @teacher_bp.route('/create/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_teachers')
 @log_actions('CREATE_TEACHER_USER')
 def create_teacher(skid):
     """
@@ -94,7 +94,7 @@ def create_teacher(skid):
 
 
 @teacher_bp.route('/update/<skid>/<teacher_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_teachers')
 @log_actions('UPDATE_TEACHER_USER')
 def update_teacher(skid, teacher_id):
     """
@@ -138,7 +138,7 @@ def update_teacher(skid, teacher_id):
 
 
 @teacher_bp.route('/delete/<skid>/<teacher_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission=('delete_teachers', 'manage_teachers'))
 @log_actions('DELETE_TEACHER_USER')
 def delete_teacher(skid, teacher_id):
     """
@@ -161,7 +161,7 @@ def delete_teacher(skid, teacher_id):
 
  
 @teacher_bp.route('/profile/<skid>/<school_user_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_teachers', 'manage_teachers'), own_roles=('TEACHER',))
 @log_actions('GET_TEACHERS')
 def get_teacher_data_by_id(skid, school_user_id):
     """
@@ -188,7 +188,7 @@ def get_teacher_data_by_id(skid, school_user_id):
  
  
 @teacher_bp.route('/list/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_teachers', 'manage_teachers'), own_roles=('TEACHER',))
 @log_actions('GET_TEACHERS')
 def get_teachers_paginated(skid):
     """
@@ -240,7 +240,7 @@ def get_teachers_paginated(skid):
 
 # Fetch the subjects assigned to that teacher
 @teacher_bp.route('/<int:teacher_id>/subjects/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_teachers')
 def get_teacher_subjects(teacher_id, skid):
     try:
         subject_ids = TeacherService.get_subject_ids_by_teacher(teacher_id, skid)
@@ -255,7 +255,7 @@ def get_teacher_subjects(teacher_id, skid):
 
 # Assign subjects to a teacher (sync/replace all assignments)
 @teacher_bp.route('/<int:teacher_id>/assign-subjects/<skid>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_teachers')
 @log_actions('ASSIGN_SUBJECTS_TO_TEACHER')
 def assign_subjects_to_teacher(teacher_id, skid):
     """
@@ -291,7 +291,7 @@ def assign_subjects_to_teacher(teacher_id, skid):
 
 
 @teacher_bp.route('/reactivate/<skid>/<teacher_id>', methods=['PATCH'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_teachers')
 @log_actions('REACTIVATE_TEACHER_USER')
 def reactivate_teacher(skid, teacher_id):
     """Undo a soft delete: active again and login re-enabled."""

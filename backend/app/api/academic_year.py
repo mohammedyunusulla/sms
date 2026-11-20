@@ -6,7 +6,7 @@ from app.services.academic_year_service import AcademicYearService
 academic_year_bp = Blueprint('academic-years', __name__)
 
 @academic_year_bp.route('/get/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission=('manage_academic_years', 'manage_students'))
 def get_academic_years(skid):
     """
     Get all academic years for a school
@@ -31,7 +31,7 @@ def get_academic_years(skid):
 
 
 @academic_year_bp.route('/create/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_academic_years')
 @log_actions('CREATE_ACADEMIC_YEAR')
 def create_academic_year(skid):
     """
@@ -81,7 +81,7 @@ def create_academic_year(skid):
 
 
 @academic_year_bp.route('/update/<skid>/<int:year_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_academic_years')
 @log_actions('UPDATE_ACADEMIC_YEAR')
 def update_academic_year(skid, year_id):
     """
@@ -120,7 +120,7 @@ def update_academic_year(skid, year_id):
 
 
 @academic_year_bp.route('/delete/<skid>/<int:year_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_academic_years')
 @log_actions('DELETE_ACADEMIC_YEAR')
 def delete_academic_year(skid, year_id):
     """
@@ -146,7 +146,7 @@ def delete_academic_year(skid, year_id):
 
 
 @academic_year_bp.route('/patch/<skid>/<int:year_id>/set-current', methods=['PATCH'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_academic_years')
 @log_actions('SET_CURRENT_ACADEMIC_YEAR')
 def set_current_academic_year(skid, year_id):
     """

@@ -87,13 +87,13 @@ def permission_allows(user, role, permissions):
     return bool(user_permissions(user) & set(permissions))
 
 
-def decide(user, role, allowed_roles, permissions):
+def decide(user, role, allowed_roles, permissions, own_roles=()):
     """
     Final access decision for a route. `permissions` is a tuple of keys (any one is enough), or empty when the
     route is decided by role only (sign-in, a student's / parent's own pages, Super Admin's school management).
     """
     old_ok = not allowed_roles or role in allowed_roles
-    if not permissions:
+    if not permissions or role in own_roles:  # role-decided route, or a role using it for its own data
         return old_ok
     mode = enforcement_mode()
     if mode == 'off':

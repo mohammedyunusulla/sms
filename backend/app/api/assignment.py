@@ -29,7 +29,7 @@ def _teaches_guard(skid, teacher_id, section_id, subject_id):
 
 
 @assignment_bp.route('/teacher-classes/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_assignments')
 def get_teacher_class_subjects(skid):
     """Get the class/section/subject combos assigned to the logged-in teacher."""
     try:
@@ -50,7 +50,7 @@ def get_teacher_class_subjects(skid):
 
 
 @assignment_bp.route('/create/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_assignments')
 @log_actions('CREATE-ASSIGNMENT')
 def create_assignment(skid):
     """Create a new assignment."""
@@ -92,7 +92,7 @@ def create_assignment(skid):
 
 
 @assignment_bp.route('/update/<int:assignment_id>/<skid>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_assignments')
 @log_actions('UPDATE-ASSIGNMENT')
 def update_assignment(assignment_id, skid):
     """Update an existing assignment."""
@@ -131,7 +131,7 @@ def update_assignment(assignment_id, skid):
 
 
 @assignment_bp.route('/list/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_assignments')
 def list_assignments(skid):
     """List assignments by date for a teacher."""
     try:
@@ -160,7 +160,7 @@ def list_assignments(skid):
 
 
 @assignment_bp.route('/<int:assignment_id>/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_assignments')
 def get_assignment(assignment_id, skid):
     """Get assignment details with student list and submission status."""
     try:
@@ -182,7 +182,7 @@ def get_assignment(assignment_id, skid):
 
 
 @assignment_bp.route('/<int:assignment_id>/submissions/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_assignments')
 @log_actions('UPDATE-ASSIGNMENT-SUBMISSIONS')
 def update_submissions(assignment_id, skid):
     """Bulk update student submission status and remarks for an assignment."""
@@ -212,7 +212,7 @@ def update_submissions(assignment_id, skid):
 
 
 @assignment_bp.route('/student/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT'], permission=('view_assignments', 'manage_assignments'), own_roles=('STUDENT', 'PARENT'))
 @student_access_required('student_id', source='query')
 def get_student_assignments(skid):
     """Get assignments for a student based on their class/section."""
@@ -244,7 +244,7 @@ def get_student_assignments(skid):
 
 
 @assignment_bp.route('/<int:assignment_id>/<skid>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_assignments')
 @log_actions('DELETE-ASSIGNMENT')
 def delete_assignment(assignment_id, skid):
     """Soft delete an assignment."""

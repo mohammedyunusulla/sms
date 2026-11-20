@@ -6,7 +6,7 @@ staff_bp = Blueprint('staff', __name__)
 
 
 @staff_bp.route('/create/<skid>', methods=['POST'])
-@login_required(allowed_roles=['SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(allowed_roles=['SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_users')
 def create_staff(skid):
     """Create a new staff member (PRINCIPAL, BUS_STAFF)."""
     from app.utils.form_input import clean_payload, missing_fields_message, error
@@ -41,7 +41,7 @@ def create_staff(skid):
 
 
 @staff_bp.route('/list/<skid>', methods=['GET'])
-@login_required(allowed_roles=['SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(allowed_roles=['SCHOOL_ADMIN', 'PRINCIPAL'], permission=('view_users', 'manage_users'))
 def list_staff(skid):
     """List all active staff for a school."""
     staff = StaffService.get_staff_list(skid)

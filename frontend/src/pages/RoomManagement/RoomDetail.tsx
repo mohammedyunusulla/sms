@@ -14,6 +14,7 @@ import {
 } from '@/components';
 import { roomService } from '@/services/modules/roomService';
 import { usePermissions } from '@/hooks/usePermissions';
+import { Permission } from '@/config/permissions';
 
 const ROOM_TYPE_BADGE_VARIANT: Record<string, string> = {
     'Classroom': 'info',
@@ -54,8 +55,9 @@ interface IRoom {
 const RoomDetail: FC = () => {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>();
-    const { isFullAccess, isSuperAdmin } = usePermissions();
-    const canManage = isFullAccess || isSuperAdmin;
+    const { isFullAccess, isSuperAdmin, hasPermission } = usePermissions();
+    // the same tick the server checks for adding / editing / deleting rooms
+    const canManage = isFullAccess || isSuperAdmin || hasPermission(Permission.MANAGE_ROOMS);
 
     const [room, setRoom] = useState<IRoom | null>(null);
     const [loading, setLoading] = useState(true);

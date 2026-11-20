@@ -154,6 +154,8 @@ export const ROUTE_PERMISSION_MAP: Record<string, RoutePermissionConfig> = {
 
   // Room Management
   '/rooms': { permission: Permission.VIEW_CLASSES },
+  '/rooms/new': { permission: Permission.MANAGE_ROOMS },
+  '/rooms/:id/edit': { permission: Permission.MANAGE_ROOMS },
 
   // Attendance
   '/attendance/mark': { permission: Permission.MANAGE_ATTENDANCE },
@@ -198,8 +200,8 @@ export const ROUTE_PERMISSION_MAP: Record<string, RoutePermissionConfig> = {
   '/finance/fee-collection': { permission: Permission.MANAGE_FEES },
   '/finance/expenses': { permission: Permission.VIEW_EXPENSES },
   // Salaries are staff expenses, not fee collection (a fee clerk with manage_fees must not see them)
-  '/finance/salary-setup': { permission: Permission.MANAGE_EXPENSES },
-  '/finance/salary-payments': { permission: Permission.MANAGE_EXPENSES },
+  '/finance/salary-setup': { permission: Permission.MANAGE_SALARIES },
+  '/finance/salary-payments': { permission: Permission.MANAGE_SALARIES },
   '/finance/defaulters': { permission: Permission.MANAGE_FEES },
   '/finance/collection-report': { permission: Permission.MANAGE_FEES },
 
@@ -424,13 +426,13 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, SidebarGroupPermissionConfig
     },
   },
   'Finance Management': {
-    groupPermissions: [Permission.VIEW_FEES, Permission.VIEW_EXPENSES],
+    groupPermissions: [Permission.VIEW_FEES, Permission.VIEW_EXPENSES, Permission.MANAGE_SALARIES],
     itemPermissions: {
       '/finance/fee-structure': Permission.VIEW_FEES,
       '/finance/fee-collection': Permission.MANAGE_FEES,
       '/finance/expenses': Permission.VIEW_EXPENSES,
-      '/finance/salary-setup': Permission.MANAGE_EXPENSES,
-      '/finance/salary-payments': Permission.MANAGE_EXPENSES,
+      '/finance/salary-setup': Permission.MANAGE_SALARIES,
+      '/finance/salary-payments': Permission.MANAGE_SALARIES,
       '/finance/defaulters': Permission.MANAGE_FEES,
       '/finance/collection-report': Permission.MANAGE_FEES,
     },

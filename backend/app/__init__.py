@@ -174,6 +174,9 @@ TENANT_SCHEMA_UPDATES = (
     "ALTER TABLE IF EXISTS roles ADD COLUMN IF NOT EXISTS base_role VARCHAR(50)",
     "UPDATE roles SET base_role = role_code WHERE base_role IS NULL AND role_code IN "
     "('SCHOOL_ADMIN','PRINCIPAL','TEACHER','STUDENT','PARENT','BUS_STAFF','CLERK')",
+    # built-in roles are marked as such (some schools had Clerk / Bus Staff unmarked, so they could be deleted)
+    "UPDATE roles SET is_system_role = TRUE WHERE is_system_role IS DISTINCT FROM TRUE AND role_code IN "
+    "('SCHOOL_ADMIN','PRINCIPAL','TEACHER','STUDENT','PARENT','BUS_STAFF','CLERK')",
 )
 
 

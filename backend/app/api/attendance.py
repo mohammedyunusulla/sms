@@ -26,7 +26,7 @@ from datetime import datetime
 attendance_bp = Blueprint('attendance', __name__)
 
 @attendance_bp.route('/record/bulk/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission='manage_attendance')
 @log_actions('RECORD-ATTENDANCE')
 def record_attendance_bulk(skid):
     """
@@ -59,7 +59,7 @@ def record_attendance_bulk(skid):
 
 
 @attendance_bp.route('/update/bulk/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission='manage_attendance')
 @log_actions('UPDATE-ATTENDANCE-BULK')
 def update_attendance_bulk(skid):
     """
@@ -105,7 +105,7 @@ def update_attendance_bulk(skid):
 
 
 @attendance_bp.route('/<skid>/<section_id>/<date>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_attendance', 'manage_attendance'))
 def get_attendance(skid, section_id, date):
     """
     Get attendance records for a specific section and date
@@ -130,7 +130,7 @@ def get_attendance(skid, section_id, date):
 
 
 @attendance_bp.route('/view/<skid>/<academic_year_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_attendance', 'manage_attendance'))
 @log_actions('VIEW-SINGLE-DAY-ATTENDANCE')
 def view_single_day_attendance(skid, academic_year_id):
     """
@@ -188,7 +188,7 @@ def view_single_day_attendance(skid, academic_year_id):
 
 
 @attendance_bp.route('/monthly/<skid>/<academic_year_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_attendance', 'manage_attendance'))
 @log_actions('VIEW-MONTHLY-ATTENDANCE')
 def view_monthly_attendance(skid, academic_year_id):
     """
@@ -258,7 +258,7 @@ def view_monthly_attendance(skid, academic_year_id):
 
 
 @attendance_bp.route('/range/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_attendance', 'manage_attendance'))
 @log_actions('VIEW-DATE-RANGE-ATTENDANCE')
 def view_date_range_attendance(skid):
     """
@@ -321,7 +321,7 @@ def view_date_range_attendance(skid):
 
 @attendance_bp.route('/student/<skid>/<int:student_id>', methods=['GET'])
 # students too (their own only): student_access_required limits students to themselves, parents to their children
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'PARENT', 'STUDENT'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'PARENT', 'STUDENT'], permission=('view_attendance', 'manage_attendance'), own_roles=('STUDENT', 'PARENT'))
 @student_access_required('student_id')
 @log_actions('VIEW-STUDENT-ATTENDANCE')
 def view_student_attendance(skid, student_id):

@@ -15,7 +15,7 @@ progress_card_bp = Blueprint('progress-card', __name__)
 
 
 @progress_card_bp.route('/my-class/<skid>/<teacher_id>', methods=['GET'])
-@login_required(['TEACHER'])
+@login_required(['TEACHER'], self_service=True)
 def get_my_class(skid, teacher_id):
     """Get class assigned to logged-in class teacher"""
     try:
@@ -31,7 +31,7 @@ def get_my_class(skid, teacher_id):
 
 # GET CLASS PROGRESS
 @progress_card_bp.route('/class-progress/<skid>/<academic_year_id>/<int:exam_id>', methods=['GET'])
-@login_required(['TEACHER', 'SCHOOL_ADMIN'])
+@login_required(['TEACHER', 'SCHOOL_ADMIN'], permission=('view_marks', 'manage_marks'))
 def get_class_progress(skid, academic_year_id, exam_id):
     """
     Get complete class progress for an exam
@@ -60,7 +60,7 @@ def get_class_progress(skid, academic_year_id, exam_id):
 
 # BULK GENERATE REPORT CARDS
 @progress_card_bp.route('/bulk-generate/<skid>', methods=['POST'])
-@login_required(['TEACHER', 'SCHOOL_ADMIN'])
+@login_required(['TEACHER', 'SCHOOL_ADMIN'], permission=('view_marks', 'manage_marks'))
 def bulk_generate_report_cards(skid):
     """
     Bulk generate report cards for all students in a class
@@ -87,7 +87,7 @@ def bulk_generate_report_cards(skid):
 
 # VIEW INDIVIDUAL PROGRESS CARD
 @progress_card_bp.route('/view/<skid>/<int:student_id>/<int:exam_id>', methods=['GET'])
-@login_required(['TEACHER', 'TEACHER', 'SCHOOL_ADMIN', 'STUDENT', 'PARENT'])
+@login_required(['TEACHER', 'TEACHER', 'SCHOOL_ADMIN', 'STUDENT', 'PARENT'], permission=('view_marks', 'manage_marks'), own_roles=('STUDENT', 'PARENT'))
 @student_access_required('student_id')
 def view_progress_card(skid, student_id, exam_id):
     """View individual student's progress card"""
@@ -112,7 +112,7 @@ def view_progress_card(skid, student_id, exam_id):
 
 # VIEW ANNUAL PROGRESS REPORT
 @progress_card_bp.route('/annual/<skid>/<int:student_id>', methods=['GET'])
-@login_required(['TEACHER', 'SCHOOL_ADMIN', 'STUDENT', 'PARENT'])
+@login_required(['TEACHER', 'SCHOOL_ADMIN', 'STUDENT', 'PARENT'], permission=('view_marks', 'manage_marks'), own_roles=('STUDENT', 'PARENT'))
 @student_access_required('student_id')
 def view_annual_report(skid, student_id):
     """View student's annual progress report (all exams)"""

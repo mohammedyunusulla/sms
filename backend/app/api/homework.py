@@ -39,7 +39,7 @@ def _int_or_none(value):
 
 
 @homework_bp.route("/scope", methods=["GET"])
-@login_required(TEACHER_ROLES)
+@login_required(TEACHER_ROLES, permission='manage_assignments')
 @json_errors
 def teaching_scope():
     """Classes/sections the teacher page may offer (teachers: only the sections they teach)."""
@@ -48,7 +48,7 @@ def teaching_scope():
 
 
 @homework_bp.route("/sections/<int:section_id>/subjects", methods=["GET"])
-@login_required(TEACHER_ROLES)
+@login_required(TEACHER_ROLES, permission='manage_assignments')
 @json_errors
 def section_subjects(section_id: int):
     """Subjects for the Create Homework dropdown (teachers: only the ones they teach in that section)."""
@@ -57,7 +57,7 @@ def section_subjects(section_id: int):
 
 
 @homework_bp.route("/assignments", methods=["POST"])
-@login_required(TEACHER_ROLES)
+@login_required(TEACHER_ROLES, permission='manage_assignments')
 @json_errors
 def create_assignment():
     # JSON, or multipart form when photos of the homework (e.g. the board) are attached
@@ -74,7 +74,7 @@ def create_assignment():
 
 
 @homework_bp.route("/assignments/<int:assignment_id>/photos/<int:index>", methods=["GET"])
-@login_required(ALL_HOMEWORK_ROLES)
+@login_required(ALL_HOMEWORK_ROLES, permission='manage_assignments', own_roles=('STUDENT',))
 @json_errors
 def homework_photo(assignment_id: int, index: int):
     """One homework photo - only for that section's students and staff who may see the homework."""
@@ -88,7 +88,7 @@ def homework_photo(assignment_id: int, index: int):
 
 
 @homework_bp.route("/instructions-from-photo", methods=["POST"])
-@login_required(TEACHER_ROLES)
+@login_required(TEACHER_ROLES, permission='manage_assignments')
 @json_errors
 def instructions_from_photo():
     """AI drafts the instructions text from photos of the homework; the teacher edits it before saving."""
@@ -100,7 +100,7 @@ def instructions_from_photo():
 
 
 @homework_bp.route("/assignments", methods=["GET"])
-@login_required(ALL_HOMEWORK_ROLES)
+@login_required(ALL_HOMEWORK_ROLES, permission='manage_assignments', own_roles=('STUDENT',))
 @json_errors
 def list_assignments():
     class_id = request.args.get("class_id", type=int)
@@ -115,7 +115,7 @@ def list_assignments():
 
 
 @homework_bp.route("/sessions/start", methods=["POST"])
-@login_required(STUDENT_ROLES)
+@login_required(STUDENT_ROLES, self_service=True)
 @json_errors
 def start_session():
     """Multipart: assignment_id + start_photo (the blank notebook page with its QR sticker)."""
@@ -139,7 +139,7 @@ def start_session():
 
 
 @homework_bp.route("/sessions/<int:session_id>/toggle-pause", methods=["POST"])
-@login_required(STUDENT_ROLES)
+@login_required(STUDENT_ROLES, self_service=True)
 @json_errors
 def toggle_pause(session_id: int):
     body, status = HomeworkService.toggle_pause(
@@ -151,7 +151,7 @@ def toggle_pause(session_id: int):
 
 
 @homework_bp.route("/sessions/<int:session_id>/hint", methods=["POST"])
-@login_required(STUDENT_ROLES)
+@login_required(STUDENT_ROLES, self_service=True)
 @json_errors
 def hint(session_id: int):
     student_doubt = request.form.get("doubt_text", "").strip() or request.form.get("student_doubt", "").strip()
@@ -171,7 +171,7 @@ def hint(session_id: int):
 
 
 @homework_bp.route("/sessions/<int:session_id>/submit", methods=["POST"])
-@login_required(STUDENT_ROLES)
+@login_required(STUDENT_ROLES, self_service=True)
 @json_errors
 def submit_session(session_id: int):
     """Multipart: files = the finished pages; the page the homework was started on (QR) must be one of them."""
@@ -188,7 +188,7 @@ def submit_session(session_id: int):
 
 
 @homework_bp.route("/sessions/<int:session_id>/photos/<kind>/<int:index>", methods=["GET"])
-@login_required(ALL_HOMEWORK_ROLES)
+@login_required(ALL_HOMEWORK_ROLES, permission='manage_assignments', own_roles=('STUDENT',))
 @json_errors
 def session_photo(session_id: int, kind: str, index: int):
     """A session's start photo (kind=start) or finished page (kind=page) - for its student and the teachers."""
@@ -202,7 +202,7 @@ def session_photo(session_id: int, kind: str, index: int):
 
 
 @homework_bp.route("/analytics/assignment/<int:assignment_id>", methods=["GET"])
-@login_required(TEACHER_ROLES)
+@login_required(TEACHER_ROLES, permission='manage_assignments')
 @json_errors
 def assignment_analytics(assignment_id: int):
     body, status = HomeworkService.assignment_analytics(request.current_user.skid, assignment_id, request.current_user)

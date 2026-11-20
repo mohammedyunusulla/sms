@@ -7,7 +7,7 @@ subject_bp = Blueprint('subjects', __name__)
 
 # CREATE SUBJECT
 @subject_bp.route('/get/<skid>/<int:subject_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission=('view_classes', 'view_exams', 'manage_classes'))
 def get_subject(skid, subject_id):
     """Get a single subject (used by the subject edit page)."""
     try:
@@ -20,7 +20,7 @@ def get_subject(skid, subject_id):
 
 
 @subject_bp.route('/create/subject/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_classes')
 def create_subject(skid):
     try:
         data = request.get_json()
@@ -50,7 +50,7 @@ def create_subject(skid):
 
 # UPDATE SUBJECT
 @subject_bp.route('/update/subject/<skid>/<int:subject_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_classes')
 def update_subject(skid, subject_id):
     try:
         data = request.get_json()
@@ -77,7 +77,7 @@ def update_subject(skid, subject_id):
 
 # DELETE SUBJECT
 @subject_bp.route('/delete/subject/<skid>/<int:subject_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_classes')
 def delete_subject(skid, subject_id):
     try:
         if not skid:
@@ -97,7 +97,7 @@ def delete_subject(skid, subject_id):
 
 # LIST SUBJECTS FOR A CLASS
 @subject_bp.route('/list/<skid>/<int:class_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission=('view_classes', 'view_exams', 'manage_classes'))
 def get_subjects_by_class(skid, class_id):
     try:
         if not skid:
@@ -117,7 +117,7 @@ def get_subjects_by_class(skid, class_id):
         
 # LIST SUBJECTS FOR A CLASS
 @subject_bp.route('/list/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission=('view_classes', 'view_exams', 'manage_classes'))
 def get_subjects_list(skid):
     try:
         if not skid:
@@ -138,7 +138,7 @@ def get_subjects_list(skid):
 
 # ADD SUBJECTS TO SECTION
 @subject_bp.route('/add-to-section/<skid>/<int:section_id>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_classes')
 def add_subjects_to_section(skid, section_id):
     """Assign subjects to a section"""
     try:
@@ -177,7 +177,7 @@ def add_subjects_to_section(skid, section_id):
 
 # REMOVE SUBJECT FROM SECTION
 @subject_bp.route('/remove-from-section/<skid>/<int:section_id>/<int:subject_id>', methods=['PUT', 'DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_classes')
 def remove_subject_from_section(skid, section_id, subject_id):
     """Remove a subject from a section"""
     try:
@@ -197,7 +197,7 @@ def remove_subject_from_section(skid, section_id, subject_id):
 
 # GET SUBJECTS FOR A SECTION
 @subject_bp.route('/section/<skid>/<int:section_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'], permission=('view_classes', 'view_exams', 'manage_classes'))
 def get_subjects_by_section(skid, section_id):
     """Get all subjects assigned to a specific section"""
     try:
@@ -219,7 +219,7 @@ def get_subjects_by_section(skid, section_id):
 
 # GET AVAILABLE SUBJECTS FOR A SECTION
 @subject_bp.route('/available/<skid>/<int:section_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_classes', 'view_exams', 'manage_classes'))
 def get_available_subjects(skid, section_id):
     """Get subjects that can be assigned to this section"""
     try:

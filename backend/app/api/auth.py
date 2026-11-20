@@ -58,7 +58,7 @@ def login():
         return jsonify({'message': 'Login failed. Please try again later.'}), 500
 
 @auth_bp.route('/logout', methods=['POST'])
-@login_required()
+@login_required(self_service=True)
 @log_actions('USER_LOGOUT')
 def logout():
     """
@@ -115,7 +115,7 @@ def refresh():
         return jsonify({'message': 'Token refresh failed. Please login again.'}), 500
 
 @auth_bp.route('/me', methods=['GET'])
-@login_required()
+@login_required(self_service=True)
 def get_current_user():
     """
     Get current user information
@@ -132,7 +132,7 @@ def get_current_user():
 
 
 @auth_bp.route('/me', methods=['PUT'])
-@login_required()
+@login_required(self_service=True)
 @log_actions('PROFILE_UPDATE')
 def update_current_user():
     """
@@ -160,7 +160,7 @@ def update_current_user():
         return jsonify({'message': 'Failed to update profile'}), 500
 
 @auth_bp.route('/change-password', methods=['POST'])
-@login_required()
+@login_required(self_service=True)
 @limiter.limit("3 per minute")
 @log_actions('PASSWORD_CHANGE')
 def change_password():
