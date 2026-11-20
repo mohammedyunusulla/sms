@@ -29,7 +29,7 @@ def login_required(allowed_roles=None, permission=None, self_service=False):
                    With PERMISSION_ENFORCEMENT=enforce this replaces the role list (School Admin / Super Admin
                    always pass). See app/utils/role_permissions.py.
     self_service:  the route is about the caller themselves (sign-in, a student's / parent's own pages, ...),
-                   so it stays decided by role. Used by scripts/check_route_permissions.py.
+                   so it stays decided by role. Used by check_route_permissions.py.
     """
     permissions = tuple([permission] if isinstance(permission, str) else (permission or ()))
 
@@ -82,7 +82,7 @@ def login_required(allowed_roles=None, permission=None, self_service=False):
 
             return f(*args, **kwargs)
 
-        # what scripts/check_route_permissions.py reports for this route
+        # what check_route_permissions.py reports for this route
         decorated_function.access_rule = {
             'roles': list(allowed_roles or []),
             'permissions': list(permissions),
