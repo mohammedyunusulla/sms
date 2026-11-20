@@ -437,7 +437,7 @@ class ClassService:
                 student = tenant_session.query(Student).filter_by(user_id=student_id).first()
                 if not student:
                     raise ValueError("Student not found")
-                if not unplace_student(tenant_session, student, section_id):
+                if not unplace_student(tenant_session, student, section_id, keep_class=True):
                     raise ValueError("This student isn't in this section for the current academic year")
 
                 tenant_session.commit()

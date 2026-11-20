@@ -359,11 +359,14 @@ export const generateStudentIDCardPdf = async (
 
     // ─── Output ───
     if (action === 'print') {
-        pdfMake.createPdf(docDefinition).print();
+        // awaited, so a blocked print window reaches the caller instead of failing silently
+        await pdfMake.createPdf(docDefinition).print();
     } else if (action === 'download') {
         const filename = `Student_ID_Card_${student_name.replace(/\s+/g, '_')}_${roll_number}.pdf`;
-        pdfMake.createPdf(docDefinition).download(filename);
+        // awaited, so a blocked print window reaches the caller instead of failing silently
+        await pdfMake.createPdf(docDefinition).download(filename);
     } else {
-        pdfMake.createPdf(docDefinition).open();
+        // awaited, so a blocked print window reaches the caller instead of failing silently
+        await pdfMake.createPdf(docDefinition).open();
     }
 };

@@ -1,5 +1,5 @@
 import { FC, lazy, Suspense, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import toast from 'react-hot-toast';
 import { PageHeader, LoadingSpinner, DataTable, Button, ConfirmDialog, Badge } from '../../components';
 
@@ -53,7 +53,9 @@ const StudentList: FC = () => {
     const [examTimetableStudent, setExamTimetableStudent] = useState<any>(null);
 
     // Filter states
-    const [searchTerm, setSearchTerm] = useState('');
+    // ?search= comes from the header search (QA A31)
+    const [searchParams] = useSearchParams();
+    const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || '');
     const [genderFilter, setGenderFilter] = useState('');
     const [classFilter, setClassFilter] = useState('');
     const [sectionFilter, setSectionFilter] = useState('');

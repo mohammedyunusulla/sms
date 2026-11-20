@@ -136,6 +136,14 @@ class ClassService {
 
 
     // Get sections for a specific class
+    /** Put existing students into a section (moves them if they're in another one) - QA A30 */
+    async addStudentsToSection(sectionId: number | string, studentIds: (number | string)[]): Promise<unknown> {
+        const api = getApiClient();
+        const schoolId = getSchoolId();
+        if (!schoolId) throw new Error('School ID not found. Please log in again.');
+        return api.post(`${this.baseUrl}/add-to-section/${schoolId}/${sectionId}`, { student_ids: studentIds.map(Number) });
+    }
+
     async getSections(classId: string): Promise<any[]> {
         const api = getApiClient();
         const schoolId = getSchoolId();

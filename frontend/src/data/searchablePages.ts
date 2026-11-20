@@ -402,14 +402,4 @@ export const searchablePages: SearchablePage[] = [
         icon: '👤',
         roles: [UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT],
     },
-    {
-        id: 'calendar',
-        name: 'Calendar',
-        description: 'View calendar and events',
-        route: '/calendar',
-        keywords: ['calendar', 'events', 'schedule', 'dates'],
-        category: 'Tools',
-        icon: '📆',
-        roles: [UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT],
-    },
 ];

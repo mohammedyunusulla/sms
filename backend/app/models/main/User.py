@@ -120,5 +120,9 @@ class User(BaseModel):
         if self.school:
             data['school_name'] = self.school.name
             data['school_code'] = self.school.code
+            # printed on certificates, receipts and report cards (they used to come out blank - QA A27)
+            data['school_address'] = self.school.address
+            data['school_phone'] = self.school.phone
+            data['school_email'] = self.school.email
             data['skid'] = self.school.skid
         return data

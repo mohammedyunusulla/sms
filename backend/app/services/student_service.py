@@ -437,11 +437,16 @@ class StudentService:
                 # Apply filters
                 if search:
                     search_term = f"%{search}%"
+                    # full name ("Asha Patel") and admission / roll number too - the header search uses this (QA A31)
+                    full_name = func.concat(SchoolUsers.first_name, ' ', func.coalesce(SchoolUsers.last_name, ''))
                     query = query.filter(
                         (SchoolUsers.first_name.ilike(search_term)) |
                         (SchoolUsers.last_name.ilike(search_term)) |
+                        (full_name.ilike(search_term)) |
                         (SchoolUsers.email.ilike(search_term)) |
-                        (SchoolUsers.phone.ilike(search_term))
+                        (SchoolUsers.phone.ilike(search_term)) |
+                        (Student.admission_number.ilike(search_term)) |
+                        (Student.roll_no.ilike(search_term))
                     )
 
                 if status:
@@ -593,6 +598,8 @@ class StudentService:
                         link, parent_obj, parent_user = parent_result
                         parent_data = {
                             'id': parent_obj.user_id,
+                            # the account name: certificates fall back to it when no father / mother name is stored
+                            'full_name': f"{parent_user.first_name} {parent_user.last_name or ''}".strip(),
                             'relation_type': link.relation_type,
                             'father_full_name': parent_obj.father_full_name,
                             'mother_full_name': parent_obj.mother_full_name,
