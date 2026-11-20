@@ -9,6 +9,7 @@ const EducatorDashboard = lazy(() => import('./EducatorDashboard'));
 const LearnerDashboard = lazy(() => import('./LearnerDashboard'));
 const GuardianDashboard = lazy(() => import('./GuardianDashboard'));
 const ClerkDashboard = lazy(() => import('./ClerkDashboard'));
+const BusStaffDashboard = lazy(() => import('./BusStaffDashboard'));
 
 const LoadingDashboard: FC = () => (
     <div className="flex items-center justify-center h-screen">
@@ -68,6 +69,13 @@ const DashboardRouter: FC = () => {
                 return (
                     <Suspense fallback={<LoadingDashboard />}>
                         <GuardianDashboard />
+                    </Suspense>
+                );
+
+            case UserRole.BUS_STAFF:
+                return (
+                    <Suspense fallback={<LoadingDashboard />}>
+                        <BusStaffDashboard />
                     </Suspense>
                 );
 

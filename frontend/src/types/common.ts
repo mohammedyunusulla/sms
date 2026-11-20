@@ -15,6 +15,7 @@ export enum UserRole {
   STUDENT = 'STUDENT',              // Student/Learner
   PARENT = 'PARENT',                // Parent/Guardian
   CLERK = 'CLERK',                  // Fee counter
+  BUS_STAFF = 'BUS_STAFF',          // Bus attendant (QR boarding scans)
 }
 
 /**
@@ -28,6 +29,7 @@ export const USER_ROLE_DISPLAY: Record<UserRole, string> = {
   [UserRole.STUDENT]: 'Student',
   [UserRole.PARENT]: 'Parent',
   [UserRole.CLERK]: 'Clerk',
+  [UserRole.BUS_STAFF]: 'Bus Staff',
 };
 
 /**

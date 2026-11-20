@@ -126,8 +126,9 @@ const UserForm: FC = () => {
             newErrors.username = 'Username is required';
         } else if (formData.username.length < 3) {
             newErrors.username = 'Username must be at least 3 characters';
-        } else if (!/^[a-z0-9_]+$/.test(formData.username)) {
-            newErrors.username = 'Username can only contain lowercase letters, numbers and underscores';
+        } else if (!/^[a-z0-9_-]+(\.[a-z0-9_-]+)*$/.test(formData.username)) {
+            // dots allowed like existing usernames (e.g. qa.teacher1), just not at the start, end or doubled
+            newErrors.username = 'Username can only contain lowercase letters, numbers, dots, hyphens and underscores (not starting or ending with a dot)';
         }
 
         // First name validation
