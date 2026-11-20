@@ -3,6 +3,8 @@ from app.services.parent_service import ParentService
 from app.decorators import log_actions, login_required
 from app.utils.user_status import set_school_user_active, status_response
 from app.models.tenant.Parent import Parent
+from app.utils.teaching_scope import (current_teacher_id, forbidden, teacher_scope_sections, strip_fields,
+    STUDENT_FIELDS_HIDDEN_FROM_TEACHERS, TEACHER_FIELDS_HIDDEN_FROM_TEACHERS)
 
 parent_bp = Blueprint('parents', __name__)
 
@@ -163,6 +165,9 @@ def get_parents_paginated(skid):
         page = max(1, page)
         limit = max(1, min(limit, 100))  # Limit max 100 items per page
 
+        # A teacher sees only parents of students in the sections they teach
+        section_ids = teacher_scope_sections(skid)
+
         # Get parents with pagination and filters
         result = ParentService.get_parents_paginated(
             skid=skid,
@@ -170,7 +175,8 @@ def get_parents_paginated(skid):
             limit=limit,
             search=search,
             status=status,
-            gender=gender
+            gender=gender,
+            section_ids=section_ids,
         )
 
         return jsonify({

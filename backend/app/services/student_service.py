@@ -418,7 +418,7 @@ class StudentService:
             return f"Error checking for duplicates: {str(e)}"
     
     @staticmethod
-    def get_students_paginated(skid, page=1, limit=10, search='', status='', gender=''):
+    def get_students_paginated(skid, page=1, limit=10, search='', status='', gender='', section_ids=None):
         """
         Get paginated list of students with filtering
         """
@@ -447,6 +447,10 @@ class StudentService:
 
                 if gender:
                     query = query.filter(SchoolUsers.gender == gender)
+
+                # A teacher sees only the sections they teach (section_ids=None: everyone)
+                if section_ids is not None:
+                    query = query.filter(Student.section_id.in_(list(section_ids)))
 
                 # Get total count before pagination
                 total = query.count()

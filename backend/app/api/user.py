@@ -212,7 +212,8 @@ def create_super_admin():
         return jsonify({'message': f'Failed to create super admin: {str(e)}'}), 500
 
 @user_bp.route('/list/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+# Not teachers: every account in the school (only the admin Users page uses it) - QA D17
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
 @log_actions('GET_USERS')
 def get_school_users(skid):
     """

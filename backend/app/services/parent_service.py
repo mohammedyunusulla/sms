@@ -304,7 +304,7 @@ class ParentService:
     
     
     @staticmethod
-    def get_parents_paginated(skid, page=1, limit=10, search='', status='', gender=''):
+    def get_parents_paginated(skid, page=1, limit=10, search='', status='', gender='', section_ids=None):
         """
         Get paginated list of parents with filtering
         """
@@ -331,6 +331,14 @@ class ParentService:
 
                 if gender:
                     query = query.filter(SchoolUsers.gender == gender)
+
+                # A teacher sees only parents of students in the sections they teach
+                if section_ids is not None:
+                    query = query.filter(SchoolUsers.id.in_(
+                        tenant_session.query(StudentParent.parent_user_id)
+                        .join(Student, Student.user_id == StudentParent.student_user_id)
+                        .filter(Student.section_id.in_(list(section_ids)))
+                    ))
 
                 # Get total count before pagination
                 total = query.count()

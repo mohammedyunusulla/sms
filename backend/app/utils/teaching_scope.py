@@ -149,3 +149,31 @@ def check_syllabus_item(skid, item_type, item_id):
     if not allowed:
         return forbidden('You can only edit syllabi you created or are assigned to')
     return None
+
+
+# ---------------------------------------------------------------- what teachers may see in people lists
+# Sensitive student details that teachers don't need (owner's choice, QA D17)
+STUDENT_FIELDS_HIDDEN_FROM_TEACHERS = ('aadhar_number', 'birth_certificate_number', 'religion', 'category')
+# Colleagues' private details
+TEACHER_FIELDS_HIDDEN_FROM_TEACHERS = ('salary', 'date_of_birth', 'address')
+
+
+def teacher_scope_sections(skid):
+    """For a TEACHER: the set of section ids they work in. None for every other role (unrestricted)."""
+    teacher_id = current_teacher_id()
+    if teacher_id is None:
+        return None
+    with switch_to_school_db(skid) as session:
+        return teacher_section_ids(session, teacher_id)
+
+
+def strip_fields(rows, fields):
+    """Remove fields from list rows (top level and their 'profile'); returns rows."""
+    for row in rows if isinstance(rows, list) else [rows]:
+        if not isinstance(row, dict):
+            continue
+        for target in (row, row.get('profile')):
+            if isinstance(target, dict):
+                for field in fields:
+                    target.pop(field, None)
+    return rows

@@ -2,6 +2,8 @@ from flask import Blueprint, request, jsonify
 from app.services.student_service import StudentService
 from app.decorators import log_actions, login_required
 from app.models.main.User import UserRole
+from app.utils.teaching_scope import (current_teacher_id, forbidden, teacher_scope_sections, strip_fields,
+    STUDENT_FIELDS_HIDDEN_FROM_TEACHERS, TEACHER_FIELDS_HIDDEN_FROM_TEACHERS)
 
 student_bp = Blueprint('students', __name__)
 
@@ -236,15 +238,19 @@ def get_students_paginated(skid):
         page = max(1, page)
         limit = max(1, min(limit, 100))  # Limit max 100 items per page
 
-        # Get students with pagination and filters
+        # Get students with pagination and filters (a teacher: only their sections)
+        section_ids = teacher_scope_sections(skid)
         result = StudentService.get_students_paginated(
             skid=skid,
             page=page,
             limit=limit,
             search=search,
             status=status,
-            gender=gender
+            gender=gender,
+            section_ids=section_ids,
         )
+        if section_ids is not None:
+            strip_fields(result['data'], STUDENT_FIELDS_HIDDEN_FROM_TEACHERS)
 
         return jsonify({
             'data': result['data'],
@@ -306,6 +312,11 @@ def get_students_for_section(skid, academic_year_id, section_id):
         if limit < 1 or limit > 100:
             limit = 10
 
+        # A teacher may only list the sections they teach
+        section_ids = teacher_scope_sections(skid)
+        if section_ids is not None and section_id not in section_ids:
+            return forbidden("You can only see students of the sections you teach")
+
         # Call service with filters
         result = StudentService.get_students_for_section(
             skid=skid,
@@ -317,6 +328,8 @@ def get_students_for_section(skid, academic_year_id, section_id):
             gender=gender,
             status=status
         )
+        if section_ids is not None:
+            strip_fields(result['students'], STUDENT_FIELDS_HIDDEN_FROM_TEACHERS)
 
         return jsonify({
             'message': 'Students retrieved successfully',

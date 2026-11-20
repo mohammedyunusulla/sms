@@ -4,6 +4,8 @@ from app.decorators import log_actions, login_required
 from app.utils.user_status import set_school_user_active, status_response
 from app.models.tenant.Teacher import Teacher
 from app.models.main.User import UserRole
+from app.utils.teaching_scope import (current_teacher_id, forbidden, teacher_scope_sections, strip_fields,
+    STUDENT_FIELDS_HIDDEN_FROM_TEACHERS, TEACHER_FIELDS_HIDDEN_FROM_TEACHERS)
 
 teacher_bp = Blueprint('teachers', __name__)
 
@@ -169,6 +171,10 @@ def get_teacher_data_by_id(skid, school_user_id):
         if not skid:
             raise ValueError("School ID (skid) is required")
             
+        # A teacher may open only their own profile (others' include salary, DOB, address)
+        own_id = current_teacher_id()
+        if own_id is not None and str(own_id) != str(school_user_id):
+            return forbidden("You can only view your own teacher profile")
         teacher_data = TeacherService.get_teacher_data(skid, school_user_id)
 
         return jsonify({
@@ -218,6 +224,9 @@ def get_teachers_paginated(skid):
             status=status,
             gender=gender
         )
+        # Teachers see colleagues' names and contact details, not their salary, DOB or address
+        if current_teacher_id() is not None:
+            strip_fields(result['data'], TEACHER_FIELDS_HIDDEN_FROM_TEACHERS)
 
         return jsonify({
             'data': result['data'],
