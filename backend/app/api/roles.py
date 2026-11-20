@@ -15,6 +15,8 @@ def create_role(skid):
         
         role = RolesService.create_role(data, skid)
         return jsonify({'message': 'Role created', 'data': role, 'status': 'success', 'code':200}), 200
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': str(e), 'status': 'error'}), 500
 
@@ -90,6 +92,8 @@ def update_role(skid, role_id):
             
         updated_role = RolesService.update_role(role_id, data, skid)
         return jsonify({'message': 'Role updated', 'data': updated_role, 'status': 'success', 'code':200}), 200
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': str(e), 'status': 'error'}), 500
 

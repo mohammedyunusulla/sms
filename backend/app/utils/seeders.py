@@ -68,6 +68,7 @@ def seed_default_roles(session, school_id=None):
                 Role(
                     role_name=role_enum.value.replace("_", " ").title(),  # e.g. SCHOOL_ADMIN → School Admin
                     role_code=role_enum.value,
+                    base_role=role_enum.value,
                     permissions=list(DEFAULT_ROLE_PERMISSIONS.get(role_enum.value, [])),
                     is_system_role=True,
                     is_active=True,

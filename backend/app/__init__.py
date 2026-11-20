@@ -170,6 +170,10 @@ def _bootstrap_main_schema(app):
 TENANT_SCHEMA_UPDATES = (
     "ALTER TABLE IF EXISTS attendance ADD COLUMN IF NOT EXISTS marked_by INTEGER",
     "ALTER TABLE IF EXISTS attendance ADD COLUMN IF NOT EXISTS updated_by INTEGER",
+    # custom roles are "based on" a built-in staff role (QA A13); built-in roles are based on themselves
+    "ALTER TABLE IF EXISTS roles ADD COLUMN IF NOT EXISTS base_role VARCHAR(50)",
+    "UPDATE roles SET base_role = role_code WHERE base_role IS NULL AND role_code IN "
+    "('SCHOOL_ADMIN','PRINCIPAL','TEACHER','STUDENT','PARENT','BUS_STAFF','CLERK')",
 )
 
 

@@ -47,11 +47,21 @@ class StaffService:
         if User.get_by_email(data['email']):
             raise ValueError("Email already exists")
 
-        # Validate role exists in the UserRole enum
+        # The school's role decides the login role: built-in roles are themselves, a custom role (e.g. Accountant)
+        # is stored on the login account as the built-in role it's based on (QA A13: custom roles were refused)
+        with switch_to_school_db(skid) as session:
+            school_role = session.query(Role).filter_by(role_code=role_code).first()
+            if not school_role:
+                raise ValueError(f"Unknown role '{role_code}'")
+            if school_role.is_active is False:
+                raise ValueError(f"The role '{school_role.role_name}' is switched off")
+            login_role = str(school_role.base_role or role_code).upper()
+        if login_role in EXCLUDED_ROLES:
+            raise ValueError(f"Role '{role_code}' cannot be created through this endpoint.")
         try:
-            user_role_enum = UserRole(role_code)
+            user_role_enum = UserRole(login_role)
         except ValueError:
-            raise ValueError(f"Unknown role '{role_code}'")
+            raise ValueError(f"The role '{role_code}' isn't based on a built-in role (Principal, Clerk or Bus Staff)")
 
         # ── Step 1: create main DB user ──────────────────────────────────────
         user = User(

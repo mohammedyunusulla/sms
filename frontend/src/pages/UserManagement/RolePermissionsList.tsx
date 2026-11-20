@@ -25,6 +25,8 @@ interface IPaginationMeta {
     totalPages: number;
 }
 
+const BASE_ROLE_LABELS: Record<string, string> = { PRINCIPAL: 'Principal', CLERK: 'Clerk', BUS_STAFF: 'Bus Staff' };
+
 const RolePermissionsList: FC = () => {
     const navigate = useNavigate();
     const { hasPermission } = usePermissions();
@@ -116,6 +118,14 @@ const RolePermissionsList: FC = () => {
             key: 'role_name',
             label: 'Role Name',
             render: (value) => <span className="font-medium text-gray-900 dark:text-white truncate">{value}</span>,
+        },
+        {
+            key: 'base_role',
+            label: 'Based on',
+            // custom roles sign in as a built-in role; built-in roles are themselves
+            render: (value, row) => row.is_system_role
+                ? <span className="text-xs text-gray-500 dark:text-gray-400">Built-in</span>
+                : <span className="text-gray-700 dark:text-gray-300">{BASE_ROLE_LABELS[String(value || '')] || value || '-'}</span>,
         },
         {
             key: 'description',

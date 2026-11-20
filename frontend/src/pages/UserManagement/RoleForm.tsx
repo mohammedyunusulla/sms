@@ -128,6 +128,13 @@ const PERMISSION_GROUPS = [
     },
 ] as const;
 
+// A custom role is stored on login accounts as one of these built-in staff roles (backend CUSTOM_ROLE_BASES)
+const BASE_ROLE_OPTIONS = [
+    { value: 'PRINCIPAL', label: 'Principal' },
+    { value: 'CLERK', label: 'Clerk (fee counter)' },
+    { value: 'BUS_STAFF', label: 'Bus Staff' },
+];
+
 type ListedPermission = (typeof PERMISSION_GROUPS)[number]['permissions'][number]['key'];
 type UnlistedPermission = Exclude<Permission, ListedPermission>;
 // If this line errors, add the permission named in the error to PERMISSION_GROUPS above.
@@ -146,7 +153,10 @@ const RoleForm: FC = () => {
         role_name: '',
         role_code: '',
         description: '',
+        base_role: '',
     });
+    // Built-in roles are fixed; custom roles are "based on" a built-in staff role
+    const [isSystemRole, setIsSystemRole] = useState(false);
 
     useEffect(() => {
         if (isEditMode && id) {
@@ -162,7 +172,9 @@ const RoleForm: FC = () => {
                 role_name: role.role_name || '',
                 role_code: role.role_code || '',
                 description: role.description || '',
+                base_role: role.base_role || '',
             });
+            setIsSystemRole(!!role.is_system_role);
             setSelectedPermissions(role.permissions || []);
         } catch (error: any) {
             console.error('Error fetching role:', error);
@@ -218,6 +230,10 @@ const RoleForm: FC = () => {
             toast.error('Role code is required');
             return;
         }
+        if (!isSystemRole && !formData.base_role) {
+            toast.error('Choose what the role is based on');
+            return;
+        }
 
         try {
             setIsSubmitting(true);
@@ -225,6 +241,7 @@ const RoleForm: FC = () => {
                 await roleService.update(id!, {
                     role_name: formData.role_name,
                     description: formData.description,
+                    ...(!isSystemRole ? { base_role: formData.base_role } : {}),
                 });
                 await roleService.assignPermissions(id!, selectedPermissions);
                 toast.success('Role updated successfully');
@@ -233,6 +250,7 @@ const RoleForm: FC = () => {
                     role_name: formData.role_name,
                     role_code: formData.role_code,
                     description: formData.description,
+                    base_role: formData.base_role,
                 });
                 if (created?.id && selectedPermissions.length > 0) {
                     await roleService.assignPermissions(created.id, selectedPermissions);
@@ -300,6 +318,29 @@ const RoleForm: FC = () => {
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Role code cannot be changed</p>
                             )}
                         </div>
+
+                        {!isSystemRole && (
+                            <div>
+                                <label htmlFor="base_role" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                    Based on <span className="text-red-500">*</span>
+                                </label>
+                                <select
+                                    id="base_role"
+                                    name="base_role"
+                                    value={formData.base_role}
+                                    onChange={(e) => setFormData((prev) => ({ ...prev, base_role: e.target.value }))}
+                                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                >
+                                    <option value="">Choose a built-in role</option>
+                                    {BASE_ROLE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                </select>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    People with this role sign in as this built-in role: it decides their dashboard and what the
+                                    server allows them to do. The tick boxes below decide their menu, so ticking a page the
+                                    built-in role can't use will show it but it won't load. Can't be changed once people have the role.
+                                </p>
+                            </div>
+                        )}
 
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">

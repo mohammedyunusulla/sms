@@ -2,6 +2,25 @@ from app import db
 from app.models.tenant.Roles import Role
 from app.utils.db_manager import switch_to_school_db
 
+# Built-in roles (stored on login accounts); a custom role must be based on one of the staff ones
+BUILT_IN_ROLES = ('SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT', 'BUS_STAFF', 'CLERK')
+CUSTOM_ROLE_BASES = ('PRINCIPAL', 'CLERK', 'BUS_STAFF')
+
+
+def _base_role(value):
+    base = str(value or '').strip().upper()
+    if base not in CUSTOM_ROLE_BASES:
+        raise ValueError("Choose what the role is based on: Principal, Clerk or Bus Staff")
+    return base
+
+
+def _role_holders(tenant_session, role_id):
+    from app.models.tenant.SchoolUsers import SchoolUsers
+    from app.models.tenant.UserRoles import UserRoles
+    holders = {uid for (uid,) in tenant_session.query(SchoolUsers.id).filter(SchoolUsers.role_id == role_id)}
+    holders |= {uid for (uid,) in tenant_session.query(UserRoles.user_id).filter(UserRoles.role_id == role_id)}
+    return holders
+
 
 class RolesService:
 
@@ -9,23 +28,30 @@ class RolesService:
     def create_role(data, skid):
         try:
             with switch_to_school_db(skid) as tenant_session:
-                if data.get('role_code'):
-                    existing_role = tenant_session.query(Role).filter_by(
-                        role_code=data['role_code']
-                    ).first()
-                    if existing_role:
-                        raise ValueError(f"Role code '{data['role_code']}' already exists")
+                role_code = str(data.get('role_code') or '').strip().upper()
+                if not role_code:
+                    raise ValueError("Role code is required")
+                if not str(data.get('role_name') or '').strip():
+                    raise ValueError("Role name is required")
+                if tenant_session.query(Role).filter_by(role_code=role_code).first():
+                    raise ValueError(f"Role code '{role_code}' already exists")
+                if role_code in BUILT_IN_ROLES or role_code == 'SUPER_ADMIN':
+                    raise ValueError(f"'{role_code}' is a built-in role code; choose another")
 
                 new_role = Role(
-                    role_name=data['role_name'],
-                    role_code=data.get('role_code'),
-                    description=data.get('description')
+                    role_name=data['role_name'].strip(),
+                    role_code=role_code,
+                    description=data.get('description'),
+                    base_role=_base_role(data.get('base_role')),
+                    is_system_role=False,
                 )
                 tenant_session.add(new_role)
                 tenant_session.commit()
                 tenant_session.refresh(new_role)
                 return new_role.to_dict()
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to create role: {str(e)}")
 
@@ -39,9 +65,18 @@ class RolesService:
 
                 role.role_name = data.get('role_name', role.role_name)
                 role.description = data.get('description', role.description)
+                if data.get('base_role') is not None and not role.is_system_role:
+                    base = _base_role(data['base_role'])
+                    if base != role.base_role and _role_holders(tenant_session, role.id):
+                        # their login accounts carry the old base: changing it here would make them disagree
+                        raise ValueError(f"'{role.role_name}' is assigned to people, so what it's based on can't change. "
+                                         "Create a new role instead.")
+                    role.base_role = base
                 tenant_session.commit()
                 return role.to_dict()
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to update role: {str(e)}")
 
@@ -152,10 +187,7 @@ class RolesService:
                 # created with, and a role people hold can't go either (it used to delete anything, QA A14)
                 if role.is_system_role:
                     raise ValueError(f"'{role.role_name}' is a built-in role and can't be deleted. You can change its permissions instead.")
-                from app.models.tenant.SchoolUsers import SchoolUsers
-                from app.models.tenant.UserRoles import UserRoles
-                holders = {uid for (uid,) in tenant_session.query(SchoolUsers.id).filter(SchoolUsers.role_id == role.id)}
-                holders |= {uid for (uid,) in tenant_session.query(UserRoles.user_id).filter(UserRoles.role_id == role.id)}
+                holders = _role_holders(tenant_session, role.id)
                 if holders:
                     count = len(holders)
                     raise ValueError(f"'{role.role_name}' is assigned to {count} {'person' if count == 1 else 'people'}. "

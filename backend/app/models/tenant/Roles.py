@@ -12,6 +12,9 @@ class Role(BaseModelTenant, BaseModelTenantMixin):
     description = Column(String(255))
     permissions = Column(ARRAY(String), default=[])  # Stores list like ['create_user', 'view_reports']
     is_system_role = Column(Boolean, default=False)
+    # The built-in role a custom role is "based on" (PRINCIPAL / CLERK / BUS_STAFF): it is stored on the user's
+    # login account, so it decides the dashboard and the server's access checks. Built-in roles: their own code.
+    base_role = Column(String(50), nullable=True)
     is_active = Column(Boolean, default=True)
     school_id = Column(Integer, nullable=True)  # Null for system roles
     created_at = Column(DateTime, default=func.current_timestamp())
