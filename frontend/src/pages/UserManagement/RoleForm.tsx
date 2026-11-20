@@ -8,116 +8,131 @@ import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router';
 import { PageHeader, Button, LoadingSpinner } from '../../components';
 import { roleService } from '../../services/modules/roleService';
+import { Permission } from '../../config/permissions';
 
-// Static permissions grouped by module
-// These are stored as flat string arrays in the backend Role.permissions column
+// Permissions grouped by module, stored as flat string arrays in the backend Role.permissions column.
+// Every permission the app checks (the Permission enum) must have a tick box here: the check below fails
+// the type check (npm run build) if one is missing. Permissions a role holds that aren't listed are kept on save.
 const PERMISSION_GROUPS = [
     {
         module: 'User Management',
         permissions: [
-            { key: 'view_users', label: 'View Users' },
-            { key: 'manage_users', label: 'Create / Edit Users' },
-            { key: 'delete_users', label: 'Delete Users' },
+            { key: Permission.VIEW_USERS, label: 'View Users' },
+            { key: Permission.MANAGE_USERS, label: 'Create / Edit Users' },
+            { key: Permission.DELETE_USERS, label: 'Delete Users' },
         ],
     },
     {
         module: 'Student Management',
         permissions: [
-            { key: 'view_students', label: 'View Students' },
-            { key: 'manage_students', label: 'Create / Edit Students' },
-            { key: 'delete_students', label: 'Delete Students' },
+            { key: Permission.VIEW_STUDENTS, label: 'View Students' },
+            { key: Permission.MANAGE_STUDENTS, label: 'Create / Edit Students' },
+            { key: Permission.DELETE_STUDENTS, label: 'Delete Students' },
         ],
     },
     {
         module: 'Teacher Management',
         permissions: [
-            { key: 'view_teachers', label: 'View Teachers' },
-            { key: 'manage_teachers', label: 'Create / Edit Teachers' },
-            { key: 'delete_teachers', label: 'Delete Teachers' },
+            { key: Permission.VIEW_TEACHERS, label: 'View Teachers' },
+            { key: Permission.MANAGE_TEACHERS, label: 'Create / Edit Teachers' },
+            { key: Permission.DELETE_TEACHERS, label: 'Delete Teachers' },
         ],
     },
     {
         module: 'Class & Section',
         permissions: [
-            { key: 'view_classes', label: 'View Classes & Sections' },
-            { key: 'manage_classes', label: 'Create / Edit Classes & Sections' },
+            { key: Permission.VIEW_CLASSES, label: 'View Classes & Sections' },
+            { key: Permission.MANAGE_CLASSES, label: 'Create / Edit Classes & Sections' },
         ],
     },
     {
         module: 'Attendance',
         permissions: [
-            { key: 'view_attendance', label: 'View Attendance' },
-            { key: 'manage_attendance', label: 'Mark / Edit Attendance' },
+            { key: Permission.VIEW_ATTENDANCE, label: 'View Attendance' },
+            { key: Permission.MANAGE_ATTENDANCE, label: 'Mark / Edit Attendance' },
         ],
     },
     {
         module: 'Timetable',
         permissions: [
-            { key: 'view_timetable', label: 'View Timetable' },
-            { key: 'manage_timetable', label: 'Create / Edit Timetable' },
+            { key: Permission.VIEW_TIMETABLE, label: 'View Timetable' },
+            { key: Permission.MANAGE_TIMETABLE, label: 'Create / Edit Timetable' },
         ],
     },
     {
         module: 'Exams & Marks',
         permissions: [
-            { key: 'view_exams', label: 'View Exams & Marks' },
-            { key: 'manage_exams', label: 'Create / Edit Exams' },
-            { key: 'manage_marks', label: 'Enter / Edit Marks' },
+            { key: Permission.VIEW_EXAMS, label: 'View Exams & Marks' },
+            { key: Permission.MANAGE_EXAMS, label: 'Create / Edit Exams' },
+            { key: Permission.MANAGE_MARKS, label: 'Enter / Edit Marks' },
+            { key: Permission.VIEW_MARKS, label: 'View Marks (own / class results)' },
         ],
     },
     {
         module: 'Finance',
         permissions: [
-            { key: 'view_fees', label: 'View Fees & Payments' },
-            { key: 'manage_fees', label: 'Manage Fee Structure & Collection' },
-            { key: 'view_expenses', label: 'View Expenses' },
-            { key: 'manage_expenses', label: 'Create / Edit Expenses' },
+            { key: Permission.VIEW_FEES, label: 'View Fees & Payments' },
+            { key: Permission.MANAGE_FEES, label: 'Manage Fee Structure & Collection' },
+            { key: Permission.VIEW_EXPENSES, label: 'View Expenses' },
+            { key: Permission.MANAGE_EXPENSES, label: 'Create / Edit Expenses' },
         ],
     },
     {
         module: 'Announcements',
         permissions: [
-            { key: 'view_announcements', label: 'View Announcements' },
-            { key: 'manage_announcements', label: 'Create / Edit Announcements' },
+            { key: Permission.VIEW_ANNOUNCEMENTS, label: 'View Announcements' },
+            { key: Permission.MANAGE_ANNOUNCEMENTS, label: 'Create / Edit Announcements' },
         ],
     },
     {
         module: 'Assignments',
         permissions: [
-            { key: 'view_assignments', label: 'View Assignments' },
-            { key: 'manage_assignments', label: 'Create / Edit / Review Assignments' },
+            { key: Permission.VIEW_ASSIGNMENTS, label: 'View Assignments' },
+            { key: Permission.MANAGE_ASSIGNMENTS, label: 'Create / Edit / Review Assignments' },
         ],
     },
     {
         module: 'Syllabus',
         permissions: [
-            { key: 'view_syllabus_and_progress', label: 'View Syllabus & Progress' },
-            { key: 'manage_syllabus', label: 'Create / Edit Syllabus' },
-        ],
-    },
-    {
-        module: 'Reports',
-        permissions: [
-            { key: 'view_reports', label: 'View Reports' },
-            { key: 'export_reports', label: 'Export Reports' },
+            { key: Permission.VIEW_SYLLABUS_AND_PROGRESS, label: 'View Syllabus & Progress' },
+            { key: Permission.MANAGE_SYLLABUS, label: 'Create / Edit Syllabus' },
         ],
     },
     {
         module: 'Administration',
         permissions: [
-            { key: 'manage_roles', label: 'Manage Roles & Permissions' },
-            { key: 'manage_academic_years', label: 'Manage Academic Years' },
-            { key: 'manage_school_settings', label: 'Manage School Settings' },
+            { key: Permission.MANAGE_ROLES, label: 'Manage Roles & Permissions' },
+        ],
+    },
+    {
+        module: 'Student - Own Pages',
+        permissions: [
+            { key: Permission.VIEW_MY_TIMETABLE, label: 'My Timetable' },
+        ],
+    },
+    {
+        module: "Parent - Child's Pages",
+        permissions: [
+            { key: Permission.VIEW_CHILD_ASSIGNMENTS, label: "My Child's Assignments" },
+            { key: Permission.VIEW_CHILD_TIMETABLE, label: "My Child's Timetable" },
+            { key: Permission.VIEW_CHILD_FEES, label: "My Child's Fees" },
+            { key: Permission.VIEW_CHILD_SYLLABUS, label: "My Child's Syllabus" },
         ],
     },
     {
         module: 'Bus Scan',
         permissions: [
-            { key: 'view_bus_scan', label: 'View Bus Scan' },
-            { key: 'manage_bus_scan', label: 'Scan QR & Manage Bus Scan' },
+            { key: Permission.VIEW_BUS_SCAN, label: 'View Bus Scan' },
+            { key: Permission.MANAGE_BUS_SCAN, label: 'Scan QR & Manage Bus Scan' },
         ],
     },
-];
+] as const;
+
+type ListedPermission = (typeof PERMISSION_GROUPS)[number]['permissions'][number]['key'];
+type UnlistedPermission = Exclude<Permission, ListedPermission>;
+// If this line errors, add the permission named in the error to PERMISSION_GROUPS above.
+const everyPermissionListed: [UnlistedPermission] extends [never] ? true : UnlistedPermission = true;
+void everyPermissionListed;
 
 const RoleForm: FC = () => {
     const navigate = useNavigate();
@@ -182,7 +197,7 @@ const RoleForm: FC = () => {
         );
     };
 
-    const toggleModuleAll = (modulePerms: { key: string }[]) => {
+    const toggleModuleAll = (modulePerms: readonly { key: string }[]) => {
         const keys = modulePerms.map(p => p.key);
         const allSelected = keys.every(k => selectedPermissions.includes(k));
         if (allSelected) {
