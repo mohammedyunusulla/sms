@@ -5,8 +5,17 @@
 
 import { FC, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Modal, LoadingSpinner, EmptyState } from '../../../components';
+import { Modal, LoadingSpinner, EmptyState, ConfirmDialog } from '../../../components';
 import { parentService } from '../../../services/modules/parentService';
+
+interface IParentChild {
+    student_user_id: number;
+    name: string;
+    admission_number?: string | null;
+    class_name?: string | null;
+    section_name?: string | null;
+    relation_type?: string | null;
+}
 
 interface IParentDetailDialogProps {
     isOpen: boolean;
@@ -24,6 +33,23 @@ const ParentDetailDialog: FC<IParentDetailDialogProps> = ({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [parentData, setParentData] = useState<any>(null);
+    const [unlinkTarget, setUnlinkTarget] = useState<{ student_user_id: number; name: string } | null>(null);
+    const [unlinking, setUnlinking] = useState(false);
+
+    const confirmUnlink = async () => {
+        if (!unlinkTarget) return;
+        try {
+            setUnlinking(true);
+            await parentService.unlinkChild(parentId, unlinkTarget.student_user_id);
+            toast.success(`${unlinkTarget.name} is no longer linked to this parent`);
+            await fetchParentDetails();
+        } catch (err) {
+            toast.error((err as Error).message || 'Failed to unlink');
+        } finally {
+            setUnlinking(false);
+            setUnlinkTarget(null);
+        }
+    };
 
     useEffect(() => {
         if (isOpen && parentId) {
@@ -241,8 +267,47 @@ const ParentDetailDialog: FC<IParentDetailDialogProps> = ({
                             </div>
                         </div>
                     </div>
+
+                    {/* Children linked to this parent (QA A23) */}
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-6" data-testid="parent-children">
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Children</h3>
+                        {(parentData.children || []).length === 0 ? (
+                            <p className="text-sm text-gray-500 dark:text-gray-400">No children linked.</p>
+                        ) : (
+                            <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+                                {(parentData.children as IParentChild[]).map((child) => (
+                                    <li key={child.student_user_id} className="flex items-center justify-between gap-3 py-2">
+                                        <div>
+                                            <p className="font-medium text-gray-900 dark:text-white">{child.name}</p>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                {[child.class_name && `${child.class_name}${child.section_name ? ` – ${child.section_name}` : ''}`,
+                                                  child.admission_number, child.relation_type].filter(Boolean).join(' · ') || '-'}
+                                            </p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setUnlinkTarget({ student_user_id: child.student_user_id, name: child.name })}
+                                            className="rounded-lg border border-red-300 px-3 py-1 text-sm text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20"
+                                        >
+                                            Unlink
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
                 </div>
             )}
+            <ConfirmDialog
+                isOpen={!!unlinkTarget}
+                type="warning"
+                title="Unlink child"
+                message={unlinkTarget ? `Remove the link between this parent and ${unlinkTarget.name}? The parent will no longer see ${unlinkTarget.name}'s details.` : ''}
+                confirmText="Unlink"
+                isLoading={unlinking}
+                onConfirm={confirmUnlink}
+                onCancel={() => setUnlinkTarget(null)}
+            />
         </Modal>
     );
 };

@@ -84,6 +84,7 @@ def get_announcements(skid):
         academic_year_id = request.args.get('academic_year_id', type=int)
         announcement_type = request.args.get('announcement_type')
         priority = request.args.get('priority')
+        search = (request.args.get('search') or '').strip()
         
         # Who is asking comes from the login token, never from the URL: the old
         # user_role / school_user_id query params let any user see every announcement
@@ -104,6 +105,8 @@ def get_announcements(skid):
             filters['announcement_type'] = announcement_type
         if priority:
             filters['priority'] = priority
+        if search:
+            filters['search'] = search  # the page always sent it; it used to be ignored (QA C17)
         
         # Always filter by the logged-in user (admins/principal see everything inside the filter)
         user_info = {

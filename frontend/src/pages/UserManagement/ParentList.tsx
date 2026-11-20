@@ -12,6 +12,12 @@ import ParentDetailDialog from './components/ParentDetailDialog';
 import { usePermissions } from '../../hooks/usePermissions';
 import { Permission } from '../../config/permissions';
 import { useLoginAccess } from '../../hooks/useLoginAccess';
+import { useDebounce } from '../../hooks/useDebounce';
+
+// "Father / Mother" phones without the "null / null" the list used to show
+type Phones = { father_phone?: string | null; mother_phone?: string | null };
+const phonesOf = (profile: Phones | undefined, row: { phone?: string | null }) =>
+    [profile?.father_phone, profile?.mother_phone].filter(Boolean).join(' / ') || row?.phone || '-';
 
 interface IColumn {
     key: string;
@@ -57,14 +63,22 @@ const ParentList: FC = () => {
         setShowActionsMenu(showActionsMenu === parentId ? null : parentId);
     };
 
+    // search box (the server already supported it; the page never sent it - QA A25)
+    const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearch = useDebounce(searchTerm, 400);
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [debouncedSearch]);
+
     useEffect(() => {
         fetchParents(currentPage, pageSize);
-    }, [currentPage, pageSize]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentPage, pageSize, debouncedSearch]);
 
     const fetchParents = async (page: number, limit: number) => {
         try {
             setLoading(true);
-            const response = await parentService.list({ page, limit });
+            const response = await parentService.list({ page, limit, ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}) });
             const parents = response.data.map((parent: any, index: number) => ({
                 ...parent,
                 key: parent.id,
@@ -137,19 +151,20 @@ const ParentList: FC = () => {
             label: 'Sl. No',
         },
         {
-            key: 'profile',
+            key: 'father_name',
             label: 'Father Name',
-            render: (value) => <span className="font-medium text-gray-900 dark:text-white truncate">{value.father_full_name}</span>,
+            // fall back to the account name when the profile has no father name
+            render: (_v, row) => <span className="font-medium text-gray-900 dark:text-white truncate">{row.profile?.father_full_name || row.full_name || '-'}</span>,
         },
         {
-            key: 'profile',
+            key: 'mother_name',
             label: 'Mother Name',
-            render: (value) => <span className="font-medium text-gray-900 dark:text-white truncate">{value.mother_full_name}</span>,
+            render: (_v, row) => <span className="font-medium text-gray-900 dark:text-white truncate">{row.profile?.mother_full_name || '-'}</span>,
         },
         {
-            key: 'profile',
+            key: 'phones',
             label: 'Phone',
-            render: (value) => <span className="text-gray-600 dark:text-gray-400">{value.father_phone + " / " + value.mother_phone || '-'}</span>,
+            render: (_v, row) => <span className="text-gray-600 dark:text-gray-400">{phonesOf(row.profile, row)}</span>,
         },
         {
             key: 'is_active',
@@ -190,6 +205,17 @@ const ParentList: FC = () => {
                     ) : undefined
                 }
             />
+
+            <div className="max-w-sm">
+                <input
+                    type="search"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search by name, email or phone"
+                    aria-label="Search parents"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                />
+            </div>
 
             <DataTable
                 columns={columns}

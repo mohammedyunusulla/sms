@@ -60,6 +60,7 @@ class StudentService:
                     phone=data.get('phone'),
                     gender=data.get('gender'),
                     date_of_birth=data.get('date_of_birth'),
+                    address=data.get('address'),  # was only saved on edit (QA A22)
                     skid=skid,
                     is_active=True
                 )
@@ -418,7 +419,8 @@ class StudentService:
             return f"Error checking for duplicates: {str(e)}"
     
     @staticmethod
-    def get_students_paginated(skid, page=1, limit=10, search='', status='', gender='', section_ids=None):
+    def get_students_paginated(skid, page=1, limit=10, search='', status='', gender='', section_ids=None,
+                               class_id=None, section_id=None):
         """
         Get paginated list of students with filtering
         """
@@ -451,6 +453,11 @@ class StudentService:
                 # A teacher sees only the sections they teach (section_ids=None: everyone)
                 if section_ids is not None:
                     query = query.filter(Student.section_id.in_(list(section_ids)))
+                # Class / Section filters on the Students page (they used to filter only the page already loaded)
+                if class_id:
+                    query = query.filter(Student.class_id == class_id)
+                if section_id:
+                    query = query.filter(Student.section_id == section_id)
 
                 # Get total count before pagination
                 total = query.count()
@@ -803,6 +810,7 @@ class StudentService:
                             phone=student_data.get('phone'),
                             gender=student_data.get('gender'),
                             date_of_birth=StudentService._parse_excel_date(student_data.get('date_of_birth'), 'date_of_birth'),
+                            address=student_data.get('address'),  # was only saved on edit (QA A22)
                             skid=skid,
                             is_active=True
                         )

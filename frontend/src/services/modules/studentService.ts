@@ -9,6 +9,8 @@ interface IStudentListParams {
     search?: string;
     gender?: string;
     status?: string;
+    class_id?: string | number;
+    section_id?: string | number;
     page?: number;
     limit?: number;
 }

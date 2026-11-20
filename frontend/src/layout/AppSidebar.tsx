@@ -124,6 +124,12 @@ const allMenuItems: NavItem[] = [
         name: "My Child's Results",
         path: "/parent/results",
     },
+    // Exam timetable – Parent (linked child)
+    {
+        icon: <CalenderIcon />,
+        name: "My Child's Exam Timetable",
+        path: "/parent/exam-timetable",
+    },
     // AI Homework Tracking (Teacher/Student/Admin)
     {
         icon: <TaskIcon />,

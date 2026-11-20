@@ -248,6 +248,8 @@ def get_students_paginated(skid):
             status=status,
             gender=gender,
             section_ids=section_ids,
+            class_id=request.args.get('class_id', type=int),
+            section_id=request.args.get('section_id', type=int),
         )
         if section_ids is not None:
             strip_fields(result['data'], STUDENT_FIELDS_HIDDEN_FROM_TEACHERS)

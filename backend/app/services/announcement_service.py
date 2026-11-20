@@ -3,7 +3,7 @@
 from app.utils.db_manager import switch_to_school_db
 from app.models.tenant import SchoolUsers, Student, Class, AcademicYear
 from app.models.tenant.Announcement import Announcement
-from sqlalchemy import and_, or_, cast
+from sqlalchemy import and_, or_, cast, case, func
 from sqlalchemy.dialects.postgresql import JSONB
 from datetime import datetime
 
@@ -99,6 +99,9 @@ class AnnouncementService:
                         query = query.filter(Announcement.announcement_type == filters['announcement_type'])
                     if filters.get('priority'):
                         query = query.filter(Announcement.priority == filters['priority'])
+                    if filters.get('search'):
+                        term = f"%{filters['search']}%"
+                        query = query.filter(or_(Announcement.title.ilike(term), Announcement.description.ilike(term)))
                 
                 # Filter by user's access
                 if user_info:
@@ -109,7 +112,15 @@ class AnnouncementService:
                     )
                 
                 # Fixed: Changed from announcement.created_at to Announcement.created_at
-                query = query.order_by(Announcement.priority.desc(), Announcement.created_at.desc())
+                # Most urgent first (priority used to sort alphabetically: Normal, Medium, Low, High, Urgent - QA C17)
+                rank = case(
+                    (func.upper(Announcement.priority) == 'URGENT', 4),
+                    (func.upper(Announcement.priority) == 'HIGH', 3),
+                    (func.upper(Announcement.priority).in_(['MEDIUM', 'NORMAL']), 2),
+                    (func.upper(Announcement.priority) == 'LOW', 1),
+                    else_=0,
+                )
+                query = query.order_by(rank.desc(), Announcement.created_at.desc())
                 
                 results = query.all()
                 
@@ -190,6 +201,22 @@ class AnnouncementService:
                 Announcement.target_audience == 'ALL_PARENTS',
                 Announcement.target_audience == 'All Parents'  # Add this
             ])
+            # ...and anything aimed at their children's classes / sections (parents never got these - QA C17)
+            from app.models.tenant.StudentParent import StudentParent
+            children = tenant_session.query(Student.class_id, Student.section_id).join(
+                StudentParent, StudentParent.student_user_id == Student.user_id
+            ).filter(StudentParent.parent_user_id == school_user_id).all() if school_user_id else []
+            for class_id, section_id in children:
+                if class_id:
+                    access_conditions.append(and_(
+                        or_(Announcement.target_audience == 'SPECIFIC_CLASS', Announcement.target_audience == 'Specific Classes'),
+                        cast(Announcement.target_classes, JSONB).op('@>')(cast([class_id], JSONB)),
+                    ))
+                if section_id:
+                    access_conditions.append(and_(
+                        or_(Announcement.target_audience == 'SPECIFIC_SECTION', Announcement.target_audience == 'Specific Sections'),
+                        cast(Announcement.target_sections, JSONB).op('@>')(cast([section_id], JSONB)),
+                    ))
         
         # Check if user is specifically targeted
         if school_user_id:

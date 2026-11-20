@@ -90,6 +90,16 @@ class ParentService {
         return response;
     }
 
+    /** Remove the link between a parent and one of their children (QA A23) */
+    async unlinkChild(parentUserId: number | string, studentUserId: number | string): Promise<unknown> {
+        const api = getApiClient();
+        const schoolId = getSchoolId();
+        if (!schoolId) throw new Error('School ID not found. Please log in again.');
+        return api.delete(`/studentParent/remove/${schoolId}`, {
+            data: { parent_user_id: Number(parentUserId), student_user_id: Number(studentUserId) },
+        });
+    }
+
     // Create new parent
     async create(data: any): Promise<any> {
         const api = getApiClient();
