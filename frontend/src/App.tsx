@@ -115,6 +115,7 @@ const ExpenseList = lazy(() => import("./pages/FinanceManagement").then(m => ({ 
 const SalarySetup = lazy(() => import("./pages/FinanceManagement").then(m => ({ default: m.SalarySetup })));
 const SalaryPayments = lazy(() => import("./pages/FinanceManagement").then(m => ({ default: m.SalaryPayments })));
 const FeeDefaulters = lazy(() => import("./pages/FinanceManagement").then(m => ({ default: m.FeeDefaulters })));
+const CollectionReport = lazy(() => import("./pages/FinanceManagement").then(m => ({ default: m.CollectionReport })));
 const ParentFees = lazy(() => import("./pages/FinanceManagement").then(m => ({ default: m.ParentFees })));
 
 // Lazy loaded Syllabus Management
@@ -349,6 +350,7 @@ function AppContent() {
                         <Route path="/finance/salary-setup" element={guarded('/finance/salary-setup', <SalarySetup />)} />
                         <Route path="/finance/salary-payments" element={guarded('/finance/salary-payments', <SalaryPayments />)} />
                         <Route path="/finance/defaulters" element={guarded('/finance/defaulters', <FeeDefaulters />)} />
+                        <Route path="/finance/collection-report" element={guarded('/finance/collection-report', <CollectionReport />)} />
 
                         {/* Bus Management Routes */}
                         <Route path="/bus-scan" element={guarded('/bus-scan', <BusScanDashboard />)} />

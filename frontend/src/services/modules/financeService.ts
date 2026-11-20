@@ -9,7 +9,7 @@
  */
 
 import { getApiClient, getSchoolId } from '../api/client';
-import type { IDefaultersReport } from '../../types/index';
+import type { ICollectionReport, IDefaultersReport } from '../../types/index';
 
 class FinanceService {
 
@@ -307,6 +307,16 @@ class FinanceService {
         const skid = getSchoolId();
         if (!skid) throw new Error('School ID not found. Please log in again.');
         return api.post(`/fee/discount/apply/${skid}`, data);
+    }
+
+    async getCollectionReport(params: { start_date: string; end_date: string; class_id?: string | number }): Promise<ICollectionReport> {
+        const api = getApiClient();
+        const skid = getSchoolId();
+        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const query: Record<string, string> = { start_date: params.start_date, end_date: params.end_date };
+        if (params.class_id) query.class_id = String(params.class_id);
+        const response = (await api.get(`/fee/report/collection/${skid}`, { params: query })) as unknown as { data?: ICollectionReport };
+        return response?.data || { total_collected: 0, total_transactions: 0, collection_by_mode: {}, payments: [] };
     }
 
     async getDefaulters(academicYearId: number | string, asOfDate?: string): Promise<IDefaultersReport> {

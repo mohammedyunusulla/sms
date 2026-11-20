@@ -848,25 +848,39 @@ class FeeService:
                 if class_id:
                     query = query.filter(Student.class_id == class_id)
                 
-                results = query.all()
-                
+                results = query.order_by(FeePayment.payment_date.desc(), FeePayment.id.desc()).all()
+
+                # names for the report rows: class/section, fee, and who collected the payment
+                classes = {c.id: c.class_name for c in tenant_session.query(Class).all()}
+                sections = {s.id: s.section_name for s in tenant_session.query(Section).all()}
+                structure_ids = {sf.fee_structure_id for _, sf, _, _ in results if sf.fee_structure_id}
+                fee_names = {fs.id: fs.fee_name for fs in tenant_session.query(FeeStructure).filter(FeeStructure.id.in_(structure_ids)).all()} if structure_ids else {}
+                collector_ids = {p.collected_by for p, _, _, _ in results if p.collected_by}
+                collectors = {u.id: f"{u.first_name} {u.last_name or ''}".strip() for u in tenant_session.query(SchoolUsers).filter(SchoolUsers.id.in_(collector_ids)).all()} if collector_ids else {}
+
                 total_collected = 0
                 collection_by_mode = {}
                 payments_list = []
                 
                 for payment, student_fee, student, user in results:
                     payment_dict = payment.to_dict()
-                    payment_dict['student_name'] = f"{user.first_name} {user.last_name}"
+                    payment_dict['student_name'] = f"{user.first_name} {user.last_name or ''}".strip()
                     payment_dict['student_id'] = student.user_id
+                    payment_dict['admission_number'] = student.admission_number
+                    payment_dict['class'] = classes.get(student.class_id)
+                    payment_dict['section'] = sections.get(student.section_id)
+                    payment_dict['fee_name'] = fee_names.get(student_fee.fee_structure_id)
+                    payment_dict['collected_by_name'] = collectors.get(payment.collected_by)
+                    payment_dict['payment_mode_label'] = payment.payment_mode.value if payment.payment_mode else None
                     payments_list.append(payment_dict)
                     
                     total_collected += float(payment.amount_paid)
                     
-                    mode = payment.payment_mode.value
-                    collection_by_mode[mode] = collection_by_mode.get(mode, 0) + float(payment.amount_paid)
+                    mode = payment.payment_mode.value if payment.payment_mode else 'Unknown'
+                    collection_by_mode[mode] = round(collection_by_mode.get(mode, 0) + float(payment.amount_paid), 2)
                 
                 return {
-                    'total_collected': total_collected,
+                    'total_collected': round(total_collected, 2),
                     'total_transactions': len(payments_list),
                     'collection_by_mode': collection_by_mode,
                     'payments': payments_list

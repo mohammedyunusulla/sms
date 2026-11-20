@@ -461,11 +461,22 @@ def get_fee_collection_report(skid):
         end_date = request.args.get('end_date')
         class_id = request.args.get('class_id')
         
-        if start_date:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
-        if end_date:
-            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
-        
+        # a bad date used to escape as a 500
+        try:
+            if start_date:
+                start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+            if end_date:
+                end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+        except ValueError:
+            raise ValueError("Dates must be in YYYY-MM-DD format")
+        if start_date and end_date and start_date > end_date:
+            raise ValueError("'From' date can't be after 'To' date")
+        if class_id:
+            try:
+                class_id = int(class_id)
+            except ValueError:
+                raise ValueError("Invalid class")
+
         result = FeeService.get_fee_collection_report(
             skid, start_date, end_date, class_id
         )
@@ -475,6 +486,8 @@ def get_fee_collection_report(skid):
             'status': 'success',
             'code': 200
         }), 200
+    except ValueError as ve:
+        return jsonify({'message': str(ve), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': str(e), 'status': 'error', 'code': 500}), 500
 

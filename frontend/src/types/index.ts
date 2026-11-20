@@ -767,6 +767,32 @@ export interface IDefaulterRow {
     status: string;
 }
 
+export interface ICollectionPayment {
+    id: number;
+    receipt_number?: string | null;
+    payment_date: string;
+    amount_paid: number;
+    payment_mode?: string | null;
+    payment_mode_label?: string | null;
+    transaction_id?: string | null;
+    cheque_number?: string | null;
+    student_id: number;
+    student_name: string;
+    admission_number?: string | null;
+    class?: string | null;
+    section?: string | null;
+    fee_name?: string | null;
+    collected_by_name?: string | null;
+    remarks?: string | null;
+}
+
+export interface ICollectionReport {
+    total_collected: number;
+    total_transactions: number;
+    collection_by_mode: Record<string, number>;
+    payments: ICollectionPayment[];
+}
+
 export interface IDefaultersReport {
     as_of_date: string;
     total_defaulters: number;

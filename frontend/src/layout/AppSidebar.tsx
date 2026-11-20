@@ -197,6 +197,7 @@ const allMenuItems: NavItem[] = [
             { name: "Fee Structure", path: "/finance/fee-structure", pro: false },
             { name: "Fee Collection", path: "/finance/fee-collection", pro: false },
             { name: "Fee Defaulters", path: "/finance/defaulters", pro: false },
+            { name: "Collection Report", path: "/finance/collection-report", pro: false },
             { name: "Expenses", path: "/finance/expenses", pro: false },
             { name: "Salary Setup", path: "/finance/salary-setup", pro: false },
             { name: "Salary Payments", path: "/finance/salary-payments", pro: false },
