@@ -9,6 +9,7 @@
 
 import { getApiClient, getSchoolId } from '../api/client';
 import { ISubject, IMarks } from '../../types/index';
+import type { IProgressCard } from '../../types/index';
 
 // Common API response interface for type assertions
 interface ApiResponse<T = any> {
@@ -117,6 +118,13 @@ interface IProgressReport {
     overallGrade?: string;
     remarks?: string;
     generatedAt: string;
+}
+
+/** Every active student's report card for one exam in a section */
+export interface IBulkReportCards {
+    count: number;
+    cards: IProgressCard[];
+    skipped: { student_id: number; reason: string }[];
 }
 
 class AcademicsService {
@@ -641,12 +649,8 @@ class AcademicsService {
         return response.data || {};
     }
 
-    // Export class progress report
-    async exportClassReport(params: {
-        examId: string;
-        classId: string;
-        sectionId: string;
-    }): Promise<Blob> {
+    // Every active student's report card for one exam in a section (one call, for a single class PDF)
+    async fetchBulkReportCards(params: { examId: string; sectionId: string }): Promise<IBulkReportCards> {
         const api = getApiClient();
         const schoolId = getSchoolId();
 
@@ -654,17 +658,11 @@ class AcademicsService {
             throw new Error('School ID not found. Please log in again.');
         }
 
-        const response = await api.get(
-            `/progress-card/export/class/${schoolId}/${params.examId}`,
-            {
-                params: {
-                    class_id: params.classId,
-                    section_id: params.sectionId,
-                },
-                responseType: 'blob',
-            }
-        ) as unknown as Blob;
-        return response;
+        const response = await api.post(`/progress-card/bulk-generate/${schoolId}`, {
+            exam_type_id: params.examId,
+            section_id: params.sectionId,
+        }) as unknown as ApiResponse;
+        return (response.data as IBulkReportCards) || { count: 0, cards: [], skipped: [] };
     }
 
     // Fetch individual student progress card

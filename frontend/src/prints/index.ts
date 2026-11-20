@@ -21,7 +21,7 @@ export { generateExamTimetablePdf } from './examTimetableGenerator';
 export type { ExamTimetableReportData, ExamTimetableEntry } from './examTimetableGenerator';
 export { generateSeatingArrangementPdf } from './seatingArrangementGenerator';
 export type { SeatingArrangementReportData, SeatingPlanStudent, SeatingArrangementRoom } from './seatingArrangementGenerator';
-export { generateProgressCardPdf } from './progressCardReportGenerator';
+export { generateProgressCardPdf, generateProgressCardsPdf } from './progressCardReportGenerator';
 export { generateFeeReceiptPdf, generateFeeSummaryReceiptPdf } from './feeReceiptGenerator';
 export { generateAnnualProgressReportPdf } from './annualProgressReportGenerator';
 export type { FeeReceiptData, FeeFullSummaryData } from './feeReceiptGenerator';

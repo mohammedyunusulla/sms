@@ -46,27 +46,8 @@ def get_class_progress(skid, academic_year_id, exam_id):
         return jsonify({'message': str(e), 'status': 'error', 'code': 500}), 500
 
 
-# EXPORT CLASS REPORT
-@progress_card_bp.route('/export/class/<skid>/<int:exam_id>', methods=['GET'])
-@login_required(['TEACHER', 'SCHOOL_ADMIN'])
-def export_class_report(skid, exam_id):
-    """Export class progress as Excel"""
-    try:
-        class_id = request.args.get('class_id', type=int)
-        section_id = request.args.get('section_id', type=int)
-        
-        excel_file = ProgressCardService.export_class_report(
-            exam_id, class_id, section_id, skid
-        )
-        
-        return send_file(
-            excel_file,
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            as_attachment=True,
-            download_name=f'Class_Progress_{class_id}_{section_id}.xlsx'
-        )
-    except Exception as e:
-        return jsonify({'message': str(e), 'status': 'error', 'code': 500}), 500
+# Class progress Excel export is built in the browser from the class-progress data (Class Progress page);
+# the old /export/class route called a method that never existed and always returned 500.
 
 
 # BULK GENERATE REPORT CARDS
@@ -82,7 +63,7 @@ def bulk_generate_report_cards(skid):
     }
     """
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         result = ProgressCardService.bulk_generate_report_cards(data, skid)
         return jsonify({
             'message': f'Generated {result["count"]} report cards',
@@ -90,6 +71,8 @@ def bulk_generate_report_cards(skid):
             'status': 'success',
             'code': 200
         }), 200
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': str(e), 'status': 'error', 'code': 500}), 500
 

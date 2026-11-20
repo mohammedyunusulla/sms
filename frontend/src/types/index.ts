@@ -629,6 +629,7 @@ export interface IStudentProgress {
     percentage: number;
     grade: string;
     status: 'Pass' | 'Fail';
+    subject_marks?: { subject_id: number | string; marks: number; max_marks: number }[];
 }
 
 // ============================================

@@ -26,15 +26,12 @@ const gradeColor = (grade: string): string => {
 };
 
 /**
- * Generate Progress Card PDF
+ * One student's report card content (used for a single card and for a whole class in one PDF).
  */
-export const generateProgressCardPdf = async (
+const buildProgressCardContent = (
     data: IProgressCard,
-    schoolData: SchoolData,
-    action: PdfAction = 'download'
-): Promise<void> => {
-    await loadPdfFonts();
-
+    schoolData: SchoolData
+): { content: unknown[]; title: string; subtitle: string } => {
     const {
         student_name,
         roll_number,
@@ -336,6 +333,21 @@ export const generateProgressCardPdf = async (
         ]),
     ];
 
+    return { content, title, subtitle };
+};
+
+/**
+ * Generate Progress Card PDF
+ */
+export const generateProgressCardPdf = async (
+    data: IProgressCard,
+    schoolData: SchoolData,
+    action: PdfAction = 'download'
+): Promise<void> => {
+    await loadPdfFonts();
+    const { content, title, subtitle } = buildProgressCardContent(data, schoolData);
+    const { student_name, exam_name } = data;
+
     // ─── Document Definition ───
     const docDefinition: any = {
         pageSize: 'A4',
@@ -382,5 +394,41 @@ export const generateProgressCardPdf = async (
         pdfMake.createPdf(docDefinition).download(filename);
     } else {
         pdfMake.createPdf(docDefinition).open();
+    }
+};
+
+/**
+ * Every student's report card in one PDF, each starting on a new page.
+ */
+export const generateProgressCardsPdf = async (
+    cards: IProgressCard[],
+    schoolData: SchoolData,
+    action: PdfAction = 'download',
+    fileLabel = 'Class'
+): Promise<void> => {
+    if (!cards.length) return;
+    await loadPdfFonts();
+    const content: unknown[] = [];
+    cards.forEach((card, index) => {
+        const built = buildProgressCardContent(card, schoolData);
+        content.push({ stack: built.content, ...(index > 0 ? { pageBreak: 'before' } : {}) });
+    });
+    const docDefinition = {
+        pageSize: 'A4',
+        pageOrientation: 'portrait',
+        pageMargins: [30, 20, 30, 50],
+        footer: (currentPage: number, pageCount: number) => getReportFooter(currentPage, pageCount, schoolData?.generatedBy),
+        content,
+        styles: commonPdfStyles,
+        defaultStyle: { fontSize: 9, color: '#333333' },
+    };
+    const pdf = pdfMake.createPdf(docDefinition as unknown as Parameters<typeof pdfMake.createPdf>[0]);
+    if (action === 'print') {
+        pdf.print();
+    } else if (action === 'download') {
+        const exam = (cards[0].exam_name || 'Exam').replace(/\s+/g, '_');
+        pdf.download(`Report_Cards_${fileLabel.replace(/\s+/g, '_')}_${exam}.pdf`);
+    } else {
+        pdf.open();
     }
 };

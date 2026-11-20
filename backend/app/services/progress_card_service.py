@@ -206,6 +206,33 @@ class ProgressCardService:
             raise Exception(f"Failed to calculate class progress: {str(e)}")
     
     @staticmethod
+    def bulk_generate_report_cards(data, skid):
+        """
+        Report cards for every active student in a section for one exam, in roll-number order
+        (the route existed but this method didn't, so it always failed with a 500).
+        data: {exam_type_id (or exam_id), section_id}
+        """
+        exam_id = data.get('exam_type_id') or data.get('exam_id')
+        section_id = data.get('section_id')
+        if not exam_id or not section_id:
+            raise ValueError("exam_type_id and section_id are required")
+        with switch_to_school_db(skid) as tenant_session:
+            rows = tenant_session.query(Student.user_id, Student.roll_no).join(
+                SchoolUsers, Student.user_id == SchoolUsers.id
+            ).filter(
+                Student.section_id == int(section_id),
+                SchoolUsers.is_active.is_(True),
+            ).all()
+        rows.sort(key=lambda r: (r.roll_no is None, str(r.roll_no or '').zfill(8)))
+        cards, skipped = [], []
+        for row in rows:
+            try:
+                cards.append(ProgressCardService.calculate_progress_card(row.user_id, int(exam_id), skid))
+            except Exception as e:  # one student's problem shouldn't stop the whole class
+                skipped.append({'student_id': row.user_id, 'reason': str(e)})
+        return {'count': len(cards), 'cards': cards, 'skipped': skipped}
+
+    @staticmethod
     def _calculate_grade(percentage):
         """Calculate grade based on percentage"""
         if percentage >= 90:

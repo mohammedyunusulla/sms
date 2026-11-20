@@ -6,7 +6,10 @@
 import { FC, useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import toast from 'react-hot-toast';
-import { PageHeader, FormField, FormSelect, LoadingSpinner, EmptyState } from '../../components';
+import { PageHeader, FormField, FormSelect, LoadingSpinner, EmptyState, Button } from '../../components';
+import * as XLSX from 'xlsx';
+import { generateProgressCardsPdf } from '../../prints';
+import type { SchoolData } from '../../prints';
 import { ProgressStatCard, SubjectAnalysisTable, StudentProgressTable } from '../../components/academics';
 import { academicsService } from '../../services/modules/academicsService';
 import { IClassStatistics, ISubjectAnalysis, IStudentProgress } from '../../types/index';
@@ -146,6 +149,81 @@ const ClassProgress: FC = () => {
             }
         }
     }, [fetchClassProgressData]);
+
+    // ─── Exports ───
+    const [downloadingCards, setDownloadingCards] = useState(false);
+    const sectionLabel = (): string => {
+        const cls = isSchoolAdmin
+            ? classes.find((c) => String(c.id) === String(selectedClass))?.class_name
+            : classInfo?.class_name;
+        const sec = isSchoolAdmin
+            ? sections.find((s) => String(s.id) === String(selectedSection))?.section_name
+            : classInfo?.section_name;
+        return [cls, sec].filter(Boolean).join(' ') || 'Class';
+    };
+    const examLabel = (): string => {
+        const exam = examTypes.find((e) => String(e.id) === String(selectedExam));
+        return exam?.exam_name || exam?.name || 'Exam';
+    };
+
+    // Excel built in the browser from the data on screen (the old server export never existed)
+    const handleExportExcel = () => {
+        if (!studentProgress.length) return;
+        const subjectName = (id: number | string) =>
+            subjectAnalysis.find((s) => String(s.subject_id) === String(id))?.subject_name || `Subject ${id}`;
+        const rows = [...studentProgress]
+            .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0))
+            .map((s) => {
+                const row: Record<string, string | number> = {
+                    Rank: s.rank ?? '',
+                    'Roll No': s.roll_number ?? '',
+                    Student: s.student_name,
+                };
+                (s.subject_marks || []).forEach((m) => {
+                    row[`${subjectName(m.subject_id)} (/${m.max_marks})`] = m.marks;
+                });
+                row.Total = s.total_marks;
+                row['Max Marks'] = s.max_marks;
+                row['Percentage'] = Number(Number(s.percentage).toFixed(2));
+                row.Grade = s.grade;
+                row.Result = s.status;
+                return row;
+            });
+        const sheet = XLSX.utils.json_to_sheet(rows);
+        const book = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(book, sheet, 'Class Progress');
+        XLSX.writeFile(book, `Class_Progress_${sectionLabel().replace(/\s+/g, '_')}_${examLabel().replace(/\s+/g, '_')}.xlsx`);
+    };
+
+    // Every active student's report card in one PDF
+    const handleDownloadAllCards = async () => {
+        const sectionId = isSchoolAdmin ? selectedSection : classInfo?.section_id;
+        if (!sectionId || !selectedExam) return;
+        try {
+            setDownloadingCards(true);
+            const result = await academicsService.fetchBulkReportCards({ examId: String(selectedExam), sectionId: String(sectionId) });
+            if (!result.cards.length) {
+                toast.error('No report cards to download for this section');
+                return;
+            }
+            const authUser = useAuthStore.getState().user;
+            const schoolData: SchoolData = {
+                schoolName: authUser?.school_name || 'School Name',
+                schoolAddress: '',
+                schoolPhone: '',
+                schoolEmail: authUser?.email || '',
+                logo: null,
+                generatedBy: authUser?.full_name || authUser?.name || 'System',
+            };
+            await generateProgressCardsPdf(result.cards, schoolData, 'download', sectionLabel());
+            toast.success(`${result.cards.length} report card${result.cards.length === 1 ? '' : 's'} downloaded`
+                + (result.skipped.length ? ` (${result.skipped.length} skipped)` : ''));
+        } catch (error) {
+            toast.error((error as Error).message || 'Failed to download report cards');
+        } finally {
+            setDownloadingCards(false);
+        }
+    };
 
     const handleViewProgressCard = (studentId: string) => {
         // Navigate to single exam progress card
@@ -288,9 +366,19 @@ const ClassProgress: FC = () => {
                     {/* Student-wise Progress */}
                     {studentProgress.length > 0 && (
                         <div>
-                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                                👨‍🎓 Student-wise Progress
-                            </h3>
+                            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                    👨‍🎓 Student-wise Progress
+                                </h3>
+                                <div className="flex flex-wrap gap-2">
+                                    <Button variant="outline" size="sm" onClick={handleExportExcel}>
+                                        Export to Excel
+                                    </Button>
+                                    <Button variant="primary" size="sm" onClick={handleDownloadAllCards} isLoading={downloadingCards} loadingText="Preparing...">
+                                        Download all report cards (PDF)
+                                    </Button>
+                                </div>
+                            </div>
                             <StudentProgressTable
                                 data={studentProgress}
                                 loading={loading}
