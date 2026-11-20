@@ -62,7 +62,8 @@ class TeacherService:
 
                 tenant_session.add(Teacher(
                     user_id=school_user_id,
-                    employee_id=data.get('employee_id'),
+                    # from main (bc9a858): a default when none is sent (the column is required)
+                    employee_id=data.get('employee_id') or f"TCH-{skid[:6].upper()}-{school_user_id}",
                     designation=data.get('designation'),
                     date_of_joining=data.get('date_of_joining'),
                     qualifications=data.get('qualifications'),
