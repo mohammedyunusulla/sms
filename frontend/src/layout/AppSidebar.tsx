@@ -70,6 +70,12 @@ const allMenuItems: NavItem[] = [
         name: "My Attendance",
         path: "/attendance/my",
     },
+    // Exam results – Student (own, published exams)
+    {
+        icon: <PieChartIcon />,
+        name: "My Results",
+        path: "/academics/my-results",
+    },
     // Assignments – Teacher / Admin
     {
         icon: <ListIcon />,
@@ -111,6 +117,12 @@ const allMenuItems: NavItem[] = [
         icon: <CalenderIcon />,
         name: "My Child's Attendance",
         path: "/parent/attendance",
+    },
+    // Exam results – Parent (linked child, published exams)
+    {
+        icon: <PieChartIcon />,
+        name: "My Child's Results",
+        path: "/parent/results",
     },
     // AI Homework Tracking (Teacher/Student/Admin)
     {

@@ -9,4 +9,5 @@ export { default as MarksEntry } from './MarksEntry';
 export { default as ClassProgress } from './ClassProgress';
 export { default as ProgressCardView } from './ProgressCardView';
 export { default as AnnualProgressReport } from './AnnualProgressReport';
+export { MyResults, ParentResults } from './MyResults';
 export { default as TeacherSubjectAssignment } from './TeacherSubjectAssignment';

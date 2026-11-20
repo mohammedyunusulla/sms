@@ -105,6 +105,8 @@ const MarksEntry = lazy(() => import("./pages/AcademicsManagement").then(m => ({
 const ClassProgress = lazy(() => import("./pages/AcademicsManagement").then(m => ({ default: m.ClassProgress })));
 const ProgressCardView = lazy(() => import("./pages/AcademicsManagement").then(m => ({ default: m.ProgressCardView })));
 const AnnualProgressReport = lazy(() => import("./pages/AcademicsManagement").then(m => ({ default: m.AnnualProgressReport })));
+const MyResults = lazy(() => import("./pages/AcademicsManagement").then(m => ({ default: m.MyResults })));
+const ParentResults = lazy(() => import("./pages/AcademicsManagement").then(m => ({ default: m.ParentResults })));
 const TeacherSubjectAssignment = lazy(() => import("./pages/AcademicsManagement").then(m => ({ default: m.TeacherSubjectAssignment })));
 
 // Lazy loaded Finance Management
@@ -297,6 +299,9 @@ function AppContent() {
                         {/* students / parents: no permission needed (each page shows only its own student) */}
                         <Route path="/attendance/my" element={<MyAttendance />} />
                         <Route path="/parent/attendance" element={<ParentAttendance />} />
+                        {/* published exam results: every student / parent (backend limits to own child + published exams) */}
+                        <Route path="/academics/my-results" element={<MyResults />} />
+                        <Route path="/parent/results" element={<ParentResults />} />
 
                         {/* Announcements Routes */}
                         <Route path="/announcements" element={guarded('/announcements', <AnnouncementList />)} />

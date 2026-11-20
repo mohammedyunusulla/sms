@@ -53,6 +53,28 @@ class ExamService {
 
 
     // Get list of exams with optional filtering 
+    /** Exams whose results are published (visible to students/parents) for a year */
+    async listPublishedResults(academicYearId: number | string): Promise<{ exam_type_id: number; published_at: string }[]> {
+        const api = getApiClient();
+        const schoolId = getSchoolId();
+        if (!schoolId) throw new Error('School ID not found. Please log in again.');
+        const response = (await api.get(`${this.baseUrl}/results-published/${schoolId}`, {
+            params: { academic_year_id: academicYearId },
+        })) as unknown as { data?: { exam_type_id: number; published_at: string }[] };
+        return response?.data || [];
+    }
+
+    /** Publish (or hide again) an exam's results for students and parents */
+    async setResultsPublished(examTypeId: number, academicYearId: number | string, published: boolean): Promise<unknown> {
+        const api = getApiClient();
+        const schoolId = getSchoolId();
+        if (!schoolId) throw new Error('School ID not found. Please log in again.');
+        return api.post(`${this.baseUrl}/results-publish/${schoolId}/${examTypeId}`, {
+            academic_year_id: Number(academicYearId),
+            published,
+        });
+    }
+
     async list(): Promise<IExamListResponse> {
         const api = getApiClient();
         const schoolId = getSchoolId();

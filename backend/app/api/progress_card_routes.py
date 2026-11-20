@@ -2,6 +2,14 @@ from flask import Blueprint, request, jsonify
 from app.decorators import login_required
 from app.decorators.auth import student_access_required
 from app.services.progress_card_service import ProgressCardService
+from app.services.exam_results_service import RESULT_LIMITED_ROLES, published_exam_ids, current_year_id
+from app.utils.db_manager import switch_to_school_db
+
+
+def _results_limited():
+    """Students and parents only see published results."""
+    role = request.current_user.role
+    return (role.value if hasattr(role, 'value') else str(role)) in RESULT_LIMITED_ROLES
 
 progress_card_bp = Blueprint('progress-card', __name__)
 
@@ -84,6 +92,12 @@ def bulk_generate_report_cards(skid):
 def view_progress_card(skid, student_id, exam_id):
     """View individual student's progress card"""
     try:
+        if _results_limited():
+            with switch_to_school_db(skid) as tenant_session:
+                year_id = current_year_id(tenant_session)
+                published = year_id is not None and exam_id in published_exam_ids(tenant_session, year_id)
+            if not published:
+                return jsonify({'message': "This exam's results haven't been published yet", 'status': 'error', 'code': 403}), 403
         progress_card = ProgressCardService.calculate_progress_card(
             student_id, exam_id, skid
         )
@@ -115,6 +129,13 @@ def view_annual_report(skid, student_id):
         annual_report = ProgressCardService.get_student_annual_report(
             student_id, academic_year_id, skid
         )
+        if _results_limited():
+            # only exams the school has published for this year
+            with switch_to_school_db(skid) as tenant_session:
+                published = published_exam_ids(tenant_session, academic_year_id)
+            annual_report['exam_results'] = [
+                r for r in annual_report.get('exam_results', []) if int(r.get('exam_id')) in published
+            ]
 
         return jsonify({
             'data': annual_report,

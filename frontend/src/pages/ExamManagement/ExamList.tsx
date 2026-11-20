@@ -12,6 +12,7 @@ import {
 } from '@/components';
 import { examService } from '@/services/modules/examService';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useAuthStore } from '@/stores/authStore';
 import { Permission } from '@/config/permissions';
 
 interface IExamConfig {
@@ -25,6 +26,13 @@ interface IExamConfig {
 const ExamList: FC = () => {
     const navigate = useNavigate();
     const { hasPermission } = usePermissions();
+    const user = useAuthStore((s) => s.user);
+    const academicYear = user?.current_academic_year;
+    // Publishing results is for the school's admins (the backend allows School Admin and Principal)
+    const canPublish = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'].includes(String(user?.role || ''));
+    const [published, setPublished] = useState<Record<number, string>>({});
+    const [publishTarget, setPublishTarget] = useState<IExamConfig | null>(null);
+    const [publishing, setPublishing] = useState(false);
 
     // State
     const [exams, setExams] = useState<IExamConfig[]>([]);
@@ -38,6 +46,38 @@ const ExamList: FC = () => {
     useEffect(() => {
         fetchExams();
     }, []);
+
+    const fetchPublished = async () => {
+        if (!academicYear?.id) return;
+        try {
+            const rows = await examService.listPublishedResults(academicYear.id);
+            setPublished(Object.fromEntries(rows.map((r) => [r.exam_type_id, r.published_at])));
+        } catch {
+            setPublished({});
+        }
+    };
+    useEffect(() => {
+        fetchPublished();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [academicYear?.id]);
+
+    const confirmPublishToggle = async () => {
+        if (!publishTarget || !academicYear?.id) return;
+        const publish = !published[publishTarget.id];
+        try {
+            setPublishing(true);
+            await examService.setResultsPublished(publishTarget.id, academicYear.id, publish);
+            toast.success(publish
+                ? `${publishTarget.exam_name} results are now visible to students and parents`
+                : `${publishTarget.exam_name} results are hidden from students and parents`);
+            await fetchPublished();
+        } catch (err) {
+            toast.error((err as Error).message || 'Failed to update results');
+        } finally {
+            setPublishing(false);
+            setPublishTarget(null);
+        }
+    };
 
     const fetchExams = async () => {
         setLoading(true);
@@ -151,6 +191,24 @@ const ExamList: FC = () => {
                     #{value}
                 </div>
             )
+        },
+        {
+            key: 'id',
+            label: `Results${academicYear?.year_name ? ` (${academicYear.year_name})` : ''}`,
+            render: (_: number, row: IExamConfig) => (
+                <div data-testid={`results-${row.id}`}>
+                    {published[row.id] ? (
+                        <Badge variant="success" children="Published" />
+                    ) : (
+                        <Badge variant="secondary" children="Not published" />
+                    )}
+                    {published[row.id] && (
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            {new Date(published[row.id]).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </p>
+                    )}
+                </div>
+            )
         }
     ];
 
@@ -211,6 +269,15 @@ const ExamList: FC = () => {
                         }}
                         actions={(row: IExamConfig) => (
                             <div className="flex gap-2">
+                                {canPublish && academicYear?.id && (
+                                    <Button
+                                        size="sm"
+                                        variant={published[row.id] ? 'secondary' : 'success'}
+                                        onClick={() => setPublishTarget(row)}
+                                    >
+                                        {published[row.id] ? 'Unpublish results' : 'Publish results'}
+                                    </Button>
+                                )}
                                 {hasPermission(Permission.MANAGE_EXAMS) && (
                                     <Button
                                         size="sm"
@@ -252,6 +319,21 @@ const ExamList: FC = () => {
             )}
 
             {/* Delete Confirmation Dialog */}
+            <ConfirmDialog
+                isOpen={!!publishTarget}
+                type={publishTarget && published[publishTarget.id] ? 'warning' : 'success'}
+                title={publishTarget && published[publishTarget.id] ? 'Unpublish results' : 'Publish results'}
+                message={publishTarget
+                    ? (published[publishTarget.id]
+                        ? `Hide ${publishTarget.exam_name} results (${academicYear?.year_name || 'this year'}) from students and parents again?`
+                        : `Show ${publishTarget.exam_name} results (${academicYear?.year_name || 'this year'}) to students and parents? They will see each subject's marks, grade, rank and can download the report card. Make sure all marks are entered first.`)
+                    : ''}
+                confirmText={publishTarget && published[publishTarget.id] ? 'Unpublish' : 'Publish'}
+                isLoading={publishing}
+                onConfirm={confirmPublishToggle}
+                onCancel={() => setPublishTarget(null)}
+            />
+
             <ConfirmDialog
                 isOpen={showDeleteConfirm}
                 type="danger"

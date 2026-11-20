@@ -1,6 +1,8 @@
 /**
- * Annual Progress Report Page
- * Displays all exam results for a specific student with filtering and print capability
+ * Annual Progress Report
+ * All exam results for one student, with an exam filter and print/download.
+ * Staff open it from the student list (AnnualProgressReport); students and parents get the same view
+ * (AnnualResultsView with forFamily), which the backend limits to exams whose results are published.
  */
 
 import { FC, useEffect, useState, useCallback } from 'react';
@@ -9,7 +11,7 @@ import toast from 'react-hot-toast';
 import { PageHeader, FormField, FormSelect, LoadingSpinner, EmptyState, PrintActions } from '../../components';
 import { academicsService } from '../../services/modules/academicsService';
 import { useAuthStore } from '../../stores/authStore';
-import { generateAnnualProgressReportPdf } from '../../prints';
+import { generateAnnualProgressReportPdf, generateProgressCardPdf } from '../../prints';
 import type { AnnualReportData, SchoolData, PdfAction } from '../../prints';
 
 interface ExamResult {
@@ -28,9 +30,9 @@ interface ExamResult {
     }>;
 }
 
-const AnnualProgressReport: FC = () => {
-    const { studentId } = useParams<{ studentId: string }>();
+export const AnnualResultsView: FC<{ studentId?: string; forFamily?: boolean }> = ({ studentId, forFamily = false }) => {
     const { user } = useAuthStore();
+    const [downloading, setDownloading] = useState<string | null>(null);
     const [studentInfo, setStudentInfo] = useState<any>(null);
     const [examTypes, setExamTypes] = useState<any[]>([]);
     const [examResults, setExamResults] = useState<ExamResult[]>([]);
@@ -72,9 +74,29 @@ const AnnualProgressReport: FC = () => {
     }, [studentId, user?.current_academic_year?.id]);
 
     useEffect(() => {
-        fetchExamTypes();
+        if (!forFamily) fetchExamTypes(); // students/parents: the filter lists only their published exams
         fetchAnnualReport();
-    }, [fetchExamTypes, fetchAnnualReport]);
+    }, [fetchExamTypes, fetchAnnualReport, forFamily]);
+
+    const filterOptions = forFamily
+        ? examResults.map((r) => ({ label: r.exam_name, value: r.exam_id }))
+        : examTypes.map((exam) => ({ label: exam.exam_name || exam.name, value: exam.id }));
+
+    // One exam's report card as a PDF
+    const downloadReportCard = async (examId: string) => {
+        if (!studentId) return;
+        try {
+            setDownloading(examId);
+            const card = await academicsService.fetchProgressCard(studentId, examId);
+            if (!card) throw new Error('Report card not available');
+            await generateProgressCardPdf(card, getSchoolData(), 'download');
+            toast.success('Report card downloaded');
+        } catch (error) {
+            toast.error((error as Error).message || 'Failed to download the report card');
+        } finally {
+            setDownloading(null);
+        }
+    };
 
     // Filter results when exam filter changes
     useEffect(() => {
@@ -124,22 +146,8 @@ const AnnualProgressReport: FC = () => {
         }
     };
 
-    const breadcrumbs = [
-        { label: 'Dashboard', href: '/dashboard' },
-        { label: 'Students', href: '/students' },
-        { label: 'Academics', href: '/academics' },
-        { label: 'Annual Report', href: '#' },
-    ];
-
     return (
-        <div className="space-y-6">
-            {/* Page Header */}
-            <PageHeader
-                title="Annual Progress Report"
-                subtitle={studentInfo ? `${studentInfo.student_name} - ${studentInfo.class_name} ${studentInfo.section_name}` : 'Loading...'}
-                breadcrumbs={breadcrumbs}
-            />
-
+        <div className="space-y-6" data-testid="annual-results">
             {/* Loading State */}
             {loading && <LoadingSpinner message="Loading annual report..." fullHeight />}
 
@@ -153,13 +161,7 @@ const AnnualProgressReport: FC = () => {
                                     <FormSelect
                                         value={selectedExamFilter}
                                         onChange={(e) => setSelectedExamFilter(e.target.value)}
-                                        options={[
-                                            { label: 'All Exams', value: 'ALL' },
-                                            ...examTypes.map((exam) => ({
-                                                label: exam.exam_name || exam.name,
-                                                value: exam.id,
-                                            }))
-                                        ]}
+                                        options={[{ label: 'All Exams', value: 'ALL' }, ...filterOptions]}
                                     />
                                 </FormField>
                             </div>
@@ -208,9 +210,17 @@ const AnnualProgressReport: FC = () => {
                                 <div key={result.exam_id} className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                                     {/* Exam Header */}
                                     <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4">
-                                        <div className="flex justify-between items-center text-white">
+                                        <div className="flex flex-wrap justify-between items-center gap-3 text-white">
                                             <div>
                                                 <h3 className="text-lg font-semibold">{result.exam_name}</h3>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => downloadReportCard(String(result.exam_id))}
+                                                    disabled={downloading === String(result.exam_id)}
+                                                    className="mt-1 rounded border border-white/60 px-2 py-0.5 text-xs hover:bg-white/10 disabled:opacity-60"
+                                                >
+                                                    {downloading === String(result.exam_id) ? 'Preparing…' : 'Download report card'}
+                                                </button>
                                             </div>
                                             <div className="text-right">
                                                 <p className="text-2xl font-bold">{result.percentage.toFixed(2)}%</p>
@@ -267,11 +277,32 @@ const AnnualProgressReport: FC = () => {
                         <EmptyState
                             icon="📊"
                             title="No Exam Results"
-                            description="No exam results available for this student yet."
+                            description={forFamily
+                                ? "No results have been published yet. They appear here once the school publishes an exam's results."
+                                : 'No exam results available for this student yet.'}
                         />
                     )}
                 </>
             )}
+        </div>
+    );
+};
+
+// Staff page: opened from the student list
+const AnnualProgressReport: FC = () => {
+    const { studentId } = useParams<{ studentId: string }>();
+    return (
+        <div className="space-y-6">
+            <PageHeader
+                title="Annual Progress Report"
+                subtitle="All exam results for this student"
+                breadcrumbs={[
+                    { label: 'Dashboard', href: '/dashboard' },
+                    { label: 'Students', href: '/students' },
+                    { label: 'Annual Report', href: '#' },
+                ]}
+            />
+            <AnnualResultsView studentId={studentId} />
         </div>
     );
 };

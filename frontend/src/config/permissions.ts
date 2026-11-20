@@ -305,6 +305,9 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, SidebarGroupPermissionConfig
   // Own / child attendance: every student and parent (no permission, by choice)
   'My Attendance': { groupPermissions: [], itemPermissions: {}, roles: ['STUDENT'] },
   "My Child's Attendance": { groupPermissions: [], itemPermissions: {}, roles: ['PARENT'] },
+  // Published exam results: every student and parent (no permission, by choice)
+  'My Results': { groupPermissions: [], itemPermissions: {}, roles: ['STUDENT'] },
+  "My Child's Results": { groupPermissions: [], itemPermissions: {}, roles: ['PARENT'] },
   'My Timetable': {
     groupPermissions: [Permission.VIEW_MY_TIMETABLE],
     itemPermissions: {

@@ -481,3 +481,45 @@ def get_student_exam_timetable(skid, student_id):
     except Exception as e:
         return jsonify({'message': f'Failed to get student exam timetable: {str(e)}', 'status': 'error', 'code': 500}), 500
 
+
+
+# ==================== RESULTS PUBLISHING ====================
+# Students and parents see an exam's marks only after the school publishes them for that year.
+from app.services.exam_results_service import ExamResultsService  # noqa: E402
+
+
+@exam_bp.route('/results-published/<skid>', methods=['GET'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'])
+def list_published_results(skid):
+    """Which exams' results are published for a year. Query: academic_year_id (required)"""
+    academic_year_id = request.args.get('academic_year_id', type=int)
+    if not academic_year_id:
+        return jsonify({'message': 'academic_year_id is required', 'status': 'error', 'code': 400}), 400
+    try:
+        data = ExamResultsService.list_publications(skid, academic_year_id)
+        return jsonify({'data': data, 'status': 'success', 'code': 200}), 200
+    except Exception as e:
+        return jsonify({'message': f'Failed to load published results: {str(e)}', 'status': 'error', 'code': 500}), 500
+
+
+@exam_bp.route('/results-publish/<skid>/<int:exam_type_id>', methods=['POST'])
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'])
+def publish_results(skid, exam_type_id):
+    """Publish or unpublish an exam's results. Body: { academic_year_id, published: true|false }"""
+    data = request.get_json() or {}
+    try:
+        academic_year_id = int(data.get('academic_year_id') or 0)
+        if not academic_year_id:
+            raise ValueError('academic_year_id is required')
+        if not isinstance(data.get('published'), bool):
+            raise ValueError('published must be true or false')
+        result = ExamResultsService.set_published(
+            skid, exam_type_id, academic_year_id, data['published'],
+            getattr(request.current_user, 'school_user_id', None),
+        )
+        msg = 'Results published' if data['published'] else 'Results hidden from students and parents'
+        return jsonify({'message': msg, 'data': result, 'status': 'success', 'code': 200}), 200
+    except (ValueError, TypeError) as ve:
+        return jsonify({'message': str(ve), 'status': 'error', 'code': 400}), 400
+    except Exception as e:
+        return jsonify({'message': f'Failed to update results: {str(e)}', 'status': 'error', 'code': 500}), 500
