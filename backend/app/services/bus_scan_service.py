@@ -45,13 +45,42 @@ class BusScanService:
             location         (str, optional)
         """
         with switch_to_school_db(skid) as session:
+            try:
+                student_id = int(data['student_user_id'])
+            except (TypeError, ValueError):
+                raise ValueError("Invalid student")
+            # Only active students can be scanned (a teacher's or anyone else's id used to be accepted)
+            student = (
+                session.query(Student, SchoolUsers)
+                .join(SchoolUsers, SchoolUsers.id == Student.user_id)
+                .filter(Student.user_id == student_id)
+                .first()
+            )
+            if not student or not student[1].is_active:
+                raise ValueError("This isn't an active student of this school")
+
+            # Check-ins and check-outs must alternate (a student could be checked out twice)
+            now = datetime.now(timezone(timedelta(hours=5, minutes=30))).replace(tzinfo=None)
+            last = (
+                session.query(BusScan)
+                .filter(BusScan.student_user_id == student_id, cast(BusScan.scanned_at, Date) == now.date())
+                .order_by(BusScan.scanned_at.desc(), BusScan.id.desc())
+                .first()
+            )
+            last_type = last.scan_type.value if last and hasattr(last.scan_type, 'value') else (last.scan_type if last else None)
+            name = student[1].full_name
+            if data['scan_type'] == 'CHECK_IN' and last_type == 'CHECK_IN':
+                raise ValueError(f"{name} is already on the bus (checked in at {last.scanned_at.strftime('%H:%M')})")
+            if data['scan_type'] == 'CHECK_OUT' and last_type != 'CHECK_IN':
+                raise ValueError(f"{name} hasn't boarded the bus" + (" since the last check-out" if last_type == 'CHECK_OUT' else " today"))
+
             record = BusScan(
-                student_user_id=data['student_user_id'],
+                student_user_id=student_id,
                 scan_type=BusScanType(data['scan_type']),
                 scanned_by_user_id=data.get('scanned_by'),
                 academic_year_id=data.get('academic_year_id'),
                 location=data.get('location'),
-                scanned_at=datetime.now(timezone(timedelta(hours=5, minutes=30))).replace(tzinfo=None),
+                scanned_at=now,
             )
             session.add(record)
             session.commit()
@@ -122,16 +151,20 @@ class BusScanService:
         try:
             payload = json.loads(qr_data)
         except (json.JSONDecodeError, TypeError):
-            raise ValueError("Invalid QR code format")
+            raise ValueError("Invalid QR code: this isn't a student card")
+        if not isinstance(payload, dict):
+            raise ValueError("Invalid QR code: this isn't a student card")
 
         if payload.get('school') != skid:
-            raise ValueError("QR code does not belong to this school")
+            raise ValueError("This QR code belongs to another school")
 
         student_id = payload.get('student_id')
         if not student_id:
-            raise ValueError("QR code missing student_id")
-
-        return int(student_id)
+            raise ValueError("Invalid QR code: no student on it")
+        try:
+            return int(student_id)
+        except (TypeError, ValueError):
+            raise ValueError("Invalid QR code: no student on it")
 
 
 def search_students_for_bus(skid, query):

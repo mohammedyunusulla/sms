@@ -25,7 +25,10 @@ def record_scan(skid):
     # Attach scanned_by from the authenticated user's school_user_id
     data['scanned_by'] = request.current_user.school_user_id
 
-    result = BusScanService.record_scan(skid, data)
+    try:
+        result = BusScanService.record_scan(skid, data)
+    except ValueError as e:  # not an active student / already on the bus / hasn't boarded
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     return jsonify({'message': 'Scan recorded', 'data': result}), 201
 
 
@@ -43,21 +46,25 @@ def scan_qr(skid):
     if scan_type not in ('CHECK_IN', 'CHECK_OUT'):
         return jsonify({'message': 'scan_type must be CHECK_IN or CHECK_OUT'}), 400
 
-    student_user_id = BusScanService.lookup_student_by_qr(skid, qr_data)
-
-    scan_payload = {
-        'student_user_id': student_user_id,
-        'scan_type': scan_type,
-        'scanned_by': request.current_user.school_user_id,
-        'academic_year_id': data.get('academic_year_id'),
-        'location': data.get('location'),
-    }
-    result = BusScanService.record_scan(skid, scan_payload)
+    # A bad / foreign QR used to escape as a 500 (debugger page); every refusal is now a clear 400
+    try:
+        student_user_id = BusScanService.lookup_student_by_qr(skid, qr_data)
+        scan_payload = {
+            'student_user_id': student_user_id,
+            'scan_type': scan_type,
+            'scanned_by': request.current_user.school_user_id,
+            'academic_year_id': data.get('academic_year_id'),
+            'location': data.get('location'),
+        }
+        result = BusScanService.record_scan(skid, scan_payload)
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     return jsonify({'message': 'Scan recorded', 'student_user_id': student_user_id, 'data': result}), 201
 
 
+# School-wide lists: not for parents (they see their own child's history via /student/<id>)
 @bus_scan_bp.route('/today/<skid>', methods=['GET'])
-@login_required(allowed_roles=['SCHOOL_ADMIN', 'PRINCIPAL', 'BUS_STAFF', 'PARENT', 'TEACHER'])
+@login_required(allowed_roles=['SCHOOL_ADMIN', 'PRINCIPAL', 'BUS_STAFF', 'TEACHER'])
 def get_today(skid):
     """Get all bus scan records for a given date (defaults to today)."""
     academic_year_id = request.args.get('academic_year_id', type=int)
@@ -73,7 +80,7 @@ def get_today(skid):
 
 
 @bus_scan_bp.route('/status/<skid>', methods=['GET'])
-@login_required(allowed_roles=['SCHOOL_ADMIN', 'PRINCIPAL', 'BUS_STAFF', 'PARENT', 'TEACHER'])
+@login_required(allowed_roles=['SCHOOL_ADMIN', 'PRINCIPAL', 'BUS_STAFF', 'TEACHER'])
 def get_status(skid):
     """Get current bus status — last scan per student today."""
     academic_year_id = request.args.get('academic_year_id', type=int)
