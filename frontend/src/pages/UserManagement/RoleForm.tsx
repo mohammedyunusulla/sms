@@ -76,6 +76,7 @@ const PERMISSION_GROUPS = [
             { key: Permission.MANAGE_FEES, label: 'Manage Fee Structure & Collection' },
             { key: Permission.VIEW_EXPENSES, label: 'View Expenses' },
             { key: Permission.MANAGE_EXPENSES, label: 'Create / Edit Expenses' },
+            { key: Permission.MANAGE_FEE_SETTINGS, label: 'Fee Settings & Corrections (structures, installments, discounts, cancel payments)' },
             { key: Permission.MANAGE_SALARIES, label: 'Salary Setup & Payments' },
         ],
     },

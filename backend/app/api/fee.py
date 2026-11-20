@@ -10,7 +10,7 @@ fee_bp = Blueprint('fee', __name__)
 
 # CREATE FEE STRUCTURE
 @fee_bp.route('/structure/create/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fees')
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fee_settings')
 @log_actions('CREATE_FEE_STRUCTURE')
 def create_fee_structure(skid):
     """
@@ -68,7 +68,7 @@ def get_fee_structures(skid):
 
 # UPDATE FEE STRUCTURE
 @fee_bp.route('/structure/update/<skid>/<int:fee_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fees')
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fee_settings')
 @log_actions('UPDATE_FEE_STRUCTURE')
 def update_fee_structure(skid, fee_id):
     """Update fee structure"""  
@@ -95,7 +95,7 @@ def update_fee_structure(skid, fee_id):
 
 # BULK ASSIGN FEES TO CLASS
 @fee_bp.route('/assign/class/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fees')
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fee_settings')
 @log_actions('BULK_ASSIGN_FEES')
 def bulk_assign_fees_to_class(skid):
     """
@@ -175,7 +175,7 @@ def record_payment(skid):
 
 # CANCEL PAYMENT
 @fee_bp.route('/payment/cancel/<skid>/<int:payment_id>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fees')
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fee_settings')
 @log_actions('CANCEL_FEE_PAYMENT')
 def cancel_payment(skid, payment_id):
     """
@@ -249,7 +249,7 @@ def record_full_remaining_payment(skid):
 
 # CREATE INSTALLMENTS
 @fee_bp.route('/installments/create/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fees')
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fee_settings')
 @log_actions('CREATE_FEE_INSTALLMENTS')
 def create_installments(skid):
     """
@@ -297,7 +297,7 @@ def create_installments(skid):
 
 # AUTO-GENERATE INSTALLMENTS
 @fee_bp.route('/installments/auto-generate/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fees')
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fee_settings')
 @log_actions('AUTO_GENERATE_INSTALLMENTS')
 def auto_generate_installments(skid):
     """
@@ -337,7 +337,7 @@ def auto_generate_installments(skid):
 # RECURRING INSTALLMENTS
 # skid is in the URL like every other route, so login_required checks the user belongs to that school
 @fee_bp.route('/installments/auto-generate-recurring/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fees')
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fee_settings')
 def auto_generate_recurring_installments(skid):
     """Auto-generate installments for recurring fees. Body: {student_fee_id, preview?}"""
     try:
@@ -524,7 +524,7 @@ def get_defaulters_list(skid):
 
 # APPLY DISCOUNT
 @fee_bp.route('/discount/apply/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fees')
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fee_settings')
 @log_actions('APPLY_FEE_DISCOUNT')
 def apply_discount(skid):
     """
@@ -566,7 +566,7 @@ def apply_discount(skid):
 
 # DELETE SINGLE FEE STRUCTURE
 @fee_bp.route('/structure/delete/<skid>/<int:fee_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fees')
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fee_settings')
 @log_actions('DELETE_FEE_STRUCTURE')
 def delete_single_fee_structure(skid, fee_id):
     """
@@ -590,7 +590,7 @@ def delete_single_fee_structure(skid, fee_id):
 
 # DELETE ALL FEE STRUCTURES FOR A CLASS
 @fee_bp.route('/structure/delete-class/<skid>/<int:class_id>/<academic_year_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fees')
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fee_settings')
 @log_actions('DELETE_CLASS_FEE_STRUCTURES')
 def delete_class_fee_structures(skid, class_id, academic_year_id):
     """

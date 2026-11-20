@@ -49,8 +49,10 @@ const defaultPaymentData: IPaymentData = {
 const FeeCollection: FC = () => {
     const { user } = useAuthStore();
     const academicYearId = user?.current_academic_year?.id;
-    // Cancelling payments, discounts and installment plans are admin-only on the server; a fee clerk only collects
-    const { isFullAccess, hasPermission } = usePermissions();
+    // Cancelling payments, discounts and installment plans need the "Fee Settings & Corrections" tick (the server checks
+    // the same tick); a fee clerk only collects
+    const { hasPermission } = usePermissions();
+    const canCorrectFees = hasPermission(Permission.MANAGE_FEE_SETTINGS);
 
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -538,7 +540,7 @@ const FeeCollection: FC = () => {
                             </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
-                            {isFullAccess && (feeSummary?.fees || []).some((f) => Number(f.balance_amount) > 0) && (
+                            {canCorrectFees && (feeSummary?.fees || []).some((f) => Number(f.balance_amount) > 0) && (
                                 <Button variant="outline" size="sm" onClick={() => setShowDiscountDialog(true)}>
                                     Apply Discount
                                 </Button>
@@ -598,7 +600,7 @@ const FeeCollection: FC = () => {
                                     </Button>
                                 )}
                                 {/* Setup Installments - only for recurring fees that allow installments */}
-                                {isFullAccess && !row.has_installments && row.balance_amount > 0 && row.status !== 'PAID' && row.fee_structure?.is_recurring && row.fee_structure?.allows_installments && (
+                                {canCorrectFees && !row.has_installments && row.balance_amount > 0 && row.status !== 'PAID' && row.fee_structure?.is_recurring && row.fee_structure?.allows_installments && (
                                     <Button variant="primary" size="sm" onClick={() => openInstallmentSetup(row)}>
                                         Setup Installments
                                     </Button>
@@ -781,7 +783,7 @@ const FeeCollection: FC = () => {
                 onClose={() => setHistoryFeeId(null)}
                 fee={historyFee}
                 installments={historyFeeId ? feeInstallments[historyFeeId] || [] : []}
-                canCancel={isFullAccess}
+                canCancel={canCorrectFees}
                 onCancelled={refreshSummary}
                 onPrint={(payment) => historyFee && handlePrintReceipt(historyFee, undefined, 'print', payment)}
             />

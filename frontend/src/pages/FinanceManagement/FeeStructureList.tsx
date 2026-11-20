@@ -11,12 +11,13 @@ import { financeService } from '../../services/modules/financeService';
 import { useAuthStore } from '../../stores/authStore';
 import { IGroupedFeeStructure, IFeeRow } from '../../types/index';
 import { usePermissions } from '../../hooks/usePermissions';
+import { Permission } from '../../config/permissions';
 
 const FeeStructureList: FC = () => {
     const navigate = useNavigate();
-    const { isFullAccess } = usePermissions();
+    const { hasPermission } = usePermissions();
     // Creating / editing / deleting fee structures is admin-only on the server (a fee clerk only views them)
-    const canEditFees = isFullAccess;
+    const canEditFees = hasPermission(Permission.MANAGE_FEE_SETTINGS); // same tick the server checks
     const { user, academicYearVersion } = useAuthStore();
     const academicYearId = user?.current_academic_year?.id;
 

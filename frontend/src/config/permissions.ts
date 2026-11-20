@@ -82,6 +82,7 @@ export enum Permission {
   MANAGE_ACADEMIC_YEARS = 'manage_academic_years',
   MANAGE_ROOMS = 'manage_rooms',
   MANAGE_SALARIES = 'manage_salaries',
+  MANAGE_FEE_SETTINGS = 'manage_fee_settings',
 }
 
 // ──────────────────────────────────────────────
@@ -195,8 +196,8 @@ export const ROUTE_PERMISSION_MAP: Record<string, RoutePermissionConfig> = {
 
   // Finance
   '/finance/fee-structure': { permission: Permission.VIEW_FEES },
-  '/finance/fee-structure/create': { permission: Permission.MANAGE_FEES },
-  '/finance/fee-structure/edit/:classId': { permission: Permission.MANAGE_FEES },
+  '/finance/fee-structure/create': { permission: Permission.MANAGE_FEE_SETTINGS },
+  '/finance/fee-structure/edit/:classId': { permission: Permission.MANAGE_FEE_SETTINGS },
   '/finance/fee-collection': { permission: Permission.MANAGE_FEES },
   '/finance/expenses': { permission: Permission.VIEW_EXPENSES },
   // Salaries are staff expenses, not fee collection (a fee clerk with manage_fees must not see them)

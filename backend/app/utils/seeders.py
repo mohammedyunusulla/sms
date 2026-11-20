@@ -24,6 +24,8 @@ ALL_PERMISSIONS = [
     'view_bus_scan', 'manage_bus_scan',
     # added with server-side permission checks (QA A15)
     'manage_academic_years', 'manage_rooms', 'manage_salaries',
+    # fee structures, installment plans, discounts, cancelling payments (a Clerk only collects)
+    'manage_fee_settings',
 ]
 
 # Default permissions for system roles in a new school.
