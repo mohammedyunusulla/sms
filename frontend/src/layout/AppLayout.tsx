@@ -4,10 +4,12 @@ import AppHeader from "./AppHeader";
 import Backdrop from "./Backdrop";
 import AppSidebar from "./AppSidebar";
 import { useIdleTimeout } from "../hooks/useIdleTimeout";
+import { useRoleRefresh } from "../hooks/useRoleRefresh";
 import { useAuth } from "../hooks/useAuth";
 import toast from "react-hot-toast";
 
 const LayoutContent: React.FC = () => {
+  useRoleRefresh(); // menu follows role tick-box changes within a minute
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
   const { logout, isAuthenticated } = useAuth();
 

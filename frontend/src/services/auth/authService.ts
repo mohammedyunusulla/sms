@@ -175,6 +175,15 @@ export const authService = {
     },
 
     /**
+     * The logged-in user's current role and its permissions (GET /auth/me), to keep the menu in step
+     * when an admin changes the role's tick boxes.
+     */
+    async getMyRole(): Promise<Record<string, unknown> | null> {
+        const response = (await getApiClient().get('/auth/me')) as unknown as { role_obj?: Record<string, unknown> | null };
+        return response.role_obj ?? null;
+    },
+
+    /**
      * Update the logged-in user's own first name, last name and phone (PUT /auth/me)
      */
     async updateMe(data: { first_name: string; last_name: string; phone: string | null }): Promise<Record<string, unknown>> {

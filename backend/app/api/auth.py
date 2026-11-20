@@ -122,8 +122,22 @@ def get_current_user():
     """
     try:
         user = request.current_user
+        # the person's role and its tick boxes, so the app can refresh the menu when an admin changes them
+        role_obj = None
+        if user.skid and user.school_user_id:
+            from app.utils.db_manager import switch_to_school_db
+            from app.utils.role_permissions import account_role
+            with switch_to_school_db(user.skid) as session:
+                role = account_role(session, user.school_user_id)
+                if role:
+                    role_obj = {
+                        'id': role.id, 'role_name': role.role_name, 'role_code': role.role_code,
+                        'school_id': role.school_id, 'is_active': role.is_active,
+                        'is_system_role': role.is_system_role, 'permissions': list(role.permissions or []),
+                    }
         return jsonify({
-            'user': user.to_dict()
+            'user': user.to_dict(),
+            'role_obj': role_obj,
         }), 200
 
     except Exception as e:
