@@ -15,6 +15,10 @@ from flask import current_app, request
 
 # Roles with full access (they don't use tick boxes; the menu treats them the same way)
 FULL_ACCESS_ROLES = frozenset({'SUPER_ADMIN', 'SCHOOL_ADMIN'})
+# Students and parents only ever reach their own / their child's data: the server keeps their role rules
+# (plus the own-record checks); their tick boxes only shape their menu. Otherwise a student's "View Exams"
+# tick (meant for My Exam Timetable) would open the school's exam settings, seating plans, syllabus analytics...
+FAMILY_ROLES = frozenset({'STUDENT', 'PARENT'})
 CACHE_SECONDS = 60
 
 _cache = {}
@@ -93,7 +97,7 @@ def decide(user, role, allowed_roles, permissions, own_roles=()):
     route is decided by role only (sign-in, a student's / parent's own pages, Super Admin's school management).
     """
     old_ok = not allowed_roles or role in allowed_roles
-    if not permissions or role in own_roles:  # role-decided route, or a role using it for its own data
+    if not permissions or role in own_roles or role in FAMILY_ROLES:  # decided by role
         return old_ok
     mode = enforcement_mode()
     if mode == 'off':

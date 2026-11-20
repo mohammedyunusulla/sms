@@ -287,7 +287,7 @@ def get_students(skid, academic_year_id):
 
 # Fetch student list for the section based on the sectionId
 @student_bp.route('/list/inSection/<skid>/<academic_year_id>/<int:section_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'], permission=('view_students', 'manage_students'))
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'], permission=('view_students', 'manage_students', 'manage_attendance', 'view_attendance', 'manage_marks', 'manage_assignments'))
 def get_students_for_section(skid, academic_year_id, section_id):
     """
     Get all students for a specific class-section with pagination and filtering

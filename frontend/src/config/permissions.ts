@@ -185,7 +185,7 @@ export const ROUTE_PERMISSION_MAP: Record<string, RoutePermissionConfig> = {
   '/exams/invigilator-schedule': { permission: Permission.MANAGE_EXAMS },
 
   // Academics
-  '/academics/subjects': { permission: Permission.VIEW_EXAMS },
+  '/academics/subjects': { permission: Permission.VIEW_CLASSES },
   '/academics/subjects/new': { permission: Permission.MANAGE_CLASSES },
   '/academics/subjects/:id/edit': { permission: Permission.MANAGE_CLASSES },
   '/academics/assign-subjects': { permission: Permission.MANAGE_TEACHERS },
@@ -351,7 +351,7 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, SidebarGroupPermissionConfig
   'Academics Management': {
     groupPermissions: [Permission.VIEW_EXAMS, Permission.VIEW_MARKS, Permission.MANAGE_MARKS, Permission.MANAGE_TEACHERS],
     itemPermissions: {
-      '/academics/subjects': Permission.VIEW_EXAMS,
+      '/academics/subjects': Permission.VIEW_CLASSES,
       '/academics/assign-subjects': Permission.MANAGE_TEACHERS,
       '/academics/marks/entry': Permission.MANAGE_MARKS,
       '/academics/progress/class': Permission.VIEW_MARKS,

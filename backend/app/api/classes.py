@@ -79,7 +79,7 @@ def delete_class(skid, class_id):
 
 
 @class_bp.route('/list/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'], permission=('view_classes', 'manage_classes'))
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'], permission=('view_classes', 'manage_classes', 'manage_attendance', 'view_attendance', 'manage_marks', 'manage_assignments'))
 def get_classes(skid):
     """
     Get all classes for the current user's school
@@ -99,7 +99,7 @@ def get_classes(skid):
         return jsonify({'message': f'Failed to retrieve classes: {str(e)}', 'status': 'error', 'code': 500}), 500
         
 @class_bp.route('/<int:class_id>/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'], permission=('view_classes', 'manage_classes'))
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'], permission=('view_classes', 'manage_classes', 'manage_attendance', 'view_attendance', 'manage_marks', 'manage_assignments'))
 def get_class_by_id(class_id, skid):
     """
     Get a specific class by ID with student count
@@ -210,7 +210,7 @@ def delete_section(skid, section_id):
 
 
 @class_bp.route('/sections/<skid>/<int:class_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'], permission=('view_classes', 'manage_classes'))
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'], permission=('view_classes', 'manage_classes', 'manage_attendance', 'view_attendance', 'manage_marks', 'manage_assignments'))
 def get_sections_by_class(skid, class_id):
     """
     Get all sections for a specific class
