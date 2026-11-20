@@ -1,0 +1,6 @@
+# Homework AI: read the QR sticker on photographed notebook pages.
+# Kept out of requirements.txt on purpose: the server installs these from backend/wheels/ (no internet needed),
+# so changing them never forces the server to re-download every package. Local setup:
+#   pip install -r requirements.txt -r requirements-qr.txt
+zxing-cpp==3.1.1
+pillow==13.0.0
