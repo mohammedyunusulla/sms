@@ -56,6 +56,26 @@ def _progress_card_attendance(tenant_session, student, exam_id):
     }
 
 
+def _subject_outcome(config, marks_entry):
+    """
+    One subject's result (QA B26): ('marked', marks, passed) - passed when marks reach THAT subject's pass mark;
+    ('absent', 0, False); or ('not_entered', None, None) - no marks yet: left out of totals, never shown as F.
+    """
+    if marks_entry is None or (not marks_entry.is_absent and marks_entry.total_marks is None):
+        return 'not_entered', None, None
+    if marks_entry.is_absent:
+        return 'absent', 0.0, False
+    marks = float(marks_entry.total_marks)
+    return 'marked', marks, marks >= float(config.min_passing_marks or 0)
+
+
+def _overall_result(outcomes):
+    """Owner's rule: Pass only if every subject is passed; Incomplete while any subject's marks aren't entered."""
+    if not outcomes or any(state == 'not_entered' for state, _, _ in outcomes):
+        return 'Incomplete'
+    return 'Pass' if all(passed for _, _, passed in outcomes) else 'Fail'
+
+
 class ProgressCardService:
 
     @staticmethod
@@ -120,21 +140,28 @@ class ProgressCardService:
                     student_max = 0
                     subject_marks = []
                     
+                    outcomes = []
                     for config in configs:
                         marks_entry = tenant_session.query(MarksEntry).filter_by(
                             exam_config_id=config.id,
                             student_id=student.user_id,
                             academic_year_id=academic_year_id
                         ).first()
-                        
-                        marks = marks_entry.total_marks if marks_entry and not marks_entry.is_absent else 0
-                        student_total += marks
-                        student_max += config.total_max_marks
-                        
+
+                        state, marks, passed = _subject_outcome(config, marks_entry)
+                        outcomes.append((state, marks, passed))
+                        if state != 'not_entered':  # not-entered subjects are left out of the total
+                            student_total += marks
+                            student_max += config.total_max_marks
+
                         subject_marks.append({
                             'subject_id': config.subject_id,
                             'marks': marks,
-                            'max_marks': config.total_max_marks
+                            'max_marks': config.total_max_marks,
+                            'min_passing': config.min_passing_marks,
+                            'is_absent': state == 'absent',
+                            'not_entered': state == 'not_entered',
+                            'passed': passed,
                         })
                         
                         # Calculate subject statistics
@@ -146,7 +173,8 @@ class ProgressCardService:
                                 'min_passing': config.min_passing_marks,
                                 'marks_list': []
                             }
-                        subject_stats[config.subject_id]['marks_list'].append(marks)
+                        if state != 'not_entered':
+                            subject_stats[config.subject_id]['marks_list'].append(marks)
                     
                     percentage = (student_total / student_max * 100) if student_max > 0 else 0
                     grade = ProgressCardService._calculate_grade(percentage)
@@ -159,7 +187,7 @@ class ProgressCardService:
                         'max_marks': student_max,
                         'percentage': percentage,
                         'grade': grade,
-                        'status': 'Pass' if percentage >= 35 else 'Fail',
+                        'status': _overall_result(outcomes),  # Pass / Fail / Incomplete
                         'subject_marks': subject_marks
                     })
                 
@@ -302,6 +330,7 @@ class ProgressCardService:
                 ).first()
                 
                 subject_details = []
+                outcomes = []
                 total_marks_obtained = 0
                 total_max_marks = 0
                 
@@ -317,13 +346,14 @@ class ProgressCardService:
                         student_id=student_id  # This is user_id
                     ).first()
                     
-                    if marks_entry:
-                        total_marks = marks_entry.total_marks if not marks_entry.is_absent else 0
+                    state, total_marks, passed = _subject_outcome(config, marks_entry)
+                    outcomes.append((state, total_marks, passed))
+                    if state != 'not_entered':
                         total_marks_obtained += total_marks
                         total_max_marks += config.total_max_marks
-                        
+
                         percentage = (total_marks / config.total_max_marks * 100) if config.total_max_marks > 0 else 0
-                        
+                                                
                         subject_details.append({
                             'subject_id': config.subject_id,
                             'subject_name': subject.subject_name if subject else 'Unknown',
@@ -336,23 +366,28 @@ class ProgressCardService:
                             'percentage': percentage,
                             'grade': ProgressCardService._calculate_grade(percentage),
                             'is_absent': marks_entry.is_absent,
+                            'not_entered': False,
+                            'min_passing_marks': config.min_passing_marks,
+                            'passed': passed,
                             'remarks': marks_entry.remarks or ''
                         })
                     else:
-                        # If no marks entry, include subject with 0 marks
-                        total_max_marks += config.total_max_marks
+                        # No marks yet: shown as "-" (it used to be 0 / grade F) and left out of the total
                         subject_details.append({
                             'subject_id': config.subject_id,
                             'subject_name': subject.subject_name if subject else 'Unknown',
                             'subject_code': subject.subject_code if subject else 'N/A',
                             'has_internal_external': config.has_internal_external,
-                            'internal_marks': 0,
-                            'external_marks': 0,
-                            'total_marks': 0,
+                            'internal_marks': None,
+                            'external_marks': None,
+                            'total_marks': None,
                             'max_marks': config.total_max_marks,
-                            'percentage': 0,
-                            'grade': 'F',
+                            'percentage': None,
+                            'grade': '-',
                             'is_absent': False,
+                            'not_entered': True,
+                            'min_passing_marks': config.min_passing_marks,
+                            'passed': None,
                             'remarks': 'Marks not entered'
                         })
                 
@@ -388,6 +423,7 @@ class ProgressCardService:
                     'overall_max_marks': total_max_marks,
                     'overall_percentage': overall_percentage,
                     'overall_grade': overall_grade,
+                    'result': _overall_result(outcomes),  # Pass / Fail / Incomplete
                     'rank': rank,
                     'total_students': total_students,
                     'class_teacher_name': class_teacher_name,
@@ -441,6 +477,7 @@ class ProgressCardService:
                         continue  # Skip exams with no configuration
 
                     subjects = []
+                    outcomes = []
                     total_marks_obtained = 0
                     total_max_marks = 0
                     has_marks = False
@@ -458,28 +495,35 @@ class ProgressCardService:
                             academic_year_id=academic_year_id
                         ).first()
 
-                        if marks_entry:
+                        state, total_marks, passed = _subject_outcome(config, marks_entry)
+                        outcomes.append((state, total_marks, passed))
+                        if state != 'not_entered':
                             has_marks = True
-                            total_marks = marks_entry.total_marks if not marks_entry.is_absent else 0
                             total_marks_obtained += total_marks
                             total_max_marks += config.total_max_marks
-
                             subjects.append({
                                 'subject_name': subject.subject_name if subject else 'Unknown',
                                 'max_marks': config.total_max_marks,
                                 'obtained_marks': total_marks,
-                                'grade': ProgressCardService._calculate_grade(
+                                'min_passing_marks': config.min_passing_marks,
+                                'is_absent': state == 'absent',
+                                'not_entered': False,
+                                'passed': passed,
+                                'grade': 'AB' if state == 'absent' else ProgressCardService._calculate_grade(
                                     (total_marks / config.total_max_marks * 100) if config.total_max_marks > 0 else 0
                                 )
                             })
                         else:
-                            # Include subject with 0 marks
-                            total_max_marks += config.total_max_marks
+                            # No marks yet: "-" (it used to be 0 / grade F), left out of the total
                             subjects.append({
                                 'subject_name': subject.subject_name if subject else 'Unknown',
                                 'max_marks': config.total_max_marks,
-                                'obtained_marks': 0,
-                                'grade': 'F'
+                                'obtained_marks': None,
+                                'min_passing_marks': config.min_passing_marks,
+                                'is_absent': False,
+                                'not_entered': True,
+                                'passed': None,
+                                'grade': '-'
                             })
 
                     # Only include exam if student has at least some marks
@@ -495,6 +539,7 @@ class ProgressCardService:
                             'obtained_marks': total_marks_obtained,
                             'percentage': round(percentage, 2),
                             'grade': grade,
+                            'result': _overall_result(outcomes),  # Pass / Fail / Incomplete
                             'rank': rank,
                             'subjects': subjects
                         })

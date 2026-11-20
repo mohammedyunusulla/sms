@@ -146,7 +146,7 @@ const ProgressCardView: FC = () => {
                     row.is_absent ? (
                         <Badge variant="danger" size="sm">AB</Badge>
                     ) : (
-                        <span className="font-semibold">{row.total_marks}</span>
+                        <span className="font-semibold">{row.total_marks ?? '-'}</span>
                     ),
             },
             {
@@ -313,6 +313,15 @@ const ProgressCardView: FC = () => {
                             <Badge variant={getGradeBadgeVariant(progressCard.overall_grade)} size="md">
                                 {progressCard.overall_grade}
                             </Badge>
+                            {progressCard.result && (
+                                // Pass only if every subject reaches its pass mark
+                                <Badge
+                                    variant={progressCard.result === 'Pass' ? 'success' : progressCard.result === 'Fail' ? 'danger' : 'secondary'}
+                                    size="md"
+                                >
+                                    {progressCard.result === 'Incomplete' ? 'Incomplete (marks pending)' : progressCard.result}
+                                </Badge>
+                            )}
                         </div>
                     </div>
                 </div>

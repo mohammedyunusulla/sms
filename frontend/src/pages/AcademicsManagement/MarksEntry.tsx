@@ -147,13 +147,15 @@ const MarksEntry: FC = () => {
             // Initialize marks data
             const initialMarksData: Record<string, IStudentMarkEntry> = {};
             (studentsData || []).forEach((student) => {
+                // students without saved marks start blank (they used to start at 0 and were saved as 0 = Fail)
+                const saved = student.existing_marks;
                 initialMarksData[student.student_id] = {
                     student_id: student.student_id,
-                    internal_marks: student.existing_marks?.internal_marks || 0,
-                    external_marks: student.existing_marks?.external_marks || 0,
-                    total_marks: student.existing_marks?.total_marks || 0,
-                    is_absent: student.existing_marks?.is_absent || false,
-                    remarks: student.existing_marks?.remarks || '',
+                    internal_marks: saved ? (saved.internal_marks ?? null) : null,
+                    external_marks: saved ? (saved.external_marks ?? null) : null,
+                    total_marks: saved && !saved.is_absent ? (saved.total_marks ?? null) : null,
+                    is_absent: saved?.is_absent || false,
+                    remarks: saved?.remarks || '',
                 };
             });
             setMarksData(initialMarksData);
@@ -213,21 +215,24 @@ const MarksEntry: FC = () => {
 
             // Convert to number for numeric fields
             if (field === 'internal_marks' || field === 'external_marks' || field === 'total_marks') {
-                (studentMarks as Record<string, unknown>)[field] = Number(value) || 0;
+                // empty box = not entered; 0 is a real score
+                (studentMarks as Record<string, unknown>)[field] = value === '' || value === null ? null : Number(value);
             } else {
                 (studentMarks as Record<string, unknown>)[field] = value;
             }
 
             // Auto-calculate total if internal/external split
             if (examConfig?.has_internal_external && (field === 'internal_marks' || field === 'external_marks')) {
-                studentMarks.total_marks = studentMarks.internal_marks + studentMarks.external_marks;
+                studentMarks.total_marks = studentMarks.internal_marks === null && studentMarks.external_marks === null
+                    ? null
+                    : (studentMarks.internal_marks ?? 0) + (studentMarks.external_marks ?? 0);
             }
 
             // Clear marks if absent
             if (field === 'is_absent' && value) {
-                studentMarks.internal_marks = 0;
-                studentMarks.external_marks = 0;
-                studentMarks.total_marks = 0;
+                studentMarks.internal_marks = null;
+                studentMarks.external_marks = null;
+                studentMarks.total_marks = null;
             }
 
             updated[studentId] = studentMarks;
@@ -240,21 +245,25 @@ const MarksEntry: FC = () => {
         const errors: string[] = [];
 
         if (!examConfig) return errors;
+        // not entered: nothing to check (nothing is saved for this student)
+        const internal = studentMarks.internal_marks ?? 0;
+        const external = studentMarks.external_marks ?? 0;
+        const total = studentMarks.total_marks ?? 0;
 
-        if (studentMarks.internal_marks < 0 || studentMarks.external_marks < 0 || studentMarks.total_marks < 0) {
+        if (internal < 0 || external < 0 || total < 0) {
             errors.push("Marks can't be negative");
         }
 
         if (examConfig.has_internal_external) {
-            if (studentMarks.internal_marks > (examConfig.internal_max_marks || 0)) {
+            if (internal > (examConfig.internal_max_marks || 0)) {
                 errors.push(`Internal marks exceed maximum (${examConfig.internal_max_marks})`);
             }
-            if (studentMarks.external_marks > (examConfig.external_max_marks || 0)) {
+            if (external > (examConfig.external_max_marks || 0)) {
                 errors.push(`External marks exceed maximum (${examConfig.external_max_marks})`);
             }
         }
 
-        if (studentMarks.total_marks > examConfig.total_max_marks) {
+        if (total > examConfig.total_max_marks) {
             errors.push(`Total marks exceed maximum (${examConfig.total_max_marks})`);
         }
 
@@ -367,10 +376,11 @@ const MarksEntry: FC = () => {
     };
 
     const calculateStats = () => {
-        const present = Object.values(marksData).filter((m) => !m.is_absent).length;
+        // "present" = marks entered (blank students aren't counted - nothing is saved for them)
+        const present = Object.values(marksData).filter((m) => !m.is_absent && m.total_marks !== null).length;
         const absent = Object.values(marksData).filter((m) => m.is_absent).length;
         const passing = Object.values(marksData).filter(
-            (m) => !m.is_absent && m.total_marks >= (examConfig?.min_passing_marks || 0)
+            (m) => !m.is_absent && m.total_marks !== null && m.total_marks >= (examConfig?.min_passing_marks || 0)
         ).length;
 
         return { present, absent, passing };

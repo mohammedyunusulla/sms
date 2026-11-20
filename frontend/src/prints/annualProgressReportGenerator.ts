@@ -25,8 +25,9 @@ export interface ExamResult {
     subjects: Array<{
         subject_name: string;
         max_marks: number;
-        obtained_marks: number;
+        obtained_marks: number | null; // null = not entered yet
         grade: string;
+        is_absent?: boolean;
     }>;
 }
 
@@ -105,11 +106,11 @@ export const generateAnnualProgressReportPdf = async (
                 { text: 'Grade', fontSize: 10, bold: true, alignment: 'center', fillColor: '#667eea', color: '#ffffff' }
             ],
             ...exam.subjects.map(subject => {
-                const percentage = (subject.obtained_marks / subject.max_marks) * 100;
+                const percentage = subject.obtained_marks === null ? 0 : (subject.obtained_marks / subject.max_marks) * 100;
                 return [
                     { text: subject.subject_name, fontSize: 9 },
                     { text: subject.max_marks, fontSize: 9, alignment: 'center' },
-                    { text: subject.obtained_marks, fontSize: 9, alignment: 'center', bold: true },
+                    { text: subject.is_absent ? 'AB' : subject.obtained_marks ?? '-', fontSize: 9, alignment: 'center', bold: true },
                     { text: percentage.toFixed(2) + '%', fontSize: 9, alignment: 'center' },
                     { text: subject.grade, fontSize: 9, alignment: 'center', bold: true }
                 ];
@@ -196,7 +197,7 @@ export const generateAnnualProgressReportPdf = async (
         exam_results.forEach(exam => {
             const subject = exam.subjects.find(s => s.subject_name === subjectName);
             if (subject) {
-                const percentage = (subject.obtained_marks / subject.max_marks) * 100;
+                const percentage = subject.obtained_marks === null ? 0 : (subject.obtained_marks / subject.max_marks) * 100;
                 row.push(
                     { text: subject.max_marks, fontSize: 6, alignment: 'center' },
                     { text: subject.obtained_marks, fontSize: 6, alignment: 'center', bold: true },

@@ -10,6 +10,22 @@ from app.models.tenant.TimeTable import Timetable
 from app.models.tenant.Sections import Section
 from app.models.tenant.TimeTableEntry import TimetableEntry
 
+def _status_counts(session, academic_year_id, day, class_id=None, section_id=None):
+    """One day's attendance counted by status (PRESENT / ABSENT / LATE / LEAVE), whatever spelling was stored."""
+    from collections import Counter
+    from app.utils.attendance_status import status_key
+    query = session.query(Attendance.status, func.count(Attendance.id)).filter(
+        Attendance.academic_year_id == academic_year_id, Attendance.date == day)
+    if class_id:
+        query = query.filter(Attendance.class_id == class_id)
+    if section_id:
+        query = query.filter(Attendance.section_id == section_id)
+    counts = Counter()
+    for status, n in query.group_by(Attendance.status).all():
+        counts[status_key(status)] += n
+    return counts
+
+
 class SchoolAdminDashboardService:
     
     @staticmethod
@@ -367,12 +383,15 @@ class SchoolAdminDashboardService:
                     total_marked = total_marked_query.scalar() or 0
 
                     percentage = round((present / total_marked * 100), 1) if total_marked > 0 else 0
+                    by_status = _status_counts(tenant_session, academic_year_id, current_date, class_id, section_id)
 
                     weekly_trend.append({
                         'day': day_names[i],
                         'date': current_date.isoformat(),
                         'present': present,
-                        'absent': total_marked - present,
+                        # only students marked Absent (Leave used to be counted as absent - QA C28)
+                        'absent': by_status.get('ABSENT', 0),
+                        'leave': by_status.get('LEAVE', 0),
                         'total': total_marked,
                         'percentage': percentage
                     })
@@ -404,12 +423,14 @@ class SchoolAdminDashboardService:
                 today_total = today_total_query.scalar() or 0
 
                 today_percentage = round((today_present / today_total * 100), 1) if today_total > 0 else 0
+                today_by_status = _status_counts(tenant_session, academic_year_id, today, class_id, section_id)
 
                 return {
                     'total_students': total_students,
                     'weekly_trend': weekly_trend,
                     'today_present': today_present,
-                    'today_absent': today_total - today_present,
+                    'today_absent': today_by_status.get('ABSENT', 0),
+                    'today_leave': today_by_status.get('LEAVE', 0),
                     'today_total_marked': today_total,
                     'today_percentage': today_percentage
                 }

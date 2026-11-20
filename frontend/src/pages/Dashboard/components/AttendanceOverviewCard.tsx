@@ -256,6 +256,7 @@ const AttendanceOverviewCard: FC = () => {
                     <div className="flex items-center justify-end pt-2 border-t border-gray-100 dark:border-gray-700">
                         <p className="text-xs text-gray-500 dark:text-gray-400">
                             Today: <span className="font-semibold text-gray-700 dark:text-gray-300">{data!.today_present}</span> / {data!.today_total_marked || data!.total_students}
+                            {' '}present · {data!.today_absent} absent{data!.today_leave ? ` · ${data!.today_leave} on leave` : ''}
                         </p>
                     </div>
                 </>

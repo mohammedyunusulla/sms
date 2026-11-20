@@ -123,7 +123,7 @@ const MarksEntryTable: FC<MarksEntryTableProps> = ({
                                         <td className="px-4 py-3 text-center">
                                             <input
                                                 type="number"
-                                                value={marks.internal_marks || ''}
+                                                value={marks.internal_marks ?? ''}
                                                 onChange={(e) =>
                                                     onMarksChange(student.student_id, 'internal_marks', e.target.value)
                                                 }
@@ -131,7 +131,7 @@ const MarksEntryTable: FC<MarksEntryTableProps> = ({
                                                 min="0"
                                                 max={examConfig.internal_max_marks}
                                                 className={`w-full px-2 py-1 text-sm text-center rounded border bg-white dark:bg-gray-700 dark:text-white transition-colors ${
-                                                    marks.internal_marks > (examConfig.internal_max_marks || 0)
+                                                    (marks.internal_marks ?? 0) > (examConfig.internal_max_marks || 0)
                                                         ? 'border-red-500 dark:border-red-400'
                                                         : 'border-gray-300 dark:border-gray-600'
                                                 } ${marks.is_absent ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -144,7 +144,7 @@ const MarksEntryTable: FC<MarksEntryTableProps> = ({
                                         <td className="px-4 py-3 text-center">
                                             <input
                                                 type="number"
-                                                value={marks.external_marks || ''}
+                                                value={marks.external_marks ?? ''}
                                                 onChange={(e) =>
                                                     onMarksChange(student.student_id, 'external_marks', e.target.value)
                                                 }
@@ -152,7 +152,7 @@ const MarksEntryTable: FC<MarksEntryTableProps> = ({
                                                 min="0"
                                                 max={examConfig.external_max_marks}
                                                 className={`w-full px-2 py-1 text-sm text-center rounded border bg-white dark:bg-gray-700 dark:text-white transition-colors ${
-                                                    marks.external_marks > (examConfig.external_max_marks || 0)
+                                                    (marks.external_marks ?? 0) > (examConfig.external_max_marks || 0)
                                                         ? 'border-red-500 dark:border-red-400'
                                                         : 'border-gray-300 dark:border-gray-600'
                                                 } ${marks.is_absent ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -164,7 +164,7 @@ const MarksEntryTable: FC<MarksEntryTableProps> = ({
                                     <td className="px-4 py-3 text-center">
                                         <input
                                             type="number"
-                                            value={marks.total_marks || ''}
+                                            value={marks.total_marks ?? ''}
                                             onChange={(e) =>
                                                 onMarksChange(student.student_id, 'total_marks', e.target.value)
                                             }
@@ -172,7 +172,7 @@ const MarksEntryTable: FC<MarksEntryTableProps> = ({
                                             min="0"
                                             max={examConfig.total_max_marks}
                                             className={`w-full px-2 py-1 text-sm text-center rounded border bg-white dark:bg-gray-700 dark:text-white transition-colors ${
-                                                marks.total_marks > examConfig.total_max_marks
+                                                (marks.total_marks ?? 0) > examConfig.total_max_marks
                                                     ? 'border-red-500 dark:border-red-400'
                                                     : 'border-gray-300 dark:border-gray-600'
                                             } ${marks.is_absent || examConfig.has_internal_external ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -194,7 +194,7 @@ const MarksEntryTable: FC<MarksEntryTableProps> = ({
 
                                     {/* Status Badge */}
                                     <td className="px-4 py-3 text-center">
-                                        {!marks.is_absent && marks.total_marks > 0 && (
+                                        {!marks.is_absent && marks.total_marks !== null && (
                                             <Badge
                                                 variant={status.label === 'Pass' ? 'success' : status.label === 'Fail' ? 'danger' : 'secondary'}
                                                 size="sm"

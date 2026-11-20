@@ -251,42 +251,21 @@ class TeacherDashboardService:
         """
         try:
             with switch_to_school_db(skid) as tenant_session:
-                # Import Timetable model
-                from app.models.tenant.TimeTable import Timetable
-
-                # Get all unique section IDs taught by the teacher (live timetables only)
-                from app.services.timeTable_service import live_timetable_ids
-                live_ids = live_timetable_ids(tenant_session, date.today())
-                if not live_ids:
-                    return 0
-                section_ids = tenant_session.query(
-                    distinct(Timetable.section_id)
-                ).join(
-                    TimetableEntry, TimetableEntry.timetable_id == Timetable.id
-                ).filter(
-                    and_(
-                        Timetable.id.in_(live_ids),
-                        TimetableEntry.teacher_id == teacher_id,
-                        TimetableEntry.is_active == True
-                    )
-                ).all()
-
-                if not section_ids:
-                    return 0
-
-                # Flatten section IDs
-                section_id_list = [sid[0] for sid in section_ids if sid[0] is not None]
-
+                # Every section the teacher works in - class teacher, Assign Subjects or published timetable
+                # (it used to count timetable sections only, so a class teacher without periods saw 0) - QA D19
+                from app.utils.teaching_scope import teacher_section_ids
+                from app.models.tenant.SchoolUsers import SchoolUsers
+                section_id_list = list(teacher_section_ids(tenant_session, teacher_id))
                 if not section_id_list:
                     return 0
-
-                # Count unique students in these sections
                 student_count = tenant_session.query(
                     func.count(distinct(Student.user_id))
+                ).join(
+                    SchoolUsers, SchoolUsers.id == Student.user_id
                 ).filter(
-                    Student.section_id.in_(section_id_list)
+                    Student.section_id.in_(section_id_list),
+                    SchoolUsers.is_active.is_(True),  # left / deleted students aren't counted
                 ).scalar()
-
                 return student_count or 0
 
         except Exception as e:

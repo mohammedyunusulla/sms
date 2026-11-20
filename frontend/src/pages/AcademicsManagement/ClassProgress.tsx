@@ -180,7 +180,7 @@ const ClassProgress: FC = () => {
                     Student: s.student_name,
                 };
                 (s.subject_marks || []).forEach((m) => {
-                    row[`${subjectName(m.subject_id)} (/${m.max_marks})`] = m.marks;
+                    row[`${subjectName(m.subject_id)} (/${m.max_marks})`] = m.is_absent ? 'AB' : m.marks ?? '-';
                 });
                 row.Total = s.total_marks;
                 row['Max Marks'] = s.max_marks;
