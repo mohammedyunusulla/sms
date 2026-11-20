@@ -31,7 +31,7 @@ const TimetableGrid: FC<ITimetableGridProps> = ({
         if (slot.is_lunch) {
             return (
                 <div className="flex items-center justify-center h-24 bg-blue-50 dark:bg-blue-900/20">
-                    <span className="font-semibold text-blue-700 dark:text-blue-300">LUNCH BREAK</span>
+                    <span className="font-semibold text-blue-700 dark:text-blue-300">{slot.label || 'LUNCH BREAK'}</span>
                 </div>
             );
         }

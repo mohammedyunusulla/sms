@@ -412,7 +412,13 @@ class SeatingService:
                     plan_a.config_id = b_config
                     session.flush()
                 else:
-                    # Move to empty seat
+                    # Move to empty seat - which must exist in that room's layout (any seat used to be accepted - QA B20)
+                    dst = session.query(ExamSeatingConfig).filter_by(id=b['config_id']).first()
+                    dst_room = session.query(Room).filter_by(id=dst.room_id).first() if dst else None
+                    layout = (dst_room.seating_layout if dst_room else None) or []
+                    _, _, side = SeatingService._abs_col_to_side(int(b['seat_col']), layout) if layout else (None, None, None)
+                    if not dst or (layout and (not side or not 1 <= int(b['seat_row']) <= int(side.get('rows', 0)))):
+                        raise ValueError("That seat doesn't exist in this room")
                     occupied = session.query(SeatingPlan).filter_by(
                         config_id=b['config_id'],
                         seat_row=b['seat_row'],
@@ -455,21 +461,35 @@ class SeatingService:
         """Run all conflict checks. Returns list of error strings."""
         errors = []
 
-        # 1. Room double-booking
-        q = session.query(ExamSeatingConfig).filter(
-            ExamSeatingConfig.academic_year_id == data['academic_year_id'],
-            ExamSeatingConfig.exam_type_id == data['exam_type_id'],
-            ExamSeatingConfig.room_id == data['room_id'],
-            ExamSeatingConfig.exam_date == data['exam_date'],
-            ExamSeatingConfig.start_time == data['start_time'],
-        )
-        if exclude_config_id:
-            q = q.filter(ExamSeatingConfig.id != exclude_config_id)
-        if q.first():
+        # 1. Room double-booking: any OVERLAPPING slot that day, whatever the exam (it used to match an identical
+        #    start time within the same exam type only, so 9:00-11:00 and 10:00-12:00 both got the room - QA B20)
+        def overlapping():
+            q = session.query(ExamSeatingConfig).filter(
+                ExamSeatingConfig.academic_year_id == data['academic_year_id'],
+                ExamSeatingConfig.exam_date == data['exam_date'],
+                ExamSeatingConfig.start_time < data['end_time'],
+                ExamSeatingConfig.end_time > data['start_time'],
+            )
+            return q.filter(ExamSeatingConfig.id != exclude_config_id) if exclude_config_id else q
+
+        clash = overlapping().filter(ExamSeatingConfig.room_id == data['room_id']).first()
+        if clash:
             room = session.query(Room).filter_by(id=data['room_id']).first()
             errors.append(
-                f"Room '{room.room_name if room else data['room_id']}' is already assigned for this exam slot"
+                f"Room '{room.room_name if room else data['room_id']}' is already in use "
+                f"{clash.start_time:%H:%M}-{clash.end_time:%H:%M} that day"
             )
+
+        # 1b. Invigilator double-booking: one teacher can't watch two rooms at the same time
+        if data.get('invigilator_id'):
+            clash = overlapping().filter(ExamSeatingConfig.invigilator_id == data['invigilator_id']).first()
+            if clash:
+                other = session.query(Room).filter_by(id=clash.room_id).first()
+                name = SeatingService._get_invigilator_name(session, data['invigilator_id']) or 'This invigilator'
+                errors.append(
+                    f"{name} is already invigilating in '{other.room_name if other else clash.room_id}' "
+                    f"{clash.start_time:%H:%M}-{clash.end_time:%H:%M} that day"
+                )
 
         # 2. Column overlap within same config
         assignments = data.get('class_assignments', [])

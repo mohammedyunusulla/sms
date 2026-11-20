@@ -17,6 +17,26 @@ def _salary_totals(data):
         raise ValueError("Deductions can't be more than the gross salary")
     return basic, allowances, deductions, gross, net
 
+# The choices the Expenses screen offers (frontend ExpenseList.tsx); any text used to be accepted (QA C27)
+EXPENSE_CATEGORIES = ('Staff Salaries', 'Electricity Bill', 'Water Bill', 'Functions/Events', 'Transport/Vehicle Service',
+                      'Maintenance', 'Supplies/Stationery', 'Infrastructure', 'Other')
+PAYMENT_METHODS = ('cash', 'bank_transfer', 'cheque', 'online')
+
+
+def _expense_category(value):
+    match = next((c for c in EXPENSE_CATEGORIES if c.lower() == str(value or '').strip().lower()), None)
+    if not match:
+        raise ValueError(f"Choose an expense category: {', '.join(EXPENSE_CATEGORIES)}")
+    return match
+
+
+def _payment_method(value):
+    method = str(value or '').strip().lower().replace(' ', '_')
+    if method not in PAYMENT_METHODS:
+        raise ValueError("Choose a payment method: Cash, Bank Transfer, Cheque or Online")
+    return method
+
+
 class ExpenseService:
     # Predefined categories (from UI constant)
     EXPENSE_CATEGORIES = [
@@ -344,12 +364,12 @@ class ExpenseService:
                 academic_year_id = within_an_academic_year(tenant_session, expense_day, "Expense date")
                 expense = Expense(
                     academic_year_id=academic_year_id,
-                    expense_category=data['expense_category'],
+                    expense_category=_expense_category(data.get('expense_category')),
                     expense_date=expense_day,
                     amount=amount,
                     vendor_name=data.get('vendor_name') or None,
                     description=data.get('description') or None,
-                    payment_method=data['payment_method'],
+                    payment_method=_payment_method(data.get('payment_method')),
                     receipt_attachment_url=data.get('receipt_attachment_url') or None,
                     approval_status=data.get('approval_status', 'approved'),
                     created_by=data.get('created_by'),
@@ -398,6 +418,10 @@ class ExpenseService:
                     expense_day = not_in_future(data['expense_date'], "Expense date")
                     expense.academic_year_id = within_an_academic_year(tenant_session, expense_day, "Expense date")
                     expense.expense_date = expense_day
+                if data.get('expense_category'):
+                    data['expense_category'] = _expense_category(data['expense_category'])
+                if data.get('payment_method'):
+                    data['payment_method'] = _payment_method(data['payment_method'])
                 for field in ('expense_category', 'payment_method', 'vendor_name', 'description', 'receipt_attachment_url'):
                     if field in data:
                         setattr(expense, field, data[field] or (None if field in ('vendor_name', 'description', 'receipt_attachment_url') else getattr(expense, field)))

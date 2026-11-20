@@ -8,6 +8,26 @@ from sqlalchemy.dialects.postgresql import JSONB
 from datetime import datetime
 
 
+def _day_value(value, label):
+    """A date (or datetime / 'YYYY-MM-DD...' text) as a datetime, or None."""
+    if value in (None, ''):
+        return None
+    if isinstance(value, datetime):
+        return value
+    try:
+        return datetime.fromisoformat(str(value).replace('Z', '+00:00')).replace(tzinfo=None)
+    except ValueError:
+        raise ValueError(f"{label} must be a date like 2026-11-25")
+
+
+def _check_announcement(title, publish_date, expiry_date):
+    """QA C16: a title is required and the post can't expire before it is published."""
+    if not str(title or '').strip():
+        raise ValueError("Enter a title")
+    if publish_date and expiry_date and expiry_date.date() < publish_date.date():
+        raise ValueError("The expiry date can't be before the publishing date")
+
+
 class AnnouncementService: 
     
     @staticmethod
@@ -21,10 +41,16 @@ class AnnouncementService:
                 
                 if not academic_year:
                     raise ValueError("Invalid academic year")
-                
+
+                # The chosen publishing date is kept (it used to be overwritten with "now", so a post scheduled
+                # for later showed at once - QA C16); no date means now.
+                publish_date = _day_value(announcement_data.get('publish_date'), "Publishing date") or datetime.utcnow()
+                expiry_date = _day_value(announcement_data.get('expiry_date'), "Expiry date")
+                _check_announcement(announcement_data.get('title'), publish_date, expiry_date)
+
                 announcement = Announcement(
                     academic_year_id=announcement_data['academic_year_id'],
-                    title=announcement_data['title'],
+                    title=str(announcement_data['title']).strip(),
                     description=announcement_data['description'],
                     announcement_type=announcement_data['announcement_type'],
                     priority=announcement_data.get('priority', 'NORMAL'),
@@ -34,8 +60,8 @@ class AnnouncementService:
                     target_users=announcement_data.get('target_users'),
                     attachments=announcement_data.get('attachments'),
                     is_published=announcement_data.get('is_published', True),
-                    publish_date=datetime.utcnow() if announcement_data.get('is_published') else announcement_data.get('publish_date'),
-                    expiry_date=announcement_data.get('expiry_date'),
+                    publish_date=publish_date,
+                    expiry_date=expiry_date,
                     created_by=announcement_data.get('created_by')
                 )
                 
@@ -45,6 +71,8 @@ class AnnouncementService:
                 # Fixed: Call to_dict() on the instance, not the class
                 return announcement.to_dict()
                 
+        except ValueError:
+            raise  # a clear message for the user (it used to be wrapped into a 500)
         except Exception as e:
             if tenant_session:
                 tenant_session.rollback()
@@ -84,14 +112,19 @@ class AnnouncementService:
                     Announcement.is_published == True
                 )
                 
-                # Filter by current date
+                # Filter by current date. Expiry is a day: the post stays up until the END of that day (it used to
+                # vanish at midnight at the START of it).
                 now = datetime.utcnow()
+                today_start = datetime.combine(now.date(), datetime.min.time())
                 query = query.filter(
                     or_(
                         Announcement.expiry_date == None,  # Fixed: Changed from announcement.expiry_date
-                        Announcement.expiry_date >= now
+                        Announcement.expiry_date >= today_start
                     )
                 )
+                # Readers only see a post from its publishing date; the school's admins see scheduled ones too
+                if not user_info or user_info.get('role') not in ('SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'):
+                    query = query.filter(or_(Announcement.publish_date == None, Announcement.publish_date <= now))
                 
                 # Apply additional filters
                 if filters:
@@ -237,7 +270,16 @@ class AnnouncementService:
                 if not announcement:
                     raise ValueError("Announcement not found")  # Fixed: Capitalized
                 
-                for key, value in announcement_data.items():
+                data = dict(announcement_data)
+                for key, label in (('publish_date', "Publishing date"), ('expiry_date', "Expiry date")):
+                    if key in data:
+                        data[key] = _day_value(data[key], label)
+                if 'title' in data:
+                    data['title'] = str(data['title'] or '').strip()
+                _check_announcement(data.get('title', announcement.title),
+                                    data.get('publish_date', announcement.publish_date),
+                                    data.get('expiry_date', announcement.expiry_date))
+                for key, value in data.items():
                     if hasattr(announcement, key) and key not in ['id', 'created_at', 'created_by']:
                         setattr(announcement, key, value)
                 
@@ -246,6 +288,8 @@ class AnnouncementService:
                 
                 return announcement.to_dict()
                 
+        except ValueError:
+            raise  # a clear message for the user (it used to be wrapped into a 500)
         except Exception as e:
             if tenant_session:
                 tenant_session.rollback()

@@ -13,6 +13,9 @@ import { IGroupedFeeStructure, IFeeRow } from '../../types/index';
 import { usePermissions } from '../../hooks/usePermissions';
 import { Permission } from '../../config/permissions';
 
+// the bits of a fee structure the assign dialog needs
+type AssignableFee = { id: number; fee_name: string; amount: number | string; is_mandatory?: boolean };
+
 const FeeStructureList: FC = () => {
     const navigate = useNavigate();
     const { hasPermission } = usePermissions();
@@ -29,6 +32,10 @@ const FeeStructureList: FC = () => {
     const [selectedClass, setSelectedClass] = useState<IGroupedFeeStructure | null>(null);
     const [selectedFees, setSelectedFees] = useState<IFeeRow[]>([]);
     const [saving, setSaving] = useState(false);
+    // due date for the fees being assigned (it used to be always today + 30 days - QA C24)
+    const [assignDueDate, setAssignDueDate] = useState(() => {
+        const d = new Date(); d.setDate(d.getDate() + 30); return d.toLocaleDateString('en-CA');
+    });
     const [showActionsMenu, setShowActionsMenu] = useState<number | null>(null);
     const [menuPosition, setMenuPosition] = useState<{ top: number; right: number }>({ top: 0, right: 0 });
 
@@ -97,6 +104,7 @@ const FeeStructureList: FC = () => {
             const result = await financeService.assignFeesToClass({
                 class_id: selectedClass.class_id,
                 academic_year_id: academicYearId,
+                due_date: assignDueDate,
             });
             const data = result.data || result;
             toast.success(
@@ -323,16 +331,40 @@ const FeeStructureList: FC = () => {
             >
                 {selectedClass && (
                     <div className="space-y-4">
-                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                            <p className="text-sm text-blue-700 dark:text-blue-300">
-                                This will automatically assign all fees to all students in the selected class.
-                            </p>
-                        </div>
-                        <div className="space-y-2">
-                            <p className="text-sm"><strong>Class:</strong> {selectedClass.class_name}</p>
-                            <p className="text-sm"><strong>Number of Fees:</strong> {selectedClass.fee_count}</p>
-                            <p className="text-sm"><strong>Total Amount:</strong> {'\u20B9'}{selectedClass.total_amount?.toLocaleString('en-IN')}</p>
-                        </div>
+                        {(() => {
+                            // only MANDATORY fees are assigned; the total used to add up every fee
+                            const fees = selectedClass.fees as AssignableFee[];
+                            const mandatory = fees.filter((f) => f.is_mandatory !== false);
+                            const optional = fees.filter((f) => f.is_mandatory === false);
+                            const total = mandatory.reduce((sum, f) => sum + Number(f.amount || 0), 0);
+                            return (
+                                <div className="space-y-2" data-testid="assign-summary">
+                                    <p className="text-sm"><strong>Class:</strong> {selectedClass.class_name}</p>
+                                    <p className="text-sm font-medium">Fees assigned to every student:</p>
+                                    <ul className="ml-4 list-disc text-sm">
+                                        {mandatory.map((f) => (
+                                            <li key={f.id}>{f.fee_name}: {'\u20B9'}{Number(f.amount || 0).toLocaleString('en-IN')}</li>
+                                        ))}
+                                    </ul>
+                                    <p className="text-sm"><strong>Total per student:</strong> {'\u20B9'}{total.toLocaleString('en-IN')}</p>
+                                    {optional.length > 0 && (
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                                            Not assigned (optional): {optional.map((f) => f.fee_name).join(', ')}
+                                        </p>
+                                    )}
+                                    <label className="block pt-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        Due date
+                                        <input
+                                            type="date"
+                                            name="assign_due_date"
+                                            value={assignDueDate}
+                                            onChange={(e) => e.target.value && setAssignDueDate(e.target.value)}
+                                            className="mt-1 block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                                        />
+                                    </label>
+                                </div>
+                            );
+                        })()}
                         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
                             <p className="text-sm text-yellow-700 dark:text-yellow-300">
                                 Fees that are already assigned to students will be skipped automatically.

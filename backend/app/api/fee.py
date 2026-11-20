@@ -114,7 +114,8 @@ def bulk_assign_fees_to_class(skid):
         result = FeeService.bulk_assign_fees_to_class(
             data['class_id'],
             data['academic_year_id'],
-            skid
+            skid,
+            due_date=data.get('due_date'),  # chosen in the dialog (it was always today + 30 days - QA C24)
         )
         
         return jsonify({

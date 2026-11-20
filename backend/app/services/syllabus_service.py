@@ -276,6 +276,12 @@ class SyllabusService:
                 progress = SyllabusService._get_or_create_progress(session, teacher_id, item_type, item_id)
 
                 # Set planned dates
+                # the planned end can't be before the planned start (it used to be accepted - QA B32)
+                from app.utils.validators import to_date
+                start = to_date(data['planned_start_date'], "Planned start date") if data.get('planned_start_date') else None
+                end = to_date(data['planned_end_date'], "Planned end date") if data.get('planned_end_date') else None
+                if start and end and end < start:
+                    raise ValueError("The planned end date can't be before the planned start date")
                 progress.planned_start_date = data.get('planned_start_date')
                 progress.planned_end_date = data.get('planned_end_date')
 
@@ -302,6 +308,8 @@ class SyllabusService:
                     'message': f'{item_type.capitalize()} timeline configured successfully'
                 }
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to configure timeline: {str(e)}")
 

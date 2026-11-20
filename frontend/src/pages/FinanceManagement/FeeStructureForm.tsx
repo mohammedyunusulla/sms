@@ -246,6 +246,9 @@ const FeeStructureForm: FC = () => {
                     <p className="text-sm text-blue-700 dark:text-blue-300">
                         You are editing the fee structure. You can update existing fees, add new fees, or delete fees.
                     </p>
+                    <p className="mt-1 text-sm text-blue-700 dark:text-blue-300">
+                        Changes apply to fees assigned from now on. Fees already assigned to students keep their amounts.
+                    </p>
                 </div>
             )}
 

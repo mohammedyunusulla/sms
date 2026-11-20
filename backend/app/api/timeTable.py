@@ -25,7 +25,6 @@ def generate_time_slots():
             'period_duration': data.get('period_duration', 45),
             'total_periods': data.get('total_periods', 7)
         })
-        print(time_slots)
         
         return jsonify({
             'code': 200,
@@ -34,6 +33,8 @@ def generate_time_slots():
             'data': time_slots
         }), 200
         
+    except ValueError as ve:
+        return jsonify({'message': str(ve), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         print(f"Error generating time slots: {str(e)}")
         return jsonify({

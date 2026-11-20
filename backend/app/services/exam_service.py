@@ -11,6 +11,42 @@ from app.models.tenant.SchoolUsers import SchoolUsers
 from app.utils.db_manager import switch_to_school_db
 from datetime import datetime, date, time
 
+def _check_exam_slot(session, academic_year_id, class_id, section_id, subject_id, exam_date, start_time, end_time,
+                     exclude_id=None):
+    """
+    QA B16: an exam timetable entry must be for a real subject, inside the academic year, and not overlap another
+    exam of the same class / section that day (a whole-class entry - no section - clashes with every section).
+    """
+    from app.models.tenant.Subject import Subject
+    from app.models.tenant.AcademicYear import AcademicYear
+    if not session.query(Subject).filter_by(id=subject_id).first():
+        raise ValueError("That subject doesn't exist")
+    if not session.query(Class).filter_by(id=class_id).first():
+        raise ValueError("That class doesn't exist")
+    year = session.query(AcademicYear).filter_by(id=academic_year_id).first()
+    if year and year.start_date and year.end_date and not (year.start_date <= exam_date <= year.end_date):
+        raise ValueError(f"The exam date must be inside the academic year ({year.start_date:%d %b %Y} - {year.end_date:%d %b %Y})")
+    q = session.query(ExamTimetable).filter(
+        ExamTimetable.academic_year_id == academic_year_id,
+        ExamTimetable.class_id == class_id,
+        ExamTimetable.exam_date == exam_date,
+        ExamTimetable.start_time < end_time,
+        ExamTimetable.end_time > start_time,
+    )
+    if section_id:
+        q = q.filter((ExamTimetable.section_id == section_id) | (ExamTimetable.section_id.is_(None)))
+    if exclude_id:
+        q = q.filter(ExamTimetable.id != exclude_id)
+    clash = q.first()
+    if clash:
+        from app.models.tenant.Subject import Subject as _S
+        other = session.query(_S).filter_by(id=clash.subject_id).first()
+        raise ValueError(
+            f"This class already has {other.subject_name if other else 'an exam'} on {exam_date:%d %b} "
+            f"{clash.start_time:%H:%M}-{clash.end_time:%H:%M}"
+        )
+
+
 class ExamService:
     
     @staticmethod
@@ -431,6 +467,8 @@ class ExamService:
 
                 if end_time <= start_time:
                     raise ValueError("End time must be after start time")
+                _check_exam_slot(tenant_session, data['academic_year_id'], data['class_id'], data.get('section_id'),
+                                 data['subject_id'], exam_date, start_time, end_time)
 
                 # Calculate duration if not provided
                 duration = data.get('duration_minutes')
@@ -521,6 +559,8 @@ class ExamService:
                 # Validate time ordering
                 if entry.end_time <= entry.start_time:
                     raise ValueError("End time must be after start time")
+                _check_exam_slot(tenant_session, entry.academic_year_id, entry.class_id, entry.section_id,
+                                 entry.subject_id, entry.exam_date, entry.start_time, entry.end_time, exclude_id=entry.id)
 
                 # Recalculate duration
                 start_dt = datetime.combine(datetime.today(), entry.start_time)

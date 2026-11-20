@@ -65,6 +65,7 @@ export interface HomeworkAnalytics {
     has_start_photo?: boolean;
     page_count?: number;
     integrity?: HomeworkIntegrity;
+    is_late?: boolean; // handed in after the due date
   }>;
 }
 
