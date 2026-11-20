@@ -26,7 +26,7 @@ const HIGHLIGHTS = [
 export default function AuthShowcase() {
   return (
     <aside
-      aria-label="About Edusphere"
+      aria-label="About EduSpyre"
       className="relative hidden overflow-hidden bg-gradient-to-br from-brand-600 via-brand-800 to-brand-950 lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-1/2 lg:self-start xl:w-[54%] dark:from-brand-800 dark:via-brand-950 dark:to-gray-950"
     >
       {/* Background */}
@@ -40,10 +40,10 @@ export default function AuthShowcase() {
           className="self-start rounded-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30"
         >
           <img
-            src="/images/logo/edusphere-dark-clean.png"
-            alt="Edusphere home"
-            width={331}
-            height={96}
+            src="/images/logo/eduspyre/eduspyre-logo-dark.png"
+            alt="EduSpyre home"
+            width={765}
+            height={256}
             className="h-11 w-auto"
           />
         </Link>

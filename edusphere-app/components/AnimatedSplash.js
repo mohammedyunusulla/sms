@@ -87,7 +87,7 @@ export default function AnimatedSplash({ onFinish }) {
       <View style={styles.accent} />
       <Animated.View style={logoStyle}>
         <Image
-          source={require("../assets/edusphere-logo.png")}
+          source={require("../assets/eduspyre-logo.png")}
           style={styles.logo}
           resizeMode="contain"
         />

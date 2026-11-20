@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "EduSphere",
+    "name": "EduSpyre",
     "slug": "edusphere-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/edusphere-logo.png",
+      "image": "./assets/eduspyre-logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -17,15 +17,15 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.edusphere.app",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "Allow EduSphere to access your location for bus tracking.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow EduSphere to share bus location with parents in the background.",
+        "NSLocationWhenInUseUsageDescription": "Allow EduSpyre to access your location for bus tracking.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Allow EduSpyre to share bus location with parents in the background.",
         "UIBackgroundModes": ["location"]
       }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#1a1a2e"
+        "backgroundColor": "#FFFFFF"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.edusphere.app",
@@ -46,7 +46,7 @@
       "expo-web-browser",
       "expo-font",
       ["expo-location", {
-        "locationAlwaysAndWhenInUsePermission": "Allow EduSphere to share bus location with parents in the background.",
+        "locationAlwaysAndWhenInUsePermission": "Allow EduSpyre to share bus location with parents in the background.",
         "isAndroidBackgroundLocationEnabled": true,
         "isAndroidForegroundServiceEnabled": true
       }],

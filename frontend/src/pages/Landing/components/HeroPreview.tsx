@@ -33,7 +33,7 @@ export default function HeroPreview() {
   return (
     <div
       role="img"
-      aria-label="Illustration of the Edusphere dashboard showing attendance, fee collection and today's timetable"
+      aria-label="Illustration of the EduSpyre dashboard showing attendance, fee collection and today's timetable"
       className="relative mx-auto w-full max-w-xl lg:max-w-none"
     >
       {/* Glow */}
@@ -52,7 +52,7 @@ export default function HeroPreview() {
           <span className="size-2.5 rounded-full bg-warning-400" />
           <span className="size-2.5 rounded-full bg-success-400" />
           <div className="ml-3 flex-1 truncate rounded-md bg-gray-100 px-3 py-1 text-[11px] text-gray-500 dark:bg-white/5 dark:text-gray-400">
-            edusphere · school dashboard
+            eduspyre · school dashboard
           </div>
         </div>
 

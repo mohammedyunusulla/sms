@@ -6,8 +6,8 @@ export default function SignUp() {
   return (
     <>
       <PageMeta
-        title="Sign Up | Edusphere - Education Management System"
-        description="Sign up page - Edusphere Education Management System"
+        title="Sign Up | EduSpyre - Education Management System"
+        description="Sign up page - EduSpyre Education Management System"
       />
       <AuthLayout>
         <SignUpForm />

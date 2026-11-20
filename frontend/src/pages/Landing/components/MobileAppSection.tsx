@@ -237,7 +237,7 @@ export default function MobileAppSection() {
                   The whole school, <span className="landing-gradient-text">in your pocket</span>
                 </>
               }
-              description="The Edusphere app for Android and iOS is on its way. It brings every role's essentials to their phone, from a live bus map for parents to QR check-ins for bus staff."
+              description="The EduSpyre app for Android and iOS is on its way. It brings every role's essentials to their phone, from a live bus map for parents to QR check-ins for bus staff."
             />
           </Reveal>
 
@@ -265,7 +265,7 @@ export default function MobileAppSection() {
         <Reveal delay={150}>
           <div
             role="img"
-            aria-label="Preview of the upcoming Edusphere mobile app: a parent's live bus map and the bus staff QR check-in screen"
+            aria-label="Preview of the upcoming EduSpyre mobile app: a parent's live bus map and the bus staff QR check-in screen"
             className="relative mx-auto flex w-full max-w-[540px] justify-center sm:h-[620px]"
           >
             <div

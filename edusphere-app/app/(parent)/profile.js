@@ -98,7 +98,7 @@ export default function ParentProfileScreen() {
                         Settings
                     </Text>
                     <MenuItem title="Notifications" subtitle="Manage push notifications" />
-                    <MenuItem title="About EduSphere" subtitle="Version 1.0.0" />
+                    <MenuItem title="About EduSpyre" subtitle="Version 1.0.0" />
 
                     <TouchableOpacity
                         className="bg-red-50 rounded-2xl p-4 mb-8 mt-4 items-center"

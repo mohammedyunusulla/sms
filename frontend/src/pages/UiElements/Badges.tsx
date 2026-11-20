@@ -8,8 +8,8 @@ export default function Badges() {
   return (
     <div>
       <PageMeta
-        title="Badges | Edusphere - Education Management System"
-        description="Badges page - Edusphere Education Management System"
+        title="Badges | EduSpyre - Education Management System"
+        description="Badges page - EduSpyre Education Management System"
       />
       <PageBreadcrumb pageTitle="Badges" />
       <div className="space-y-5 sm:space-y-6">

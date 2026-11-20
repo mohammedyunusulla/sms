@@ -99,7 +99,7 @@ export default function LandingFooter() {
         </div>
 
         <div className="mt-12 flex flex-col gap-4 border-t border-gray-200 pt-8 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between dark:border-white/10 dark:text-gray-400">
-          <p>© {year} Edusphere. All rights reserved.</p>
+          <p>© {year} EduSpyre. All rights reserved.</p>
           <button
             type="button"
             onClick={scrollToTop}

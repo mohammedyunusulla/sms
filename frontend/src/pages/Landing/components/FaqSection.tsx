@@ -26,15 +26,15 @@ const FAQS: { q: string; a: ReactNode }[] = [
   },
   {
     q: "Can parents see where the school bus is?",
-    a: "Live map tracking for parents is coming soon in the Edusphere mobile app. Today, bus staff already check each student in and out of the bus with a QR scan, and the school can review daily boarding reports.",
+    a: "Live map tracking for parents is coming soon in the EduSpyre mobile app. Today, bus staff already check each student in and out of the bus with a QR scan, and the school can review daily boarding reports.",
   },
   {
     q: "Is our school's data kept separate from other schools?",
-    a: "Yes. Every school on Edusphere has its own dedicated database, so records are never mixed between schools. Within a school, each person only sees what their role allows.",
+    a: "Yes. Every school on EduSpyre has its own dedicated database, so records are never mixed between schools. Within a school, each person only sees what their role allows.",
   },
   {
-    q: "Can I use Edusphere on my phone?",
-    a: "Yes. Edusphere works in any modern browser on desktop, tablet or phone. A dedicated Edusphere mobile app for Android and iOS is coming soon.",
+    q: "Can I use EduSpyre on my phone?",
+    a: "Yes. EduSpyre works in any modern browser on desktop, tablet or phone. A dedicated EduSpyre mobile app for Android and iOS is coming soon.",
   },
 ];
 

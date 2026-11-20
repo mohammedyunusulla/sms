@@ -118,8 +118,8 @@ const Calendar: React.FC = () => {
   return (
     <>
       <PageMeta
-        title="Calendar | Edusphere - Education Management System"
-        description="Calendar page - Edusphere Education Management System"
+        title="Calendar | EduSpyre - Education Management System"
+        description="Calendar page - EduSpyre Education Management System"
       />
       <div className="rounded-2xl border  border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]">
         <div className="custom-calendar">

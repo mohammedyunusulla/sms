@@ -155,7 +155,7 @@ function BusTile() {
           </h3>
           <p className="mt-3 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
             Bus staff record every boarding and drop-off with a quick QR scan, with daily reports for the school.
-            Live map tracking for parents is coming soon in the Edusphere mobile app.
+            Live map tracking for parents is coming soon in the EduSpyre mobile app.
           </p>
           <ul className="mt-5 flex flex-wrap gap-2">
             <li className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 dark:bg-white/5 dark:text-gray-300">

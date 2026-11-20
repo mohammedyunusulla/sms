@@ -30,10 +30,10 @@ export default function ContactSection() {
               eyebrow="Contact"
               title={
                 <>
-                  Want Edusphere for <span className="landing-gradient-text">your school?</span>
+                  Want EduSpyre for <span className="landing-gradient-text">your school?</span>
                 </>
               }
-              description="Talk to the Klopterz team about bringing Edusphere to your school, or ask us anything about the platform."
+              description="Talk to the Klopterz team about bringing EduSpyre to your school, or ask us anything about the platform."
             />
             <a
               href={CONTACT.contactPageUrl}
