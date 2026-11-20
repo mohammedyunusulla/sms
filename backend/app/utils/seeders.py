@@ -22,6 +22,8 @@ ALL_PERMISSIONS = [
     'view_assignments', 'manage_assignments',
     'view_child_assignments', 'view_child_timetable', 'view_child_fees', 'view_child_syllabus',
     'view_bus_scan', 'manage_bus_scan',
+    # added with server-side permission checks (QA A15)
+    'manage_academic_years', 'manage_rooms', 'manage_salaries',
 ]
 
 # Default permissions for system roles in a new school.

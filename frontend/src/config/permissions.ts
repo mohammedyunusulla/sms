@@ -78,6 +78,10 @@ export enum Permission {
   // Bus Scan
   VIEW_BUS_SCAN = 'view_bus_scan',
   MANAGE_BUS_SCAN = 'manage_bus_scan',
+  // added with server-side permission checks (QA A15)
+  MANAGE_ACADEMIC_YEARS = 'manage_academic_years',
+  MANAGE_ROOMS = 'manage_rooms',
+  MANAGE_SALARIES = 'manage_salaries',
 }
 
 // ──────────────────────────────────────────────

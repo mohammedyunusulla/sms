@@ -19,11 +19,20 @@ def _requested_skid(view_kwargs):
     return None
 
 
-def login_required(allowed_roles=None):
+def login_required(allowed_roles=None, permission=None, self_service=False):
     """
-    Decorator to require login and optionally check roles.
+    Decorator to require login and check access.
     Attaches the authenticated user to request.current_user and g.current_user.
+
+    allowed_roles: the route's role list (decides while PERMISSION_ENFORCEMENT is off / log).
+    permission:    the role tick box(es) the route needs - a key or a tuple of keys (any one is enough).
+                   With PERMISSION_ENFORCEMENT=enforce this replaces the role list (School Admin / Super Admin
+                   always pass). See app/utils/role_permissions.py.
+    self_service:  the route is about the caller themselves (sign-in, a student's / parent's own pages, ...),
+                   so it stays decided by role. Used by scripts/check_route_permissions.py.
     """
+    permissions = tuple([permission] if isinstance(permission, str) else (permission or ()))
+
     def decorator(f):
         @wraps(f)
         @jwt_required()
@@ -47,11 +56,11 @@ def login_required(allowed_roles=None):
                 if not user.is_active:
                     return jsonify({'message': 'User account is deactivated'}), 403
 
-                # Check roles if specified
-                if allowed_roles:
-                    user_role = user.role.value if hasattr(user.role, 'value') else user.role
-                    if user_role not in allowed_roles:
-                        return jsonify({'message': 'Insufficient permissions'}), 403
+                # Access: the role list, or the role's tick boxes (see app/utils/role_permissions.py)
+                user_role = user.role.value if hasattr(user.role, 'value') else user.role
+                from app.utils.role_permissions import decide
+                if not decide(user, user_role, allowed_roles, permissions):
+                    return jsonify({'message': 'Insufficient permissions'}), 403
 
                 # Tenant isolation: non-super-admins may only touch their own school's data.
                 if user.role != UserRole.SUPER_ADMIN:
@@ -73,6 +82,12 @@ def login_required(allowed_roles=None):
 
             return f(*args, **kwargs)
 
+        # what scripts/check_route_permissions.py reports for this route
+        decorated_function.access_rule = {
+            'roles': list(allowed_roles or []),
+            'permissions': list(permissions),
+            'self_service': bool(self_service),
+        }
         return decorated_function
     return decorator
 

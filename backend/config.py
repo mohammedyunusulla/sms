@@ -51,6 +51,8 @@ class Config:
     # Logging configuration
     LOG_LEVEL = os.environ.get('LOG_LEVEL') or 'INFO'
     LOG_FILE = os.environ.get('LOG_FILE') or 'logs/app.log'
+    # Server-side role permission checks: off | log | enforce (see app/utils/role_permissions.py)
+    PERMISSION_ENFORCEMENT = (os.environ.get('PERMISSION_ENFORCEMENT') or 'off').strip().lower()
 
     # CORS: comma-separated list of allowed origins (e.g., "http://localhost:3000,https://app.example.com")
     # Parsed to a list (or '*') — Flask-CORS and Socket.IO treat a raw string as a single origin.

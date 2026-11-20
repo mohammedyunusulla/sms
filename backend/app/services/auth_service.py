@@ -100,12 +100,9 @@ class AuthService:
 
             if user.skid:
                 with switch_to_school_db(user.skid) as school_session:
-                    user_role = (
-                        school_session.query(Role)
-                        .join(UserRoles, UserRoles.role_id == Role.id)
-                        .filter(UserRoles.user_id == user.school_user_id)
-                        .first()
-                    )
+                    # the person's one role (same lookup the server's permission check uses)
+                    from app.utils.role_permissions import account_role
+                    user_role = account_role(school_session, user.school_user_id)
 
                     if user_role:
                         role_data = {

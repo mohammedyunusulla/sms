@@ -90,6 +90,8 @@ class RolesService:
 
                 role.permissions = permissions
                 tenant_session.commit()
+                from app.utils.role_permissions import forget_cached_permissions
+                forget_cached_permissions(skid)  # the server uses the new tick boxes straight away
                 return role.to_dict()
 
         except Exception as e:
@@ -106,6 +108,8 @@ class RolesService:
                 role.is_active = not role.is_active
 
                 tenant_session.commit()
+                from app.utils.role_permissions import forget_cached_permissions
+                forget_cached_permissions(skid)
                 return role.to_dict()
 
         except Exception as e:

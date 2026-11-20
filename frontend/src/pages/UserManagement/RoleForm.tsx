@@ -64,6 +64,7 @@ const PERMISSION_GROUPS = [
         permissions: [
             { key: Permission.VIEW_EXAMS, label: 'View Exams & Marks' },
             { key: Permission.MANAGE_EXAMS, label: 'Create / Edit Exams' },
+            { key: Permission.MANAGE_ROOMS, label: 'Exam Rooms' },
             { key: Permission.MANAGE_MARKS, label: 'Enter / Edit Marks' },
             { key: Permission.VIEW_MARKS, label: 'View Marks (own / class results)' },
         ],
@@ -75,6 +76,7 @@ const PERMISSION_GROUPS = [
             { key: Permission.MANAGE_FEES, label: 'Manage Fee Structure & Collection' },
             { key: Permission.VIEW_EXPENSES, label: 'View Expenses' },
             { key: Permission.MANAGE_EXPENSES, label: 'Create / Edit Expenses' },
+            { key: Permission.MANAGE_SALARIES, label: 'Salary Setup & Payments' },
         ],
     },
     {
@@ -102,6 +104,7 @@ const PERMISSION_GROUPS = [
         module: 'Administration',
         permissions: [
             { key: Permission.MANAGE_ROLES, label: 'Manage Roles & Permissions' },
+            { key: Permission.MANAGE_ACADEMIC_YEARS, label: 'Manage Academic Years' },
         ],
     },
     {

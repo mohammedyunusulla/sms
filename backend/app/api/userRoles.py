@@ -13,7 +13,9 @@ def assign_role_to_user(skid):
         if not skid:
             raise ValueError("School ID (skid) is required")
         
-        role = UserRolesService.assign_role_to_user(data, skid)
-        return jsonify({'message': 'Role created', 'data': role, 'status': 'success', 'code':200}), 200
+        role = UserRolesService.assign_role_to_user(data or {}, skid)
+        return jsonify({'message': role['message'], 'data': role, 'status': 'success', 'code':200}), 200
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': str(e), 'status': 'error'}), 500
