@@ -216,7 +216,7 @@ class SeatingService:
         """
         Generate seating using per-class column assignments.
         - Column-aware: each class fills only its assigned columns.
-        - Incremental: skips students already seated in ANY config for this exam_type + academic_year.
+        - Incremental: skips students already seated in another room at the same sitting (same date, overlapping time).
         - Overflow: stops when assigned columns are full; remaining students stay unassigned.
         """
         try:
@@ -233,14 +233,18 @@ class SeatingService:
                 if not class_assignments:
                     raise ValueError("No classes assigned to this room")
 
-                # Students already seated across ALL configs for this exam + year (excluding this config)
+                # Students already seated in another room for the SAME sitting (same date, overlapping time),
+                # whatever the exam type: nobody can sit in two rooms at once. It used to skip anyone seated
+                # anywhere for this exam type and year, so a second paper on another day seated almost nobody.
                 already_seated_elsewhere = set(
                     row[0] for row in
                     session.query(SeatingPlan.student_id)
                     .join(ExamSeatingConfig, SeatingPlan.config_id == ExamSeatingConfig.id)
                     .filter(
-                        ExamSeatingConfig.exam_type_id == config.exam_type_id,
                         ExamSeatingConfig.academic_year_id == config.academic_year_id,
+                        ExamSeatingConfig.exam_date == config.exam_date,
+                        ExamSeatingConfig.start_time < config.end_time,
+                        ExamSeatingConfig.end_time > config.start_time,
                         ExamSeatingConfig.id != config.id,
                     ).all()
                 )
