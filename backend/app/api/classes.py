@@ -349,25 +349,3 @@ def move_student_to_section(skid, new_section_id, student_id):
             'status': 'error',
             'code': 500
         }), 500
-
-
-@class_bp.route('/remove-subject-from-section/<skid>/<int:section_id>/<int:subject_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_classes')
-def remove_subject_from_section(skid, section_id, subject_id):
-    """
-    Remove a subject from a specific class or its sections
-    """
-    try:
-        success = ClassService.remove_subject_from_section(skid, section_id, subject_id)
-        if not success:
-            return jsonify({'message': 'Failed to remove subject: Enrollment record not found', 'status': 'error', 'code': 404}), 404
-            
-        return jsonify({
-            'message': 'Subject removed from section successfully',
-            'data': success,
-            'status': 'success',
-            'code': 200
-        }), 200
-        
-    except Exception as e:
-        return jsonify({'message': f'Failed to remove subject: {str(e)}', 'status': 'error', 'code': 500}), 500

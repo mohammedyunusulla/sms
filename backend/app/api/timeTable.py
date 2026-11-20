@@ -387,7 +387,8 @@ def get_teacher_schedule(teacher_id):
                 'data': None
             }), 400
         
-        schedule = TimetableService.get_teacher_schedule(teacher_id, academic_year_id, semester)
+        # the route has no school in its URL: use the signed-in user's school (it used to pass none -> 500)
+        schedule = TimetableService.get_teacher_schedule(teacher_id, academic_year_id, semester, skid=request.current_user.skid)
         
         return jsonify({
             'code': 200,

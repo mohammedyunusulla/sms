@@ -58,8 +58,10 @@ def enter_marks(skid, academic_year_id):
         data = request.get_json()
 
         own_id = current_teacher_id()
+        # "entered by" is always whoever is saving (it used to be taken from the request for non-teachers,
+        # and a request without it crashed with a 500)
+        data['teacher_id'] = getattr(request.current_user, 'school_user_id', None)
         if own_id is not None:
-            data['teacher_id'] = own_id  # never trust a teacher_id sent by a teacher
             with switch_to_school_db(skid) as session:
                 config = session.query(ExamSubjectConfig).filter_by(id=data.get('exam_config_id')).first()
                 if not config:

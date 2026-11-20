@@ -179,25 +179,6 @@ class UserService {
         }
     }
 
-    /**
-     * Change user password
-     */
-    async changePassword(id: string, currentPassword: string, newPassword: string): Promise<void> {
-        const api = getApiClient();
-        const schoolId = getSchoolId();
-
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
-        }
-
-        const response = (await api.post(`${this.baseUrl}/${id}/change-password/${schoolId}`, {
-            current_password: currentPassword,
-            new_password: newPassword,
-        })) as ApiResponse;
-        if (response.code !== 200 || response.status !== 'success') {
-            throw new Error(response.message || 'Failed to change password');
-        }
-    }
 
     /**
      * Reset user password (admin only)

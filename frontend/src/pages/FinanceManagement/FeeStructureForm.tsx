@@ -7,7 +7,7 @@
 import { FC, useEffect, useState, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import toast from 'react-hot-toast';
-import { PageHeader, Button, FormSelect, LoadingSpinner } from '../../components';
+import { PageHeader, Button, FormSelect, LoadingSpinner, ConfirmDialog } from '../../components';
 import { financeService } from '../../services/modules/financeService';
 import { useAuthStore } from '../../stores/authStore';
 import { IFeeRow } from '../../types/index';
@@ -138,9 +138,16 @@ const FeeStructureForm: FC = () => {
 
     const addRow = () => setFeeRows(prev => [...prev, createEmptyRow()]);
 
-    const removeRow = async (row: FeeRowState) => {
+    // a saved fee is deleted on the server: ask first (the trash button used to delete it at once)
+    const [pendingDelete, setPendingDelete] = useState<FeeRowState | null>(null);
+
+    const removeRow = async (row: FeeRowState, confirmed = false) => {
         if (feeRows.length === 1) {
             toast.error('At least one fee is required');
+            return;
+        }
+        if (row.fee_id && !confirmed) {
+            setPendingDelete(row);
             return;
         }
         if (row.fee_id) {
@@ -404,6 +411,21 @@ const FeeStructureForm: FC = () => {
                     {isEditMode ? 'Update Fee Structure' : 'Save Fee Structure'}
                 </Button>
             </div>
+
+            <ConfirmDialog
+                isOpen={!!pendingDelete}
+                type="danger"
+                title="Delete fee"
+                message={pendingDelete ? `Delete the ${pendingDelete.fee_name} fee from this class? This can't be undone.` : ''}
+                confirmText="Delete"
+                isLoading={loading}
+                onConfirm={async () => {
+                    const row = pendingDelete;
+                    setPendingDelete(null);
+                    if (row) await removeRow(row, true);
+                }}
+                onCancel={() => setPendingDelete(null)}
+            />
         </div>
     );
 };

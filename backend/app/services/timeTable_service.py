@@ -546,7 +546,7 @@ class TimetableService:
             with switch_to_school_db(skid) as tenant_session:
                 from app.models.tenant.TimeTable import Timetable
                 from app.models.tenant.Class import Class
-                from app.models.tenant.Section import Section
+                from app.models.tenant.Sections import Section
                 
                 query = tenant_session.query(Timetable).filter(
                     Timetable.is_active == True,
@@ -710,7 +710,7 @@ class TimetableService:
                 from app.models.tenant.TimeTable import Timetable
                 from app.models.tenant.TimeTableEntry import TimetableEntry
                 from app.models.tenant.Class import Class
-                from app.models.tenant.Section import Section
+                from app.models.tenant.Sections import Section
                 from app.models.tenant.Subject import Subject
                 
                 # Get all entries for the teacher (only from published timetables)

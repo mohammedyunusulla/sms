@@ -325,7 +325,7 @@ const SalarySetup: FC = () => {
                             value={formData.staff_id}
                             onChange={(e) => setFormData({ ...formData, staff_id: e.target.value })}
                             options={staffList.map((s: any) => ({
-                                label: `${s.full_name} (${s.profile?.employee_id || 'No ID'} - ${s.role_name})`,
+                                label: `${s.full_name} (${s.profile?.employee_id || 'No ID'} - ${s.role_name || s.role?.role_name || 'Staff'})`,
                                 value: String(s.id),
                             }))}
                             disabled={isEditMode}
