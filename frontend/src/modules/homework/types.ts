@@ -31,6 +31,9 @@ export interface HomeworkSession {
   accuracy_score?: number | null;
   efficiency_score?: number | null;
   ai_feedback_json?: Record<string, unknown>;
+  has_start_photo?: boolean;
+  page_qr_code?: string | null;
+  integrity?: HomeworkIntegrity;
 }
 
 export interface HomeworkAnalytics {
@@ -58,15 +61,18 @@ export interface HomeworkAnalytics {
     efficiency_score?: number | null;
     submitted_at?: string | null;
     ai_feedback_json?: Record<string, unknown>;
+    student_name?: string | null;
+    has_start_photo?: boolean;
+    page_count?: number;
+    integrity?: HomeworkIntegrity;
   }>;
 }
 
-export interface StudentStickerRow {
-  student_id: number;
-  name: string;
-  roll_no?: string;
-  class_id?: number;
-  section_id?: number;
-  qr_code_value?: string | null;
-  sticker_assigned: boolean;
+/** Page checks for a submission: the QR is matched by the server, the rest is the AI's view of the photos. */
+export interface HomeworkIntegrity {
+  qr_matched?: boolean | null;
+  page_blank_at_start?: boolean | null;
+  same_page_as_start?: boolean | null;
+  notes?: string;
+  flagged?: boolean;
 }

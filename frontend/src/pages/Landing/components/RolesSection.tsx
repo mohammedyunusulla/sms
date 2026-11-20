@@ -119,13 +119,13 @@ const ROLES: Role[] = [
       "Personal timetable and exam schedule",
       "Homework with an AI tutor that guides instead of giving answers",
       "Marks and progress at a glance",
-      "Stickers that reward great effort",
+      "Instant AI feedback on submitted homework",
     ],
     previewTitle: "Up next",
     rows: [
       { icon: SparklesIcon, title: "Homework · Geometry", meta: "Due tomorrow", badge: "AI tutor", tone: "purple" },
       { icon: CalendarIcon, title: "Next period", meta: "Science lab · 10:30", badge: "Room 4", tone: "brand" },
-      { icon: StarIcon, title: "Stickers earned", meta: "This month", badge: "7", tone: "warning" },
+      { icon: StarIcon, title: "Homework feedback", meta: "Geometry · graded", badge: "92%", tone: "warning" },
     ],
   },
   {

@@ -6,11 +6,12 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from app.models.tenant import HomeworkAssignment, SchoolUsers, Student, StudentHomeworkSession, StudentQRSticker
+from app.models.tenant import HomeworkAssignment, SchoolUsers, Student, StudentHomeworkSession
 from app.models.tenant.Class import Class
 from app.models.tenant.Sections import Section
 from app.services.homework_gemini_service import HomeworkGeminiService
 from app.utils.db_manager import switch_to_school_db
+from app.utils.qr_reader import QrReadError, read_qr_codes
 from app.utils.teaching_scope import student_section_id, teacher_section_ids
 
 # Upload limits (notebook pages, hint photos)
@@ -125,6 +126,9 @@ class HomeworkService:
             "accuracy_score": session.accuracy_score,
             "efficiency_score": session.efficiency_score,
             "ai_feedback_json": session.ai_feedback_json or {},
+            "has_start_photo": bool(session.start_image_path),
+            "page_qr_code": session.page_qr_code,
+            "integrity": session.integrity_json or {},
         }
 
     @staticmethod
@@ -155,74 +159,18 @@ class HomeworkService:
 
     @staticmethod
     def _ensure_tables(tenant_session) -> None:
-        StudentQRSticker.__table__.create(bind=tenant_session.bind, checkfirst=True)
         HomeworkAssignment.__table__.create(bind=tenant_session.bind, checkfirst=True)
         StudentHomeworkSession.__table__.create(bind=tenant_session.bind, checkfirst=True)
         from sqlalchemy import text as sql_text
-        tenant_session.execute(sql_text(
-            "ALTER TABLE homework_assignments ADD COLUMN IF NOT EXISTS instruction_image_paths JSON DEFAULT '[]'"
-        ))
-
-    # ------------------------------------------------------------------ stickers
-    @classmethod
-    def assign_sticker(cls, skid: str, student_id: int, current_user):
-        with switch_to_school_db(skid) as tenant_session:
-            cls._ensure_tables(tenant_session)
-            student = tenant_session.query(Student).filter_by(user_id=student_id).first()
-            if not student:
-                return cls._error("Student not found", 404)
-            allowed = cls._teacher_sections(tenant_session, current_user)
-            if allowed is not None and student_section_id(tenant_session, student_id) not in allowed:
-                return cls._error("You can only manage stickers for students in sections you teach", 403)
-
-            sticker = tenant_session.query(StudentQRSticker).filter_by(student_id=student_id).first()
-            if sticker:
-                sticker.is_active = True
-            else:
-                sticker = StudentQRSticker(
-                    student_id=student_id,
-                    qr_code_value=f"STU-{student_id}-QR-{uuid.uuid4().hex[:6].upper()}",
-                    is_active=True,
-                )
-                tenant_session.add(sticker)
-            tenant_session.commit()
-            return cls._response(
-                "Sticker assigned successfully",
-                {"student_id": student_id, "qr_code_value": sticker.qr_code_value},
-            )
-
-    @classmethod
-    def list_stickers(cls, skid: str, class_id: Optional[int], section_id: Optional[int], current_user):
-        with switch_to_school_db(skid) as tenant_session:
-            cls._ensure_tables(tenant_session)
-            query = (
-                tenant_session.query(Student, SchoolUsers, StudentQRSticker)
-                .join(SchoolUsers, SchoolUsers.id == Student.user_id)
-                .outerjoin(StudentQRSticker, StudentQRSticker.student_id == Student.user_id)
-            )
-            if class_id:
-                query = query.filter(Student.class_id == class_id)
-            if section_id:
-                query = query.filter(Student.section_id == section_id)
-            allowed = cls._teacher_sections(tenant_session, current_user)
-            if allowed is not None:
-                query = query.filter(Student.section_id.in_(allowed or [-1]))
-
-            rows = query.all()
-            result = []
-            for student, user, sticker in rows:
-                result.append(
-                    {
-                        "student_id": student.user_id,
-                        "name": f"{user.first_name} {user.last_name}".strip(),
-                        "roll_no": student.roll_no,
-                        "class_id": student.class_id,
-                        "section_id": student.section_id,
-                        "qr_code_value": sticker.qr_code_value if sticker else None,
-                        "sticker_assigned": bool(sticker and sticker.is_active),
-                    }
-                )
-            return cls._response("Stickers fetched successfully", result)
+        for statement in (
+            "ALTER TABLE homework_assignments ADD COLUMN IF NOT EXISTS instruction_image_paths JSON DEFAULT '[]'",
+            # the notebook page (QR sticker) a session was started on
+            "ALTER TABLE student_homework_sessions ADD COLUMN IF NOT EXISTS page_qr_code VARCHAR(255)",
+            "ALTER TABLE student_homework_sessions ADD COLUMN IF NOT EXISTS start_image_path VARCHAR(500)",
+            "ALTER TABLE student_homework_sessions ADD COLUMN IF NOT EXISTS integrity_json JSON DEFAULT '{}'",
+            "CREATE INDEX IF NOT EXISTS ix_student_homework_sessions_page_qr_code ON student_homework_sessions (page_qr_code)",
+        ):
+            tenant_session.execute(sql_text(statement))
 
     # ------------------------------------------------------------------ homework
     @classmethod
@@ -392,13 +340,13 @@ class HomeworkService:
 
     # ------------------------------------------------------------------ student sessions
     @classmethod
-    def start_session(cls, skid: str, student_user_id: int, assignment_id: int, qr_code_value: str):
+    def start_session(cls, skid: str, student_user_id: int, assignment_id: int, start_image: Optional[Tuple[bytes, str]]):
+        """
+        Start (or resume) a homework. A new start needs a photo of the notebook page while it is still blank,
+        with the school's QR sticker on it: the QR identifies the page, and one page is used for one homework.
+        """
         with switch_to_school_db(skid) as tenant_session:
             cls._ensure_tables(tenant_session)
-            sticker = tenant_session.query(StudentQRSticker).filter_by(student_id=student_user_id, is_active=True).first()
-            if not sticker or sticker.qr_code_value != qr_code_value:
-                return cls._error("Invalid sticker QR code", 403)
-
             assignment = tenant_session.query(HomeworkAssignment).filter_by(id=assignment_id, is_active=True).first()
             if not assignment:
                 return cls._error("Homework not found", 404)
@@ -420,6 +368,25 @@ class HomeworkService:
                 tenant_session.refresh(session)
                 return cls._response("Session resumed successfully", cls._session_to_dict(session))
 
+            # New start: read the QR from the photo of the blank page
+            if not start_image:
+                return cls._error("Take a photo of the blank page with its QR sticker to start", 422)
+            try:
+                codes = read_qr_codes(start_image[0])
+            except QrReadError as exc:
+                return cls._error(str(exc), 422)
+            if not codes:
+                return cls._error("Couldn't find a QR code in the photo. Make sure the whole sticker is visible and in focus, then retake it.", 422)
+            if len(codes) > 1:
+                return cls._error("The photo shows more than one QR code. Photograph only the page you will write on.", 422)
+            page_qr = codes[0]
+            used = tenant_session.query(StudentHomeworkSession).filter(
+                StudentHomeworkSession.page_qr_code == page_qr,
+                StudentHomeworkSession.is_active.is_(True),
+            ).first()
+            if used:
+                return cls._error("This QR page has already been used for a homework. Use a new page with an unused QR sticker.", 409)
+
             session = StudentHomeworkSession(
                 student_id=student_user_id,
                 assignment_id=assignment_id,
@@ -430,9 +397,22 @@ class HomeworkService:
                 hints_used_count=0,
                 submission_image_paths=[],
                 ai_feedback_json={},
+                page_qr_code=page_qr,
+                integrity_json={},
                 is_active=True,
             )
             tenant_session.add(session)
+            tenant_session.flush()
+            # keep the "before" photo of the blank page
+            session_dir = _upload_root() / str(skid) / str(session.id)
+            try:
+                session_dir.mkdir(parents=True, exist_ok=True)
+                start_path = session_dir / f"start-{uuid.uuid4().hex}{_EXTENSIONS.get(start_image[1], '.jpg')}"
+                start_path.write_bytes(start_image[0])
+            except OSError as exc:
+                tenant_session.rollback()
+                return cls._error(f"Couldn't save the photo: {exc}", 500)
+            session.start_image_path = str(start_path)
             tenant_session.commit()
             tenant_session.refresh(session)
             return cls._response("Session started successfully", cls._session_to_dict(session), 201)
@@ -530,7 +510,6 @@ class HomeworkService:
         skid: str,
         student_user_id: int,
         session_id: int,
-        qr_code_value: str,
         images: Sequence[Tuple[bytes, str]],
     ):
         with switch_to_school_db(skid) as tenant_session:
@@ -543,15 +522,28 @@ class HomeworkService:
             if session.status not in ("in_progress", "paused"):
                 return cls._error("Session is already submitted", 400)
 
-            sticker = tenant_session.query(StudentQRSticker).filter_by(student_id=student_user_id, is_active=True).first()
-            if not sticker or sticker.qr_code_value != qr_code_value:
-                return cls._error("Invalid sticker QR code", 403)
-
             assignment = tenant_session.query(HomeworkAssignment).filter_by(id=session.assignment_id, is_active=True).first()
             if not assignment:
                 return cls._error("Homework not found", 404)
             if not images:
                 return cls._error("At least one image is required", 422)
+
+            # The finished pages must include the page the homework was started on (same QR sticker).
+            # Sessions started before page QRs existed have none and skip this check.
+            qr_matched = None
+            if session.page_qr_code:
+                found = set()
+                for raw, _mime in images:
+                    try:
+                        found.update(read_qr_codes(raw))
+                    except QrReadError:
+                        continue
+                if session.page_qr_code not in found:
+                    if found:
+                        return cls._error("This isn't the page you started on: the QR sticker in your photos is different. Upload the page you photographed at the start.", 403)
+                    return cls._error("Couldn't find the page's QR sticker in your photos. Include a clear photo of the page you started on, with the whole sticker visible.", 403)
+                qr_matched = True
+            start_image = load_images([session.start_image_path]) if session.start_image_path else []
 
             # Work out the final active time without touching the session yet: if grading fails,
             # nothing is saved (this used to add the time again on every failed retry).
@@ -573,9 +565,23 @@ class HomeworkService:
                     active_duration_seconds=active_seconds,
                     hints_used_count=session.hints_used_count,
                     instruction_images=load_images(assignment.instruction_image_paths),
+                    start_image=start_image[0] if start_image else None,
                 )
             except Exception as exc:
                 return cls._error(f"AI grading failed: {exc}", 500)
+
+            # Page checks: the QR is checked above; the AI says whether the page was blank at the start and
+            # whether the finished page is the same page. Those two don't block - they flag it for the teacher.
+            blank_at_start = grading.pop("page_blank_at_start", None) if start_image else None
+            same_page = grading.pop("same_page_as_start", None) if start_image else None
+            notes = grading.pop("page_check_notes", "") if start_image else ""
+            integrity = {
+                "qr_matched": qr_matched,
+                "page_blank_at_start": blank_at_start,
+                "same_page_as_start": same_page,
+                "notes": notes,
+                "flagged": blank_at_start is False or same_page is False,
+            }
 
             # Only now save the pages (no orphaned files when grading fails)
             session_dir = _upload_root() / str(skid) / str(session.id)
@@ -606,6 +612,7 @@ class HomeworkService:
             session.accuracy_score = round(accuracy_score, 2)
             session.efficiency_score = efficiency_score
             session.ai_feedback_json = grading
+            session.integrity_json = integrity
             tenant_session.commit()
             tenant_session.refresh(session)
 
@@ -613,6 +620,40 @@ class HomeworkService:
                 "Homework submitted and graded successfully",
                 {"session": cls._session_to_dict(session), "grading": grading},
             )
+
+    @classmethod
+    def session_photo(cls, skid: str, session_id: int, kind: str, index: int, current_user):
+        """
+        A session's photo: kind 'start' (the blank page) or 'page' (finished pages, by index).
+        For the student who owns it, and for staff who may see that section. Returns (path, mime, error).
+        """
+        with switch_to_school_db(skid) as tenant_session:
+            cls._ensure_tables(tenant_session)
+            session = tenant_session.query(StudentHomeworkSession).filter_by(id=session_id, is_active=True).first()
+            if not session:
+                return None, None, cls._error("Session not found", 404)
+            if cls._role(current_user) == cls.STUDENT_ROLE:
+                if session.student_id != current_user.school_user_id:
+                    return None, None, cls._error("Session not found", 404)
+            else:
+                assignment = tenant_session.query(HomeworkAssignment).filter_by(id=session.assignment_id).first()
+                allowed = cls._teacher_sections(tenant_session, current_user)
+                if allowed is not None and (not assignment or assignment.section_id not in allowed):
+                    return None, None, cls._error("You can only view homework of sections you teach", 403)
+            if kind == "start":
+                path = session.start_image_path if index == 0 else None
+            elif kind == "page":
+                paths = session.submission_image_paths or []
+                path = paths[index] if 0 <= index < len(paths) else None
+            else:
+                path = None
+            if not path:
+                return None, None, cls._error("Photo not found", 404)
+            full = Path(path).resolve()
+            if _upload_root() not in full.parents or not full.is_file():
+                return None, None, cls._error("Photo not found", 404)
+            raw = full.read_bytes()[:16]
+            return str(full), image_type(raw) or _MIME_BY_EXT.get(full.suffix.lower(), "image/jpeg"), None
 
     # ------------------------------------------------------------------ analytics
     @classmethod
@@ -627,6 +668,8 @@ class HomeworkService:
                 return cls._error("You can only view analytics for sections you teach", 403)
 
             sessions = tenant_session.query(StudentHomeworkSession).filter_by(assignment_id=assignment_id, is_active=True).all()
+            names = {u.id: f"{u.first_name} {u.last_name or ''}".strip() for u in tenant_session.query(SchoolUsers).filter(
+                SchoolUsers.id.in_([s.student_id for s in sessions] or [-1])).all()}
             total = len(sessions)
             submitted = [s for s in sessions if s.status in ("submitted", "graded")]
             graded = [s for s in sessions if s.status == "graded"]
@@ -675,6 +718,10 @@ class HomeworkService:
                             "efficiency_score": s.efficiency_score,
                             "submitted_at": s.submitted_at.isoformat() if s.submitted_at else None,
                             "ai_feedback_json": s.ai_feedback_json or {},
+                            "student_name": names.get(s.student_id),
+                            "has_start_photo": bool(s.start_image_path),
+                            "page_count": len(s.submission_image_paths or []),
+                            "integrity": s.integrity_json or {},
                         }
                         for s in sessions
                     ],

@@ -1,6 +1,6 @@
 import { getApiClient, getSchoolId } from '../../../services/api/client';
 import { API_ENDPOINTS } from '../../../services/api/config';
-import { HomeworkAnalytics, HomeworkAssignment, HomeworkSession, StudentStickerRow } from '../types';
+import { HomeworkAnalytics, HomeworkAssignment, HomeworkSession } from '../types';
 
 interface ApiEnvelope<T> {
   code: number;
@@ -42,6 +42,12 @@ export const homeworkApi = {
   },
 
   /** One homework photo as a Blob (the endpoint needs the login token, so <img src> can't load it directly). */
+  /** A session's photo: the blank start page (kind 'start', index 0) or a finished page (kind 'page'). */
+  async getSessionPhoto(sessionId: number, kind: 'start' | 'page', index: number): Promise<Blob> {
+    const client = getApiClient();
+    return (await client.get(API_ENDPOINTS.HOMEWORK.SESSION_PHOTO(sessionId, kind, index), { responseType: 'blob' })) as unknown as Blob;
+  },
+
   async getHomeworkPhoto(assignmentId: number, index: number): Promise<Blob> {
     const client = getApiClient();
     return (await client.get(`/homework/assignments/${assignmentId}/photos/${index}`, { responseType: 'blob' })) as unknown as Blob;
@@ -69,28 +75,18 @@ export const homeworkApi = {
     return response.data || [];
   },
 
-  async assignSticker(studentId: number, qrCodeValue?: string): Promise<{ qr_code_value: string }> {
+  /** Start (photo of the blank page with its QR sticker) or resume (no photo) a homework. */
+  async startSession(assignmentId: number, startPhoto?: File): Promise<HomeworkSession> {
     const client = getApiClient();
-    const response = await client.post<ApiEnvelope<{ qr_code_value: string }>>(API_ENDPOINTS.HOMEWORK.ASSIGN_STICKER, {
-      student_id: studentId,
-      qr_code_value: qrCodeValue,
-    });
-    return response.data;
-  },
-
-  async listStickers(classId?: number, sectionId?: number): Promise<StudentStickerRow[]> {
-    const client = getApiClient();
-    const response = await client.get<ApiEnvelope<StudentStickerRow[]>>(API_ENDPOINTS.HOMEWORK.LIST_STICKERS, {
-      params: { class_id: classId, section_id: sectionId },
-    });
-    return response.data || [];
-  },
-
-  async startSession(qrCodeValue: string, assignmentId: number): Promise<HomeworkSession> {
-    const client = getApiClient();
-    const response = await client.post<ApiEnvelope<HomeworkSession>>(API_ENDPOINTS.HOMEWORK.START_SESSION, {
-      qr_code_value: qrCodeValue,
-      assignment_id: assignmentId,
+    if (!startPhoto) {
+      const resumed = await client.post<ApiEnvelope<HomeworkSession>>(API_ENDPOINTS.HOMEWORK.START_SESSION, { assignment_id: assignmentId });
+      return resumed.data;
+    }
+    const form = new FormData();
+    form.append('assignment_id', String(assignmentId));
+    form.append('start_photo', startPhoto);
+    const response = await client.post<ApiEnvelope<HomeworkSession>>(API_ENDPOINTS.HOMEWORK.START_SESSION, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
   },
@@ -114,10 +110,10 @@ export const homeworkApi = {
     return response.data;
   },
 
-  async submitSession(sessionId: number, qrCodeValue: string, files: File[]): Promise<{ session: HomeworkSession; grading: Record<string, unknown> }> {
+  /** The finished pages; the page the homework was started on (same QR sticker) must be one of them. */
+  async submitSession(sessionId: number, files: File[]): Promise<{ session: HomeworkSession; grading: Record<string, unknown> }> {
     const client = getApiClient();
     const form = new FormData();
-    form.append('qr_code_value', qrCodeValue);
     files.forEach((file) => form.append('files', file));
     const response = await client.post<ApiEnvelope<{ session: HomeworkSession; grading: Record<string, unknown> }>>(
       API_ENDPOINTS.HOMEWORK.SUBMIT(sessionId),

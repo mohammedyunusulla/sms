@@ -83,6 +83,7 @@ class HomeworkGeminiService:
         active_duration_seconds: int,
         hints_used_count: int,
         instruction_images: Optional[Sequence[Image]] = None,
+        start_image: Optional[Image] = None,
     ) -> Dict[str, Any]:
         client = cls._get_client()
         grading_schema = {
@@ -94,8 +95,14 @@ class HomeworkGeminiService:
                 "areas_to_improve": {"type": "array", "items": {"type": "string"}},
                 "common_mistakes": {"type": "array", "items": {"type": "string"}},
                 "overall_feedback": {"type": "string"},
+                **({
+                    "page_blank_at_start": {"type": "boolean"},
+                    "same_page_as_start": {"type": "boolean"},
+                    "page_check_notes": {"type": "string"},
+                } if start_image else {}),
             },
             "required": [
+                *(["page_blank_at_start", "same_page_as_start", "page_check_notes"] if start_image else []),
                 "accuracy_score",
                 "line_by_line_review",
                 "strengths",
@@ -123,6 +130,17 @@ class HomeworkGeminiService:
         if instruction_images:
             parts.append("Homework photos (the questions, e.g. a photo of the board):")
             parts.extend(cls._image_parts(instruction_images))
+        if start_image:
+            parts.append(
+                "Page check. The next photo was taken when the student STARTED: it should show the notebook page "
+                "blank apart from a printed QR sticker. Then come the finished pages; one of them carries the same "
+                "QR sticker. Set page_blank_at_start=false if the start photo already shows answers or writing for "
+                "this homework. Set same_page_as_start=false if the finished page with the QR sticker does not look "
+                "like the same physical page (different paper, ruling, sticker position or notebook). Explain briefly "
+                "in page_check_notes. These checks don't change the accuracy score."
+            )
+            parts.append("Start photo (blank page with QR sticker):")
+            parts.extend(cls._image_parts([start_image]))
         parts.append("Student's notebook pages:")
         parts.extend(cls._image_parts(images))
 

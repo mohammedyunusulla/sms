@@ -56,18 +56,6 @@ def section_subjects(section_id: int):
     return jsonify(body), status
 
 
-@homework_bp.route("/stickers/assign", methods=["POST"])
-@login_required(TEACHER_ROLES)
-@json_errors
-def assign_sticker():
-    payload = request.get_json(silent=True) or {}
-    student_id = _int_or_none(payload.get("student_id"))
-    if not student_id:
-        return _error("student_id is required", 422)
-    body, status = HomeworkService.assign_sticker(request.current_user.skid, student_id, request.current_user)
-    return jsonify(body), status
-
-
 @homework_bp.route("/assignments", methods=["POST"])
 @login_required(TEACHER_ROLES)
 @json_errors
@@ -126,30 +114,26 @@ def list_assignments():
     return jsonify(body), status
 
 
-@homework_bp.route("/stickers", methods=["GET"])
-@login_required(TEACHER_ROLES)
-@json_errors
-def list_stickers():
-    class_id = request.args.get("class_id", type=int)
-    section_id = request.args.get("section_id", type=int)
-    body, status = HomeworkService.list_stickers(request.current_user.skid, class_id, section_id, request.current_user)
-    return jsonify(body), status
-
-
 @homework_bp.route("/sessions/start", methods=["POST"])
 @login_required(STUDENT_ROLES)
 @json_errors
 def start_session():
-    payload = request.get_json(silent=True) or {}
-    assignment_id = _int_or_none(payload.get("assignment_id"))
-    qr_code_value = payload.get("qr_code_value")
-    if not assignment_id or not qr_code_value:
-        return _error("assignment_id and qr_code_value are required", 422)
+    """Multipart: assignment_id + start_photo (the blank notebook page with its QR sticker)."""
+    if request.mimetype == "multipart/form-data":
+        assignment_id = _int_or_none(request.form.get("assignment_id"))
+        photos, error = HomeworkService.read_images(request.files.getlist("start_photo"), max_count=1)
+        if error:
+            return _error(error, 422)
+    else:  # resuming an open session needs no photo
+        assignment_id = _int_or_none((request.get_json(silent=True) or {}).get("assignment_id"))
+        photos = []
+    if not assignment_id:
+        return _error("assignment_id is required", 422)
     body, status = HomeworkService.start_session(
         request.current_user.skid,
         request.current_user.school_user_id,
         assignment_id,
-        str(qr_code_value).strip(),
+        photos[0] if photos else None,
     )
     return jsonify(body), status
 
@@ -190,9 +174,7 @@ def hint(session_id: int):
 @login_required(STUDENT_ROLES)
 @json_errors
 def submit_session(session_id: int):
-    qr_code_value = (request.form.get("qr_code_value") or "").strip()
-    if not qr_code_value:
-        return _error("qr_code_value is required", 422)
+    """Multipart: files = the finished pages; the page the homework was started on (QR) must be one of them."""
     images, error = HomeworkService.read_images(request.files.getlist("files"), max_count=MAX_SUBMISSION_PAGES)
     if error:
         return _error(error, 422)
@@ -200,10 +182,23 @@ def submit_session(session_id: int):
         request.current_user.skid,
         request.current_user.school_user_id,
         session_id,
-        qr_code_value,
         images,
     )
     return jsonify(body), status
+
+
+@homework_bp.route("/sessions/<int:session_id>/photos/<kind>/<int:index>", methods=["GET"])
+@login_required(ALL_HOMEWORK_ROLES)
+@json_errors
+def session_photo(session_id: int, kind: str, index: int):
+    """A session's start photo (kind=start) or finished page (kind=page) - for its student and the teachers."""
+    path, mime, error = HomeworkService.session_photo(request.current_user.skid, session_id, kind, index, request.current_user)
+    if error:
+        body, status = error
+        return jsonify(body), status
+    response = send_file(path, mimetype=mime, max_age=0)
+    response.headers["Cache-Control"] = "private, no-store"
+    return response
 
 
 @homework_bp.route("/analytics/assignment/<int:assignment_id>", methods=["GET"])

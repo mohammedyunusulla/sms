@@ -2,8 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../hooks/useAuth';
 import { homeworkApi } from '../api/homeworkApi';
-import QrScannerInput from '../components/QrScannerInput';
 import HomeworkPhotos from '../components/HomeworkPhotos';
+import PhotoPicker from '../components/PhotoPicker';
 import { HomeworkAssignment, HomeworkSession } from '../types';
 
 function formatDuration(totalSeconds: number): string {
@@ -20,8 +20,8 @@ export default function StudentHomeworkPage() {
   const { user } = useAuth();
   const [assignments, setAssignments] = useState<HomeworkAssignment[]>([]);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<number>(0);
-  const [startQr, setStartQr] = useState('');
-  const [finishQr, setFinishQr] = useState('');
+  // photo of the blank notebook page with the school's QR sticker (starts the homework)
+  const [startPhotos, setStartPhotos] = useState<File[]>([]);
   const [session, setSession] = useState<HomeworkSession | null>(null);
   const [hintText, setHintText] = useState('');
   const [hintFile, setHintFile] = useState<File | undefined>(undefined);
@@ -73,17 +73,25 @@ export default function StudentHomeworkPage() {
     );
   }
 
+  // An open (in progress / paused) session resumes without a new photo
+  const canResume = selectedAssignment?.current_session_status === 'in_progress' || selectedAssignment?.current_session_status === 'paused';
+
   const startSession = async () => {
-    if (!selectedAssignmentId || !startQr.trim()) {
-      toast.error('Select homework and scan QR to start.');
+    if (!selectedAssignmentId) {
+      toast.error('Select the homework first.');
+      return;
+    }
+    if (!canResume && startPhotos.length === 0) {
+      toast.error('Take a photo of the blank page with its QR sticker to start.');
       return;
     }
     try {
       setIsBusy(true);
-      const response = await homeworkApi.startSession(startQr.trim(), selectedAssignmentId);
+      const response = await homeworkApi.startSession(selectedAssignmentId, canResume ? undefined : startPhotos[0]);
       setSession(response);
       setGrading(null);
-      toast.success('Homework session started');
+      setStartPhotos([]);
+      toast.success(canResume ? 'Homework resumed' : 'Homework started');
     } catch (error: any) {
       toast.error(error?.message || 'Failed to start session');
     } finally {
@@ -128,17 +136,13 @@ export default function StudentHomeworkPage() {
 
   const submitHomework = async () => {
     if (!session) return;
-    if (!finishQr.trim()) {
-      toast.error('Scan your sticker again to finish.');
-      return;
-    }
     if (submissionFiles.length === 0) {
-      toast.error('Upload at least one notebook page image.');
+      toast.error('Add a photo of the finished page with its QR sticker.');
       return;
     }
     try {
       setIsBusy(true);
-      const response = await homeworkApi.submitSession(session.id, finishQr.trim(), submissionFiles);
+      const response = await homeworkApi.submitSession(session.id, submissionFiles);
       setSession(response.session);
       setGrading(response.grading);
       toast.success('Homework submitted and graded');
@@ -153,16 +157,16 @@ export default function StudentHomeworkPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI Homework Session</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Scan sticker, focus with timer, request Socratic hints, and submit notebook pages for AI grading.</p>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Photograph the blank page with its QR sticker, work with the timer, ask for hints, then photograph the finished page for AI grading.</p>
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-        <h2 className="mb-3 text-lg font-semibold text-gray-900 dark:text-white">Step 1: Scan to Start</h2>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <h2 className="mb-3 text-lg font-semibold text-gray-900 dark:text-white">Step 1: Start</h2>
+        <div className="space-y-4">
           <select
             value={selectedAssignmentId || ''}
             onChange={(event) => setSelectedAssignmentId(Number(event.target.value))}
-            className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 md:w-1/2"
           >
             <option value="">Select homework</option>
             {assignments.map((assignment) => (
@@ -171,14 +175,23 @@ export default function StudentHomeworkPage() {
               </option>
             ))}
           </select>
-          <QrScannerInput label="Notebook sticker code" value={startQr} onChange={setStartQr} idSeed="start" />
+          {canResume ? (
+            <p className="text-sm text-gray-600 dark:text-gray-300">You've already started this homework. Tap Resume to continue.</p>
+          ) : (
+            <div>
+              <p className="mb-2 text-sm text-gray-600 dark:text-gray-300">
+                Take a photo of the <strong>blank page</strong> you will write on, with its <strong>QR sticker</strong> clearly visible.
+              </p>
+              <PhotoPicker photos={startPhotos} onChange={setStartPhotos} max={1} label="Blank page with QR sticker" disabled={isBusy} />
+            </div>
+          )}
         </div>
         <button
           onClick={startSession}
           disabled={isBusy}
           className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-70"
         >
-          Start Homework
+          {canResume ? 'Resume Homework' : 'Start Homework'}
         </button>
       </div>
 
@@ -247,18 +260,12 @@ export default function StudentHomeworkPage() {
 
       {session && session.status !== 'graded' && (
         <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900 dark:text-white">Step 3: Scan to Finish & Upload</h2>
-          <QrScannerInput label="Finish scan code" value={finishQr} onChange={setFinishQr} idSeed="finish" />
-          <input
-            multiple
-            type="file"
-            accept="image/*"
-            onChange={(event) => setSubmissionFiles(Array.from(event.target.files || []))}
-            className="mt-3 block text-sm"
-          />
-          {submissionFiles.length > 0 && (
-            <p className="mt-2 text-xs text-gray-500">{submissionFiles.length} image(s) selected</p>
-          )}
+          <h2 className="mb-3 text-lg font-semibold text-gray-900 dark:text-white">Step 3: Finish & Upload</h2>
+          <p className="mb-2 text-sm text-gray-600 dark:text-gray-300">
+            Photograph the <strong>same page</strong> now that it's done, with its <strong>QR sticker</strong> visible.
+            If your answer continues on more pages, add those photos too.
+          </p>
+          <PhotoPicker photos={submissionFiles} onChange={setSubmissionFiles} max={10} label="Finished pages" disabled={isBusy} />
           <button
             onClick={submitHomework}
             disabled={isBusy}

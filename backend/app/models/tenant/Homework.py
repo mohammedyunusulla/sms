@@ -54,6 +54,12 @@ class StudentHomeworkSession(BaseModelTenant, BaseModelTenantMixin):
     accuracy_score = Column(Float, nullable=True)
     efficiency_score = Column(Float, nullable=True)
     ai_feedback_json = Column(JSON, default=dict, nullable=False)
+    # The notebook page: the QR sticker read from the start photo, and that photo (page blank + QR).
+    # At submit the same QR must be on the uploaded pages. A QR (page) is used for one homework only.
+    page_qr_code = Column(String(255), nullable=True, index=True)
+    start_image_path = Column(String(500), nullable=True)
+    # Page checks: qr_matched, page_blank_at_start, same_page_as_start, notes, flagged
+    integrity_json = Column(JSON, default=dict, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=func.current_timestamp())
     updated_at = Column(DateTime, default=func.current_timestamp(), onupdate=func.current_timestamp())

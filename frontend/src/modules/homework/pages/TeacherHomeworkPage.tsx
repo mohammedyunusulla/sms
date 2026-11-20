@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import QRCode from 'qrcode';
 import { homeworkApi } from '../api/homeworkApi';
 import PhotoPicker from '../components/PhotoPicker';
-import { HomeworkAnalytics, HomeworkAssignment, StudentStickerRow } from '../types';
+import SessionPhotos from '../components/SessionPhotos';
+import { HomeworkAnalytics, HomeworkAssignment, HomeworkIntegrity } from '../types';
 
 type ClassItem = { id: number; class_name?: string; name?: string };
 type SectionItem = { id: number; section_name?: string; name?: string };
@@ -12,9 +12,9 @@ export default function TeacherHomeworkPage() {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [sections, setSections] = useState<SectionItem[]>([]);
   const [assignments, setAssignments] = useState<HomeworkAssignment[]>([]);
-  const [stickers, setStickers] = useState<StudentStickerRow[]>([]);
   const [analytics, setAnalytics] = useState<HomeworkAnalytics | null>(null);
-  const [qrImages, setQrImages] = useState<Record<string, string>>({});
+  // the submission whose photos (start page + finished pages) are open in the analytics table
+  const [photosFor, setPhotosFor] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   // null = all classes (admins); otherwise only the sections this teacher teaches
   const [scopeSections, setScopeSections] = useState<Array<{ class_id: number; class_name: string; section_id: number; section_name: string }> | null>(null);
@@ -69,7 +69,7 @@ export default function TeacherHomeworkPage() {
     if (!form.class_id) return;
     const loadClassData = async () => {
       try {
-        const [sectionRows, stickerRows, assignmentRows] = await Promise.all([
+        const [sectionRows, assignmentRows] = await Promise.all([
           scopeSections === null
             ? homeworkApi.listSections(form.class_id)
             : Promise.resolve(
@@ -77,14 +77,12 @@ export default function TeacherHomeworkPage() {
                   .filter((row) => row.class_id === form.class_id)
                   .map((row) => ({ id: row.section_id, section_name: row.section_name }))
               ),
-          homeworkApi.listStickers(form.class_id, form.section_id || undefined),
           homeworkApi.listAssignments({ class_id: form.class_id, section_id: form.section_id || undefined }),
         ]);
         setSections(sectionRows);
         if (!form.section_id && sectionRows.length > 0) {
           setForm((prev) => ({ ...prev, section_id: sectionRows[0].id }));
         }
-        setStickers(stickerRows);
         setAssignments(assignmentRows);
       } catch (error: any) {
         toast.error(error?.message || 'Failed to load class homework data');
@@ -118,33 +116,12 @@ export default function TeacherHomeworkPage() {
     };
   }, [form.section_id]);
 
-  useEffect(() => {
-    const buildQrImages = async () => {
-      const entries = await Promise.all(
-        stickers
-          .filter((item) => !!item.qr_code_value)
-          .map(async (item) => {
-            const value = item.qr_code_value as string;
-            const dataUrl = await QRCode.toDataURL(value, { width: 84, margin: 1 });
-            return [value, dataUrl] as const;
-          })
-      );
-      setQrImages(Object.fromEntries(entries));
-    };
-    void buildQrImages();
-  }, [stickers]);
-
   const efficiencyBadge = (score: number | null | undefined) => {
     if (score === null || score === undefined) return 'N/A';
     if (score >= 80) return 'High Efficiency';
     if (score >= 60) return 'Steady';
     return 'Needs Review';
   };
-
-  const classLabel = useMemo(() => {
-    const selected = classes.find((item) => item.id === form.class_id);
-    return selected?.class_name || selected?.name || 'Class';
-  }, [classes, form.class_id]);
 
   const onCreateAssignment = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -198,21 +175,23 @@ export default function TeacherHomeworkPage() {
     }
   };
 
-  const onGenerateSticker = async (studentId: number) => {
-    try {
-      await homeworkApi.assignSticker(studentId);
-      toast.success('Sticker generated');
-      const stickerRows = await homeworkApi.listStickers(form.class_id, form.section_id || undefined);
-      setStickers(stickerRows);
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to assign sticker');
-    }
+  // Page check for a submission: QR matched by the server; blank start / same page judged by the AI from the photos
+  const pageCheck = (integrity?: HomeworkIntegrity) => {
+    if (!integrity || integrity.qr_matched === undefined || integrity.qr_matched === null) return { text: '-', tone: 'text-gray-500' };
+    const problems = [
+      integrity.page_blank_at_start === false && 'page not blank at start',
+      integrity.same_page_as_start === false && 'looks like a different page',
+    ].filter(Boolean);
+    return problems.length
+      ? { text: `⚠ ${problems.join('; ')}`, tone: 'text-amber-700 dark:text-amber-400' }
+      : { text: '✓ Same QR page', tone: 'text-emerald-700 dark:text-emerald-400' };
   };
 
   const onLoadAnalytics = async () => {
     if (!selectedAssignmentId) return;
     try {
       setLoading(true);
+      setPhotosFor(null);
       const response = await homeworkApi.getAssignmentAnalytics(selectedAssignmentId);
       setAnalytics(response);
     } catch (error: any) {
@@ -227,7 +206,7 @@ export default function TeacherHomeworkPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI Homework & Efficiency (Teacher)</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Create homework, generate student QR stickers, and review class efficiency.
+          Create homework and review class efficiency. Students start each homework on a notebook page with a school QR sticker.
         </p>
       </div>
 
@@ -237,7 +216,7 @@ export default function TeacherHomeworkPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6">
         <form onSubmit={onCreateAssignment} className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
           <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Create Homework</h2>
           {form.section_id > 0 && !subjectsLoading && subjects.length === 0 && (
@@ -352,45 +331,6 @@ export default function TeacherHomeworkPage() {
           </button>
         </form>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Sticker Manager ({classLabel})</h2>
-          <div className="space-y-3">
-            {stickers.length === 0 && (
-              <p className="text-sm text-gray-500 dark:text-gray-400">No students found for selected class/section.</p>
-            )}
-            {stickers.map((student) => (
-              <div key={student.student_id} className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-                <div className="mb-2 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{student.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Roll No: {student.roll_no || '-'}</p>
-                  </div>
-                  <button
-                    onClick={() => onGenerateSticker(student.student_id)}
-                    className="rounded-md bg-gray-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-gray-900"
-                  >
-                    {student.sticker_assigned ? 'Regenerate' : 'Generate'}
-                  </button>
-                </div>
-                {student.qr_code_value ? (
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={qrImages[student.qr_code_value] || ''}
-                      alt={`QR for ${student.name}`}
-                      className="h-[84px] w-[84px] rounded border border-gray-200"
-                    />
-                    <div>
-                      <p className="text-xs text-gray-600 dark:text-gray-300">{student.qr_code_value}</p>
-                      <p className="text-xs text-gray-400">Print and stick in notebook</p>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Sticker not assigned yet.</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
@@ -431,26 +371,50 @@ export default function TeacherHomeworkPage() {
               <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
                 <thead>
                   <tr className="text-left text-xs uppercase tracking-wider text-gray-500">
-                    <th className="py-2 pr-3">Student ID</th>
+                    <th className="py-2 pr-3">Student</th>
                     <th className="py-2 pr-3">Status</th>
                     <th className="py-2 pr-3">Active Time</th>
                     <th className="py-2 pr-3">Hints</th>
                     <th className="py-2 pr-3">Accuracy</th>
                     <th className="py-2 pr-3">Efficiency</th>
                     <th className="py-2 pr-3">Band</th>
+                    <th className="py-2 pr-3">Page check</th>
+                    <th className="py-2 pr-3">Photos</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                   {analytics.students.map((row) => (
-                    <tr key={row.session_id}>
-                      <td className="py-2 pr-3">{row.student_id}</td>
+                    <Fragment key={row.session_id}>
+                    <tr>
+                      <td className="py-2 pr-3">{row.student_name || `Student ${row.student_id}`}</td>
                       <td className="py-2 pr-3">{row.status}</td>
                       <td className="py-2 pr-3">{Math.round(row.active_duration_seconds / 60)} min</td>
                       <td className="py-2 pr-3">{row.hints_used_count}</td>
                       <td className="py-2 pr-3">{row.accuracy_score ?? '-'}</td>
                       <td className="py-2 pr-3">{row.efficiency_score ?? '-'}</td>
                       <td className="py-2 pr-3">{efficiencyBadge(row.efficiency_score)}</td>
+                      <td className={`py-2 pr-3 ${pageCheck(row.integrity).tone}`} title={row.integrity?.notes || ''}>{pageCheck(row.integrity).text}</td>
+                      <td className="py-2 pr-3">
+                        {(row.has_start_photo || (row.page_count ?? 0) > 0) ? (
+                          <button
+                            type="button"
+                            onClick={() => setPhotosFor(photosFor === row.session_id ? null : row.session_id)}
+                            className="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+                          >
+                            {photosFor === row.session_id ? 'Hide' : 'View'}
+                          </button>
+                        ) : '-'}
+                      </td>
                     </tr>
+                    {photosFor === row.session_id && (
+                      <tr>
+                        <td colSpan={9} className="bg-gray-50 p-3 dark:bg-gray-800/50">
+                          <SessionPhotos sessionId={row.session_id} hasStartPhoto={!!row.has_start_photo} pageCount={row.page_count ?? 0} />
+                          {row.integrity?.notes && <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">AI page check: {row.integrity.notes}</p>}
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   ))}
                 </tbody>
               </table>

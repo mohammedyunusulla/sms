@@ -112,8 +112,8 @@ function HomeworkTile() {
           <h3 className="mt-4 text-2xl font-semibold tracking-tight">Homework with a built-in AI tutor</h3>
           <p className="mt-3 text-sm leading-relaxed text-brand-100/90">
             When students get stuck they receive Socratic hints, never the answer, so they still do the
-            thinking. Submissions are graded with AI, and teachers get per-assignment analytics plus stickers to
-            reward effort.
+            thinking. Each homework is done on a notebook page with a QR sticker, photographed blank at the start
+            and finished at the end, then graded with AI, and teachers get per-assignment analytics.
           </p>
         </div>
 
