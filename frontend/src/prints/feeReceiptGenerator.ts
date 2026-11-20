@@ -25,10 +25,15 @@ export interface FeeReceiptData {
     feeName: string;
     installmentName?: string;
     amountPaid: number;
+    /** Display name, e.g. "Cheque" */
     paymentMode: string;
+    /** Mode code (CASH / CHEQUE / ONLINE / UPI / CARD / DEMAND_DRAFT): decides which reference rows print */
+    paymentModeCode?: string;
     transactionId?: string;
     chequeNumber?: string;
     bankName?: string;
+    /** Who took the payment (falls back to the person printing) */
+    collectedBy?: string;
     remarks?: string;
     totalAmount: number;
     paidAmount: number;
@@ -77,15 +82,19 @@ export const generateFeeReceiptPdf = async (
         installmentName,
         amountPaid,
         paymentMode,
+        paymentModeCode,
         transactionId,
         chequeNumber,
         bankName,
+        collectedBy,
         remarks,
         totalAmount,
         paidAmount,
         balanceAmount,
     } = data;
 
+    // the checks below need the code; the display name ("Cheque") used to be compared with 'CHEQUE' and never matched
+    const modeCode = (paymentModeCode || paymentMode || '').toUpperCase().replace(/\s+/g, '_');
     const isInstallment = !!installmentName;
     const isPartialPayment = balanceAmount > 0 && !isInstallment;
 
@@ -196,19 +205,19 @@ export const generateFeeReceiptPdf = async (
             { text: 'Payment Mode:', bold: true, fontSize: 9, border: [true, true, false, true] },
             { text: paymentMode, fontSize: 9, border: [false, true, false, true] },
             { text: 'Collected By:', bold: true, fontSize: 9, border: [false, true, false, true] },
-            { text: schoolData.generatedBy || 'N/A', fontSize: 9, border: [false, true, true, true] }
+            { text: collectedBy || schoolData.generatedBy || 'N/A', fontSize: 9, border: [false, true, true, true] }
         ]
     ];
 
     // Add Transaction ID row for ONLINE/UPI/CARD payments
-    if (['ONLINE', 'UPI', 'CARD'].includes(paymentMode) && transactionId) {
+    if (['ONLINE', 'UPI', 'CARD'].includes(modeCode) && transactionId) {
         transactionTableBody.push([
             { text: 'Transaction ID:', bold: true, fontSize: 9, border: [true, true, false, true] },
             { text: transactionId, fontSize: 9, color: '#667eea', border: [false, true, false, true] },
             { text: 'Payment Date:', bold: true, fontSize: 9, border: [false, true, false, true] },
             { text: formatDate(receiptDate), fontSize: 9, border: [false, true, true, true] }
         ]);
-    } else if (paymentMode === 'CHEQUE') {
+    } else if (modeCode === 'CHEQUE') {
         // Add Cheque details rows
         if (chequeNumber) {
             transactionTableBody.push([

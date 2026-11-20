@@ -212,7 +212,7 @@ class AttendanceService:
                         'id': record.id,
                         'student_id': record.student_user_id,
                         'section_id': record.section_id,
-                        'status': record.status,
+                        'status': status_key(record.status),  # old rows were stored as 'Present' / 'present'
                         'remarks': record.remarks,
                         'date': record.date.strftime('%Y-%m-%d'),
                         'created_at': record.created_at.isoformat() if record.created_at else None,
@@ -322,7 +322,7 @@ class AttendanceService:
                                 'email': student.user.email,
                                 'phone': student.user.phone
                             },
-                            'status': record.status,
+                            'status': status_key(record.status),  # old rows were stored as 'Present' / 'present'
                             'remarks': record.remarks,
                             'date': record.date.strftime('%Y-%m-%d'),
                             'created_at': record.created_at.strftime('%Y-%m-%d %H:%M:%S') if record.created_at else None,
@@ -414,7 +414,7 @@ class AttendanceService:
                     # Create a dictionary for quick lookup by date
                     attendance_by_date = {
                         record.date: {
-                            'status': record.status,
+                            'status': status_key(record.status),  # old rows were stored as 'Present' / 'present'
                             'remarks': record.remarks,
                             'id': record.id
                         }
@@ -556,7 +556,7 @@ class AttendanceService:
                                 'name': f"{student.user.first_name} {student.user.last_name}",
                                 'roll_no': student.roll_no
                             },
-                            'status': record.status,
+                            'status': status_key(record.status),  # old rows were stored as 'Present' / 'present'
                             'remarks': record.remarks
                         })
                 
@@ -630,7 +630,7 @@ class AttendanceService:
                         'name': f"{student.user.first_name} {student.user.last_name}",
                         'roll_no': student.roll_no
                     } if student and student.user else None,
-                    'status': record.status,
+                    'status': status_key(record.status),  # old rows were stored as 'Present' / 'present'
                     'remarks': record.remarks,
                     'date': record.date.strftime('%Y-%m-%d'),
                     'updated_at': record.updated_at.strftime('%Y-%m-%d %H:%M:%S')
@@ -705,7 +705,7 @@ class AttendanceService:
                     formatted_records.append({
                         'id': record.id,
                         'date': record.date.strftime('%Y-%m-%d'),
-                        'status': record.status,
+                        'status': status_key(record.status),  # old rows were stored as 'Present' / 'present'
                         'remarks': record.remarks,
                         'created_at': record.created_at.strftime('%Y-%m-%d %H:%M:%S') if record.created_at else None
                     })

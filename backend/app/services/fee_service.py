@@ -801,6 +801,13 @@ class FeeService:
                         is_cancelled=False
                     ).all()
                     fee_dict['payments'] = [p.to_dict() for p in payments]
+                    # who took each payment, for the receipt's "Collected By"
+                    collector_ids = {p.collected_by for p in payments if p.collected_by}
+                    if collector_ids:
+                        names = {u.id: f"{u.first_name} {u.last_name or ''}".strip()
+                                 for u in tenant_session.query(SchoolUsers).filter(SchoolUsers.id.in_(collector_ids)).all()}
+                        for pd in fee_dict['payments']:
+                            pd['collected_by_name'] = names.get(pd.get('collected_by'))
                     
                     fees_list.append(fee_dict)
                     total_amount += float(student_fee.total_amount)

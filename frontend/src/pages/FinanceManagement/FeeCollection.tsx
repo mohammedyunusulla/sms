@@ -17,7 +17,7 @@ import { Permission } from '../../config/permissions';
 import PaymentHistoryDialog from './PaymentHistoryDialog';
 import DiscountDialog from './DiscountDialog';
 import { generateFeeReceiptPdf, generateFeeSummaryReceiptPdf } from '../../prints';
-import type { SchoolData, PdfAction } from '../../prints';
+import type { SchoolData, PdfAction, FeeReceiptData } from '../../prints';
 
 const PAYMENT_MODES = [
     { label: 'Cash', value: 'CASH' },
@@ -271,7 +271,8 @@ const FeeCollection: FC = () => {
             || (payment.installment_id ? (feeInstallments[fee.id] || []).find((i) => i.id === payment.installment_id) : undefined);
 
         try {
-            const receiptData: any = {
+            // typed, so a wrong field name is a type error (transaction_id vs transactionId never printed)
+            const receiptData: FeeReceiptData = {
                 receiptNumber: payment.receipt_number,
                 receiptDate: payment.payment_date,
                 studentName: selectedStudent.name,
@@ -282,9 +283,11 @@ const FeeCollection: FC = () => {
                 installmentName: paidInstallment?.installment_name,
                 amountPaid: payment.amount_paid,
                 paymentMode: modeLabel(payment.payment_mode),
-                transaction_id: payment.transaction_id,
-                cheque_number: payment.cheque_number,
-                bank_name: (payment as IFeePayment & { bank_name?: string }).bank_name,
+                paymentModeCode: payment.payment_mode,
+                transactionId: payment.transaction_id,
+                chequeNumber: payment.cheque_number,
+                bankName: (payment as IFeePayment & { bank_name?: string }).bank_name,
+                collectedBy: (payment as IFeePayment & { collected_by_name?: string }).collected_by_name,
                 remarks: payment.remarks,
                 totalAmount: fee.total_amount,
                 paidAmount: fee.paid_amount,

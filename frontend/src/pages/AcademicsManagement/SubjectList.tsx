@@ -192,8 +192,9 @@ const SubjectList: FC = () => {
                                             <td className="px-6 py-4 text-sm font-mono text-gray-600 dark:text-gray-400">
                                                 {subject.subject_code}
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                                                {subject.grade_level}
+                                            <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400" data-testid="subject-class">
+                                                {/* subjects carry class_id; the API has no grade_level */}
+                                                {classes.find((c) => Number(c.id) === Number(subject.class_id))?.class_name || '-'}
                                             </td>
                                             <td className="px-6 py-4 text-sm flex items-center gap-2">
                                                 <Button
