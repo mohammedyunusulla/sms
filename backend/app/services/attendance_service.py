@@ -53,7 +53,7 @@ def check_in_section(tenant_session, student_ids, section_id, year_id):
 class AttendanceService:
 
     @staticmethod
-    def record_attendance_bulk(data, skid):
+    def record_attendance_bulk(data, skid, actor_id=None):
         """
         Record attendance for multiple students in bulk
         """
@@ -97,7 +97,8 @@ class AttendanceService:
                         'remarks': r.get('remarks', ''),
                         'date': datetime.strptime(r['date'], '%Y-%m-%d').date(),
                         'created_at': datetime.utcnow(),
-                        'updated_at': datetime.utcnow()
+                        'updated_at': datetime.utcnow(),
+                        'marked_by': actor_id,  # who marked it (school_users.id)
                     }
                     records.append(record)
                 
@@ -119,7 +120,7 @@ class AttendanceService:
             raise e
 
     @staticmethod
-    def update_attendance_bulk(data, skid):
+    def update_attendance_bulk(data, skid, actor_id=None):
         """
         Update attendance records in bulk
         """
@@ -161,7 +162,8 @@ class AttendanceService:
                         existing_record.status = status
                         existing_record.remarks = remarks
                         existing_record.academic_year_id = academic_year_id  # also repairs rows saved without a year
-                        existing_record.updated_at = datetime.now()
+                        existing_record.updated_at = datetime.utcnow()  # UTC, like created_at
+                        existing_record.updated_by = actor_id  # who last changed it
                         updated_records.append(existing_record)
                     else:
                         # This shouldn't happen in edit mode, but handle it anyway
@@ -172,7 +174,8 @@ class AttendanceService:
                             date=attendance_date,
                             academic_year_id=academic_year_id,
                             status=status,
-                            remarks=remarks
+                            remarks=remarks,
+                            marked_by=actor_id,
                         )
                         tenant_session.add(new_record)
                         updated_records.append(new_record)
@@ -304,6 +307,11 @@ class AttendanceService:
                 
                 attendance_rate = round((present / total_students * 100), 2) if total_students > 0 else 0
                 
+                # Names of whoever marked / last changed these records
+                actor_ids = {i for r in records for i in (r.marked_by, r.updated_by) if i}
+                actor_names = {u.id: f"{u.first_name} {u.last_name or ''}".strip()
+                               for u in tenant_session.query(SchoolUsers).filter(SchoolUsers.id.in_(actor_ids)).all()} if actor_ids else {}
+
                 # Format attendance records with student details from SchoolUsers
                 formatted_records = []
                 for record in records:
@@ -326,9 +334,24 @@ class AttendanceService:
                             'remarks': record.remarks,
                             'date': record.date.strftime('%Y-%m-%d'),
                             'created_at': record.created_at.strftime('%Y-%m-%d %H:%M:%S') if record.created_at else None,
-                            'updated_at': record.updated_at.strftime('%Y-%m-%d %H:%M:%S') if record.updated_at else None
+                            'updated_at': record.updated_at.strftime('%Y-%m-%d %H:%M:%S') if record.updated_at else None,
+                            'marked_by_name': actor_names.get(record.marked_by),
+                            'updated_by_name': actor_names.get(record.updated_by),
                         })
                 
+                # Who marked the day and who last changed it (times are UTC; NULL actors = saved before this was recorded)
+                marked = [r for r in records if r.marked_by]
+                changed = [r for r in records if r.updated_by and r.updated_at]
+                first = min(marked, key=lambda r: r.created_at or datetime.max) if marked else None
+                last = max(changed, key=lambda r: r.updated_at) if changed else None
+                audit = {
+                    'recorded': bool(first or last),
+                    'marked_by_name': actor_names.get(first.marked_by) if first else None,
+                    'marked_at': first.created_at.strftime('%Y-%m-%dT%H:%M:%SZ') if first and first.created_at else None,
+                    'updated_by_name': actor_names.get(last.updated_by) if last else None,
+                    'updated_at': last.updated_at.strftime('%Y-%m-%dT%H:%M:%SZ') if last else None,
+                }
+
                 # Sort by roll number
                 formatted_records.sort(key=lambda x: x['student']['roll_no'] or '')
                 
@@ -344,7 +367,8 @@ class AttendanceService:
                 
                 return {
                     'records': formatted_records,
-                    'statistics': statistics
+                    'statistics': statistics,
+                    'audit': audit,
                 }
                 
         except Exception as e:

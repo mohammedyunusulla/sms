@@ -18,6 +18,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { AttendanceStatus } from '../../types/index';
 import { generateAttendanceReport } from '../../prints';
 import type { SchoolData, PdfAction, AttendanceReportData } from '../../prints';
+import AttendanceAuditLine, { IAttendanceAudit } from './AttendanceAuditLine';
 
 interface IAttendanceRecord {
     id: string;
@@ -50,6 +51,7 @@ const AttendanceReport: FC = () => {
     const [sections, setSections] = useState<any[]>([]);
     const [attendanceRecords, setAttendanceRecords] = useState<IAttendanceRecord[]>([]);
     const [monthlyData, setMonthlyData] = useState<any>(null);
+    const [dayAudit, setDayAudit] = useState<IAttendanceAudit | null>(null);
     const [loading, setLoading] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 15;
@@ -143,6 +145,7 @@ const AttendanceReport: FC = () => {
                 authUser.current_academic_year.id.toString()
             );
 
+            setDayAudit(existingData?.records?.length ? (existingData.audit || null) : null);
             if (existingData?.records && existingData.records.length > 0) {
                 setAttendanceRecords(existingData.records);
                 setCurrentPage(1);
@@ -488,6 +491,7 @@ const AttendanceReport: FC = () => {
                             <>
                                 {stats ? (
                                     <div className="space-y-6 p-6 pt-0">
+                                        <AttendanceAuditLine audit={dayAudit} />
                                         {/* Statistics Cards */}
                                         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                                             <div className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 text-center">

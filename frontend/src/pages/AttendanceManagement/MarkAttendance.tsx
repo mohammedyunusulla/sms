@@ -16,6 +16,7 @@ import DataTable from '../../components/tables/DataTable';
 import { attendanceService } from '../../services/modules/attendanceService';
 import { classService } from '../../services/modules/classService';
 import { AttendanceStatus } from '../../types/index';
+import AttendanceAuditLine from './AttendanceAuditLine';
 
 interface IAttendanceRow {
     studentId: string;
@@ -550,6 +551,9 @@ const MarkAttendance: FC = () => {
                                                 )}
                                             </div>
                                         </div>
+
+                                        {/* Who marked / last changed this day */}
+                                        {isEditMode && <AttendanceAuditLine audit={existingAttendance?.audit} />}
 
                                         {/* Stats Cards */}
                                         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">

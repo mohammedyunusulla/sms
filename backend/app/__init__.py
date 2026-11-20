@@ -42,7 +42,8 @@ def create_app(config_name=None):
     jwt.init_app(app)
     limiter.init_app(app)
     _bootstrap_main_schema(app)
-    
+    _bootstrap_tenant_schemas(app)
+        
     # Setup logging
     # setup_logging(app)
     
@@ -163,6 +164,33 @@ def _bootstrap_main_schema(app):
                 "END IF; END $$;"
             ))
             db.session.commit()
+
+# Columns added to existing school databases after they were created (create_all only builds new tables).
+# Each statement must be safe to run on every start.
+TENANT_SCHEMA_UPDATES = (
+    "ALTER TABLE IF EXISTS attendance ADD COLUMN IF NOT EXISTS marked_by INTEGER",
+    "ALTER TABLE IF EXISTS attendance ADD COLUMN IF NOT EXISTS updated_by INTEGER",
+)
+
+
+def _bootstrap_tenant_schemas(app):
+    """Apply TENANT_SCHEMA_UPDATES to every school's database. A school that can't be reached is logged and skipped."""
+    from app.models.main.School import School
+    from app.utils.db_manager import switch_to_school_db
+    with app.app_context():
+        try:
+            skids = [s.skid for s in School.query.all() if s.skid]
+        except Exception as e:  # main DB not ready: nothing to update yet
+            app.logger.warning(f"Tenant schema update skipped: {e}")
+            return
+    for skid in skids:
+        try:
+            with switch_to_school_db(skid) as session:
+                for statement in TENANT_SCHEMA_UPDATES:
+                    session.execute(text(statement))
+        except Exception as e:
+            app.logger.warning(f"Tenant schema update failed for school {skid}: {str(e).splitlines()[0]}")
+
 
 def setup_logging(app):
     if not os.path.exists('logs'):

@@ -43,7 +43,7 @@ def record_attendance_bulk(skid):
         denied = _class_teacher_guard(skid, data.get('records'), data.get('section_id'))
         if denied:
             return denied
-        attendance = AttendanceService.record_attendance_bulk(data, skid)
+        attendance = AttendanceService.record_attendance_bulk(data, skid, getattr(request.current_user, 'school_user_id', None))
         
         return jsonify({
             'message': 'Attendance recorded successfully',
@@ -81,7 +81,7 @@ def update_attendance_bulk(skid):
         denied = _class_teacher_guard(skid, data.get('records'), data.get('section_id'))
         if denied:
             return denied
-        updated_records = AttendanceService.update_attendance_bulk(data, skid)
+        updated_records = AttendanceService.update_attendance_bulk(data, skid, getattr(request.current_user, 'school_user_id', None))
         
         return jsonify({
             'message': 'Attendance updated successfully',
