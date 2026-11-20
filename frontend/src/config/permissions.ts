@@ -239,6 +239,8 @@ export interface SidebarGroupPermissionConfig {
   /** Hide a path if the user HAS a given permission (inverse check).
    *  Use case: hide "My Assignments" from users who have manage_assignments. */
   excludeIfHasPermission?: Record<string, Permission>;
+  /** Shown to exactly these roles, without a permission (e.g. a student's own attendance) */
+  roles?: string[];
 }
 
 export const SIDEBAR_PERMISSION_MAP: Record<string, SidebarGroupPermissionConfig> = {
@@ -299,6 +301,9 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, SidebarGroupPermissionConfig
       '/timetable': Permission.VIEW_MY_TIMETABLE,
     },
   },
+  // Own / child attendance: every student and parent (no permission, by choice)
+  'My Attendance': { groupPermissions: [], itemPermissions: {}, roles: ['STUDENT'] },
+  "My Child's Attendance": { groupPermissions: [], itemPermissions: {}, roles: ['PARENT'] },
   'My Timetable': {
     groupPermissions: [Permission.VIEW_MY_TIMETABLE],
     itemPermissions: {

@@ -73,6 +73,8 @@ const RoomDetail = lazy(() => import("./pages/RoomManagement").then(m => ({ defa
 // Lazy loaded Attendance Management
 const MarkAttendance = lazy(() => import("./pages/AttendanceManagement").then(m => ({ default: m.MarkAttendance })));
 const AttendanceReport = lazy(() => import("./pages/AttendanceManagement").then(m => ({ default: m.AttendanceReport })));
+const MyAttendance = lazy(() => import("./pages/AttendanceManagement").then(m => ({ default: m.MyAttendance })));
+const ParentAttendance = lazy(() => import("./pages/AttendanceManagement").then(m => ({ default: m.ParentAttendance })));
 
 // Lazy loaded Announcement Management
 const AnnouncementList = lazy(() => import("./pages/AnnouncementManagement").then(m => ({ default: m.AnnouncementList })));
@@ -291,6 +293,9 @@ function AppContent() {
                         {/* Attendance Routes */}
                         <Route path="/attendance/mark" element={guarded('/attendance/mark', <MarkAttendance />)} />
                         <Route path="/attendance/report" element={guarded('/attendance/report', <AttendanceReport />)} />
+                        {/* students / parents: no permission needed (each page shows only its own student) */}
+                        <Route path="/attendance/my" element={<MyAttendance />} />
+                        <Route path="/parent/attendance" element={<ParentAttendance />} />
 
                         {/* Announcements Routes */}
                         <Route path="/announcements" element={guarded('/announcements', <AnnouncementList />)} />

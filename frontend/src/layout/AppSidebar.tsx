@@ -64,6 +64,12 @@ const allMenuItems: NavItem[] = [
         name: "My Timetable",
         path: "/timetable/my-timetable",
     },
+    // Attendance – Student (own)
+    {
+        icon: <CalenderIcon />,
+        name: "My Attendance",
+        path: "/attendance/my",
+    },
     // Assignments – Teacher / Admin
     {
         icon: <ListIcon />,
@@ -99,6 +105,12 @@ const allMenuItems: NavItem[] = [
         icon: <PageIcon />,
         name: "My Child's Syllabus",
         path: "/parent/syllabus",
+    },
+    // Attendance – Parent (linked child)
+    {
+        icon: <CalenderIcon />,
+        name: "My Child's Attendance",
+        path: "/parent/attendance",
     },
     // AI Homework Tracking (Teacher/Student/Admin)
     {
@@ -278,6 +290,12 @@ const AppSidebar: React.FC = () => {
 
             // If no sidebar config exists, hide the item (safe default)
             if (!sidebarConfig) return acc;
+
+            // Role-only items (e.g. a student's own attendance): shown to exactly those roles
+            if (sidebarConfig.roles) {
+                if (userRole && sidebarConfig.roles.includes(userRole)) acc.push(nav);
+                return acc;
+            }
 
             // SuperAdmin-only groups
             if (sidebarConfig.superAdminOnly) {

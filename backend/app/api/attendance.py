@@ -320,7 +320,8 @@ def view_date_range_attendance(skid):
 
 
 @attendance_bp.route('/student/<skid>/<int:student_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'PARENT'])
+# students too (their own only): student_access_required limits students to themselves, parents to their children
+@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'PARENT', 'STUDENT'])
 @student_access_required('student_id')
 @log_actions('VIEW-STUDENT-ATTENDANCE')
 def view_student_attendance(skid, student_id):
