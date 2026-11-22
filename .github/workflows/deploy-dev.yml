@@ -48,6 +48,7 @@ jobs:
           PORT="${VM_SSH_PORT:-22}"
           rsync -az --delete \
             --exclude ".git/" \
+            --exclude "backend/uploads/" \
             -e "ssh -i ~/.ssh/id_rsa -p $PORT" \
             ./ "$VM_USER@$VM_HOST:$DEPLOY_PATH/"
 
