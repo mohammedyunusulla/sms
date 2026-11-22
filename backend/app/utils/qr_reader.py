@@ -17,7 +17,7 @@ def read_qr_codes(raw: bytes) -> List[str]:
     """Every QR code text found in the photo (empty list when none can be read)."""
     try:
         import zxingcpp
-        from PIL import Image, ImageOps
+        from PIL import Image, ImageFilter, ImageOps
     except ImportError as exc:  # pragma: no cover - deployment problem
         raise RuntimeError("QR reading isn't installed on the server (zxing-cpp / Pillow)") from exc
 
@@ -55,25 +55,38 @@ def read_qr_codes(raw: bytes) -> List[str]:
             break
 
         w, h = candidate.size
-        top_band = candidate.crop((0, 0, w, max(1, int(h * 0.4))))
-        top_left = candidate.crop((0, 0, max(1, int(w * 0.5)), max(1, int(h * 0.5))))
+        top_band = candidate.crop((0, 0, w, max(1, int(h * 0.45))))
+        top_left = candidate.crop((0, 0, max(1, int(w * 0.6)), max(1, int(h * 0.6))))
+        top_left_tight = candidate.crop((0, 0, max(1, int(w * 0.4)), max(1, int(h * 0.5))))
 
-        for crop in (top_band, top_left):
-            _decode(crop)
-            if found:
-                break
-
-            # Upscale crops to help with tiny QR stickers in full-page photos
-            cw, ch = crop.size
-            if max(cw, ch) < 1400:
-                enlarged = crop.resize((max(1, cw * 2), max(1, ch * 2)))
-                _decode(enlarged)
+        for crop in (top_band, top_left, top_left_tight):
+            variants = [
+                crop,
+                ImageOps.autocontrast(crop),
+                ImageOps.autocontrast(crop).filter(ImageFilter.SHARPEN),
+            ]
+            for variant in variants:
+                _decode(variant)
                 if found:
                     break
 
-            # High-contrast pass for low-light / faded prints
-            bw = crop.point(lambda p: 255 if p > 155 else 0)
-            _decode(bw)
+                # Stronger upscale helps when QR occupies very few pixels.
+                vw, vh = variant.size
+                if max(vw, vh) < 1800:
+                    enlarged2x = variant.resize((max(1, vw * 2), max(1, vh * 2)))
+                    _decode(enlarged2x)
+                    if found:
+                        break
+                    enlarged3x = variant.resize((max(1, vw * 3), max(1, vh * 3)))
+                    _decode(enlarged3x)
+                    if found:
+                        break
+
+                # Binary pass for low-contrast print-on-paper captures.
+                bw = variant.point(lambda p: 255 if p > 145 else 0)
+                _decode(bw)
+                if found:
+                    break
             if found:
                 break
         if found:
