@@ -147,6 +147,76 @@ def _section_options(session, section_ids):
     return sorted(out, key=lambda o: o['label'])
 
 
+# ---------- one percentage rule (the list card and the detail page used to disagree, e.g. 100% vs 25%) ----------
+# Each smallest teachable item counts once: every subtopic, every topic without subtopics, every chapter without
+# topics. Completion = done items / all items - for the card, the detail page, analytics and summaries alike.
+
+def _is_done(record_or_dict):
+    if record_or_dict is None:
+        return False
+    if isinstance(record_or_dict, dict):
+        return bool(record_or_dict.get('is_completed')) or record_or_dict.get('status') == 'completed'
+    return bool(record_or_dict.is_completed) or record_or_dict.status == 'completed'
+
+
+def _pct_status(done, total):
+    pct = round(done / total * 100, 2) if total else 0
+    return pct, ('completed' if pct >= 100 else 'in_progress' if pct > 0 else 'planned')
+
+
+def _leaf_items(session, syllabus_id):
+    """[(item_type, item_id)] of the syllabus's smallest teachable items."""
+    leaves = []
+    for (lesson_id,) in session.query(Lesson.id).filter(Lesson.syllabus_id == syllabus_id, Lesson.is_active == True).all():
+        topics = session.query(Topic.id).filter(Topic.lesson_id == lesson_id, Topic.is_active == True).all()
+        if not topics:
+            leaves.append(('lesson', lesson_id))
+        for (topic_id,) in topics:
+            subs = session.query(Subtopic.id).filter(Subtopic.topic_id == topic_id, Subtopic.is_active == True).all()
+            if subs:
+                leaves.extend(('subtopic', sub_id) for (sub_id,) in subs)
+            else:
+                leaves.append(('topic', topic_id))
+    return leaves
+
+
+def _roll_up(syllabus_dict):
+    """Topic / chapter / syllabus percentages from the smallest items in a loaded hierarchy (same rule)."""
+    all_done = all_total = 0
+    for lesson in syllabus_dict.get('lessons', []) or []:
+        topics = lesson.get('topics', []) or []
+        l_done = l_total = 0
+        if not topics:
+            l_done, l_total = int(_is_done(lesson)), 1
+        for topic in topics:
+            subs = topic.get('subtopics', []) or []
+            if subs:
+                t_done, t_total = sum(1 for x in subs if _is_done(x)), len(subs)
+                pct, status = _pct_status(t_done, t_total)
+                topic['completion_percentage'] = pct
+                if status == 'completed':
+                    topic['status'], topic['is_completed'] = 'completed', True
+                elif status == 'in_progress' and topic.get('status') != 'completed':
+                    topic['status'] = 'in_progress'
+            else:
+                t_done, t_total = int(_is_done(topic)), 1
+            l_done += t_done; l_total += t_total
+        if topics:
+            pct, status = _pct_status(l_done, l_total)
+            lesson['completion_percentage'] = pct
+            if status == 'completed':
+                lesson['status'], lesson['is_completed'] = 'completed', True
+            elif status == 'in_progress' and lesson.get('status') != 'completed':
+                lesson['status'] = 'in_progress'
+        all_done += l_done; all_total += l_total
+    if all_total:
+        pct, status = _pct_status(all_done, all_total)
+        syllabus_dict['completion_percentage'] = pct
+        if status != 'planned' or syllabus_dict.get('status') not in ('in_progress',):
+            syllabus_dict['status'] = status
+    return syllabus_dict
+
+
 class SyllabusService:
 
     # ============== HELPER METHODS ==============
@@ -235,37 +305,26 @@ class SyllabusService:
                     sp.actual_completion_date = None
 
     @staticmethod
-    def _compute_section_syllabus_pct(session, syllabus_id, section_id):
-        """A section's completion: subtopics completed in that section / all subtopics."""
-        subtopic_ids = [r[0] for r in session.query(Subtopic.id).join(
-            Topic, Subtopic.topic_id == Topic.id
-        ).join(
-            Lesson, Topic.lesson_id == Lesson.id
-        ).filter(
-            Lesson.syllabus_id == syllabus_id,
-            Lesson.is_active == True,
-            Topic.is_active == True,
-            Subtopic.is_active == True
-        ).all()]
-        base = session.query(SyllabusProgressTracking).filter(
-            SyllabusProgressTracking.section_id == section_id,
-            SyllabusProgressTracking.is_active == True)
-        if not subtopic_ids:
-            row = base.filter(SyllabusProgressTracking.item_type == 'syllabus',
-                              SyllabusProgressTracking.item_id == syllabus_id).first()
+    def _scoped_syllabus_pct(session, syllabus_id, teacher_id=None, section_id=None):
+        """(percentage, status) of a syllabus for a section (or a teacher without one), by the one rule."""
+        leaves = _leaf_items(session, syllabus_id)
+        records = _progress_scope(session.query(SyllabusProgressTracking).filter(
+            SyllabusProgressTracking.is_active == True), teacher_id, section_id).all()
+        if not leaves:
+            row = next((r for r in records if r.item_type == 'syllabus' and r.item_id == syllabus_id), None)
             return (float(row.completion_percentage), row.status) if row else (0, 'planned')
-        completed = base.filter(SyllabusProgressTracking.item_type == 'subtopic',
-                                SyllabusProgressTracking.item_id.in_(subtopic_ids),
-                                SyllabusProgressTracking.is_completed == True).count()
-        pct = round((completed / len(subtopic_ids)) * 100, 2)
-        return pct, ('completed' if pct >= 100 else 'in_progress' if pct > 0 else 'planned')
+        done_keys = {(r.item_type, r.item_id) for r in records if _is_done(r)}
+        return _pct_status(sum(1 for leaf in leaves if leaf in done_keys), len(leaves))
+
+    @staticmethod
+    def _compute_section_syllabus_pct(session, syllabus_id, section_id):
+        """A section's completion (one rule: done smallest items / all smallest items)."""
+        return SyllabusService._scoped_syllabus_pct(session, syllabus_id, section_id=section_id)
 
     @staticmethod
     def _own_syllabus_pct(session, syllabus_id, teacher_id):
         """A teacher's progress without a section (no section assignment)."""
-        row = session.query(SyllabusProgressTracking).filter_by(
-            teacher_id=teacher_id, section_id=None, item_type='syllabus', item_id=syllabus_id, is_active=True).first()
-        return (float(row.completion_percentage), row.status) if row else (0, 'planned')
+        return SyllabusService._scoped_syllabus_pct(session, syllabus_id, teacher_id=teacher_id)
 
     @staticmethod
     def configure_timeline(skid, teacher_id, item_type, item_id, data, section_id=None):
@@ -767,36 +826,8 @@ class SyllabusService:
                             for subtopic in topic.get('subtopics', []):
                                 apply_with_attribution(subtopic, 'subtopic', subtopic['id'])
 
-                    # parents' percentages from their children (records carried over from several teachers
-                    # may not have agreed)
-                    for lesson in syllabus_dict['lessons']:
-                        for topic in lesson.get('topics', []):
-                            subtopics = topic.get('subtopics', [])
-                            if subtopics:
-                                topic_pct = round(sum(1 for x in subtopics if x.get('is_completed')) / len(subtopics) * 100, 2)
-                                topic['completion_percentage'] = topic_pct
-                                if topic_pct >= 100:
-                                    topic['status'] = 'completed'
-                                    topic['is_completed'] = True
-                                elif topic_pct > 0 and topic.get('status') != 'completed':
-                                    topic['status'] = 'in_progress'
-                        topics = lesson.get('topics', [])
-                        if topics:
-                            lesson_pct = round(sum(float(t.get('completion_percentage') or 0) for t in topics) / len(topics), 2)
-                            lesson['completion_percentage'] = lesson_pct
-                            if lesson_pct >= 100:
-                                lesson['status'] = 'completed'
-                                lesson['is_completed'] = True
-                            elif lesson_pct > 0 and lesson.get('status') != 'completed':
-                                lesson['status'] = 'in_progress'
-                    lessons = syllabus_dict.get('lessons', [])
-                    if lessons:
-                        syllabus_pct = round(sum(float(x.get('completion_percentage') or 0) for x in lessons) / len(lessons), 2)
-                        syllabus_dict['completion_percentage'] = syllabus_pct
-                        if syllabus_pct >= 100:
-                            syllabus_dict['status'] = 'completed'
-                        elif syllabus_pct > 0:
-                            syllabus_dict['status'] = 'in_progress'
+                    # percentages from the smallest items (the same rule as the list card)
+                    _roll_up(syllabus_dict)
 
                 return syllabus_dict
 
@@ -1631,7 +1662,8 @@ class SyllabusService:
                     all_item_ids.extend(ids)
 
                 if not all_item_ids:
-                    return syllabus_dict
+                    _roll_up(syllabus_dict)  # same rule as everywhere else
+                return syllabus_dict
 
                 progress_query = session.query(SyllabusProgressTracking).filter(
                     SyllabusProgressTracking.is_active == True,
