@@ -300,7 +300,6 @@ def get_user(skid, user_id):
     Get specific user information
     """
     try:
-        print("coming here----")
         current_user = request.current_user
         include_inactive = request.args.get('include_inactive', 'false').lower() == 'true'
         

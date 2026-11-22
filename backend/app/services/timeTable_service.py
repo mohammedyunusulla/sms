@@ -57,51 +57,57 @@ class TimetableService:
 
     @staticmethod
     def generate_time_slots(config: Dict) -> List[Dict]:
-        """Generate time slots based on configuration"""
+        """
+        Generate the day's time slots. Lunch sits at its set time: it is inserted before the first period that would
+        reach or cross it (a period ending exactly at lunch used to skip lunch entirely, and a period that would
+        cross it left an unexplained gap - QA B8). Any time left between the last period and lunch is shown as a
+        short break so the day has no holes.
+        """
         try:
+            def number(key, low, high, label):
+                try:
+                    value = int(config[key])
+                except (TypeError, ValueError, KeyError):
+                    raise ValueError(f"{label} must be a whole number")
+                if not low <= value <= high:
+                    raise ValueError(f"{label} must be between {low} and {high}")
+                return value
+
+            period_minutes = number('period_duration', 5, 180, 'Period length (minutes)')
+            lunch_minutes = number('lunch_duration', 0, 180, 'Lunch length (minutes)')
+            total_periods = number('total_periods', 1, 15, 'Number of periods')
+            try:
+                start_time = datetime.strptime(config['school_start_time'], '%H:%M').time()
+                lunch_time = datetime.strptime(config['lunch_start_time'], '%H:%M').time()
+            except (TypeError, ValueError, KeyError):
+                raise ValueError("Times must look like 09:00")
+
             slots = []
-            start_time = datetime.strptime(config['school_start_time'], '%H:%M').time()
-            lunch_time = datetime.strptime(config['lunch_start_time'], '%H:%M').time()
-            
-            current_datetime = datetime.combine(datetime.today(), start_time)
-            lunch_datetime = datetime.combine(datetime.today(), lunch_time)
-            lunch_end_datetime = lunch_datetime + timedelta(minutes=config['lunch_duration'])
-            
-            period_count = 0
-            
-            for i in range(config['total_periods']):
-                period_start = current_datetime
-                period_end = current_datetime + timedelta(minutes=config['period_duration'])
-                
-                # Check if lunch break should be inserted
-                if period_start.time() < lunch_time and period_end.time() > lunch_time and period_count > 0:
-                    # Insert lunch break
-                    slots.append({
-                        'period': 'LUNCH',
-                        'start_time': lunch_datetime.strftime('%H:%M'),
-                        'end_time': lunch_end_datetime.strftime('%H:%M'),
-                        'time_display': f"{lunch_datetime.strftime('%H:%M')} - {lunch_end_datetime.strftime('%H:%M')}",
-                        'is_lunch': True,
-                        'label': 'LUNCH BREAK'
-                    })
-                    current_datetime = lunch_end_datetime
-                    
-                    # Recalculate period after lunch
-                    period_start = current_datetime
-                    period_end = current_datetime + timedelta(minutes=config['period_duration'])
-                
-                period_count += 1
-                slots.append({
-                    'period': period_count,
-                    'start_time': period_start.strftime('%H:%M'),
-                    'end_time': period_end.strftime('%H:%M'),
-                    'time_display': f"{period_start.strftime('%H:%M')} - {period_end.strftime('%H:%M')}",
-                    'is_lunch': False,
-                    'label': f'Period {period_count}'
-                })
-                
-                current_datetime = period_end
-            
+            current = datetime.combine(datetime.today(), start_time)
+            lunch_start = datetime.combine(datetime.today(), lunch_time)
+            lunch_end = lunch_start + timedelta(minutes=lunch_minutes)
+            if lunch_start <= current:
+                raise ValueError("Lunch must start after the school day starts")
+            lunch_done = lunch_minutes == 0
+            fmt = lambda d: d.strftime('%H:%M')
+
+            for period in range(1, total_periods + 1):
+                period_end = current + timedelta(minutes=period_minutes)
+                if not lunch_done and period_end > lunch_start:
+                    if current < lunch_start:  # time left before lunch: a short break, not a hole
+                        slots.append({'period': 'BREAK', 'start_time': fmt(current), 'end_time': fmt(lunch_start),
+                                      'time_display': f"{fmt(current)} - {fmt(lunch_start)}", 'is_lunch': True,  # no lessons
+                                      'is_break': True, 'label': 'SHORT BREAK'})
+                    slots.append({'period': 'LUNCH', 'start_time': fmt(lunch_start), 'end_time': fmt(lunch_end),
+                                  'time_display': f"{fmt(lunch_start)} - {fmt(lunch_end)}", 'is_lunch': True,
+                                  'label': 'LUNCH BREAK'})
+                    current, lunch_done = lunch_end, True
+                    period_end = current + timedelta(minutes=period_minutes)
+                slots.append({'period': period, 'start_time': fmt(current), 'end_time': fmt(period_end),
+                              'time_display': f"{fmt(current)} - {fmt(period_end)}", 'is_lunch': False,
+                              'label': f'Period {period}'})
+                current = period_end
+
             return slots
         except Exception as e:
             logger.error(f"Error generating time slots: {str(e)}")
@@ -546,7 +552,7 @@ class TimetableService:
             with switch_to_school_db(skid) as tenant_session:
                 from app.models.tenant.TimeTable import Timetable
                 from app.models.tenant.Class import Class
-                from app.models.tenant.Section import Section
+                from app.models.tenant.Sections import Section
                 
                 query = tenant_session.query(Timetable).filter(
                     Timetable.is_active == True,
@@ -710,7 +716,7 @@ class TimetableService:
                 from app.models.tenant.TimeTable import Timetable
                 from app.models.tenant.TimeTableEntry import TimetableEntry
                 from app.models.tenant.Class import Class
-                from app.models.tenant.Section import Section
+                from app.models.tenant.Sections import Section
                 from app.models.tenant.Subject import Subject
                 
                 # Get all entries for the teacher (only from published timetables)

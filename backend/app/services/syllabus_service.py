@@ -83,23 +83,88 @@ def _with_status_defaults(syllabus_dict):
     return syllabus_dict
 
 
+# ---------- per-section progress (QA B33) ----------
+# A progress record belongs to a SECTION: a teacher with sections A and B ticks them separately, and whoever
+# teaches the section next carries on from it. A teacher with no section assignment for the syllabus keeps
+# their own records (section_id NULL), as before.
+
+def _progress_scope(query, teacher_id, section_id):
+    if section_id:
+        return query.filter(SyllabusProgressTracking.section_id == int(section_id))
+    return query.filter(SyllabusProgressTracking.teacher_id == teacher_id,
+                        SyllabusProgressTracking.section_id.is_(None))
+
+
+def _syllabus_id_of(session, item_type, item_id):
+    """The syllabus a lesson / topic / subtopic belongs to (None if it doesn't exist)."""
+    if item_type == 'syllabus':
+        return int(item_id)
+    if item_type == 'lesson':
+        row = session.query(Lesson.syllabus_id).filter(Lesson.id == item_id).first()
+    elif item_type == 'topic':
+        row = session.query(Lesson.syllabus_id).join(Topic, Topic.lesson_id == Lesson.id).filter(Topic.id == item_id).first()
+    elif item_type == 'subtopic':
+        row = (session.query(Lesson.syllabus_id).join(Topic, Topic.lesson_id == Lesson.id)
+               .join(Subtopic, Subtopic.topic_id == Topic.id).filter(Subtopic.id == item_id).first())
+    else:
+        raise ValueError(f"Invalid item_type: {item_type}")
+    return row[0] if row else None
+
+
+def _teacher_section_ids(session, syllabus_id, teacher_id):
+    """Sections the teacher is actively assigned to for this syllabus (sorted)."""
+    return sorted({a.section_id for a in session.query(TeacherSyllabusAssignment).filter_by(
+        syllabus_id=syllabus_id, teacher_id=teacher_id, is_active=True).all()})
+
+
+def _resolve_section(session, teacher_id, syllabus_id, section_id=None, default_first=False):
+    """
+    The section a teacher's progress is for. A chosen section must be one of theirs. With one section it is
+    that one; with several, writes must say which (reads default to the first). None = no section assignment.
+    """
+    mine = _teacher_section_ids(session, syllabus_id, teacher_id)
+    if section_id not in (None, '', 0, '0'):
+        section_id = int(section_id)
+        if section_id not in mine:
+            raise ValueError("You aren't assigned to that section for this syllabus")
+        return section_id
+    if len(mine) == 1 or (mine and default_first):
+        return mine[0]
+    if mine:
+        raise ValueError("Choose the section you're recording progress for")
+    return None
+
+
+def _section_options(session, section_ids):
+    """[{section_id, label}] for a picker, e.g. 'Grade 5 - A'."""
+    if not section_ids:
+        return []
+    sections = session.query(Section).filter(Section.id.in_(list(section_ids))).all()
+    classes = {c.id: c.class_name for c in session.query(Class).filter(
+        Class.id.in_([x.class_id for x in sections if x.class_id])).all()} if sections else {}
+    out = [{'section_id': x.id, 'section_name': x.section_name, 'class_id': x.class_id,
+            'label': f"{classes.get(x.class_id) or 'Class'} - {x.section_name}"} for x in sections]
+    return sorted(out, key=lambda o: o['label'])
+
+
 class SyllabusService:
 
     # ============== HELPER METHODS ==============
 
     @staticmethod
-    def _get_or_create_progress(session, teacher_id, item_type, item_id):
-        """Get or create teacher-specific progress tracking record"""
-        progress = session.query(SyllabusProgressTracking).filter_by(
-            teacher_id=teacher_id,
+    def _get_or_create_progress(session, teacher_id, item_type, item_id, section_id=None):
+        """The section's progress record for an item (the teacher's own without a section); teacher_id = who
+        last recorded it."""
+        progress = _progress_scope(session.query(SyllabusProgressTracking).filter_by(
             item_type=item_type,
             item_id=item_id,
             is_active=True
-        ).first()
+        ), teacher_id, section_id).first()
 
         if not progress:
             progress = SyllabusProgressTracking(
                 teacher_id=teacher_id,
+                section_id=section_id or None,
                 item_type=item_type,
                 item_id=item_id,
                 status='planned',
@@ -107,6 +172,8 @@ class SyllabusService:
             )
             session.add(progress)
             session.flush()
+        else:
+            progress.teacher_id = teacher_id
 
         return progress
 
@@ -130,7 +197,7 @@ class SyllabusService:
         return data
 
     @staticmethod
-    def _cascade_complete_down(session, teacher_id, item_type, item_id, is_completed):
+    def _cascade_complete_down(session, teacher_id, item_type, item_id, is_completed, section_id=None):
         """Cascade completion status down to children.
         When completing: set children to completed with 100%.
         When un-completing: revert children to in_progress with 0%.
@@ -145,7 +212,7 @@ class SyllabusService:
         if item_type == 'lesson':
             topics = session.query(Topic).filter_by(lesson_id=item_id, is_active=True).all()
             for topic in topics:
-                tp = SyllabusService._get_or_create_progress(session, teacher_id, 'topic', topic.id)
+                tp = SyllabusService._get_or_create_progress(session, teacher_id, 'topic', topic.id, section_id)
                 tp.status = status
                 tp.completion_percentage = percentage
                 if is_completed and not tp.actual_end_date:
@@ -153,12 +220,12 @@ class SyllabusService:
                 elif not is_completed:
                     tp.actual_end_date = None
                 # Cascade further into subtopics
-                SyllabusService._cascade_complete_down(session, teacher_id, 'topic', topic.id, is_completed)
+                SyllabusService._cascade_complete_down(session, teacher_id, 'topic', topic.id, is_completed, section_id)
 
         elif item_type == 'topic':
             subtopics = session.query(Subtopic).filter_by(topic_id=item_id, is_active=True).all()
             for subtopic in subtopics:
-                sp = SyllabusService._get_or_create_progress(session, teacher_id, 'subtopic', subtopic.id)
+                sp = SyllabusService._get_or_create_progress(session, teacher_id, 'subtopic', subtopic.id, section_id)
                 sp.status = status
                 sp.is_completed = is_completed
                 sp.completion_percentage = percentage
@@ -168,43 +235,9 @@ class SyllabusService:
                     sp.actual_completion_date = None
 
     @staticmethod
-    def _get_section_teacher_ids(session, syllabus_id, teacher_id):
-        """Get all teacher IDs assigned to the same section(s) for this syllabus.
-        Only includes section-mates if the teacher has an ACTIVE assignment.
-        Former teachers get only their own ID back (they see their own progress).
-        """
-        active_assignment = session.query(TeacherSyllabusAssignment).filter_by(
-            syllabus_id=syllabus_id,
-            teacher_id=teacher_id,
-            is_active=True
-        ).first()
-
-        if not active_assignment:
-            return {teacher_id}
-
-        # Get all section IDs this teacher is assigned to for this syllabus
-        my_section_ids = [a.section_id for a in session.query(TeacherSyllabusAssignment).filter_by(
-            syllabus_id=syllabus_id,
-            teacher_id=teacher_id
-        ).all()]
-
-        # Get all teachers (active + former) in those sections
-        all_assignments = session.query(TeacherSyllabusAssignment).filter(
-            TeacherSyllabusAssignment.syllabus_id == syllabus_id,
-            TeacherSyllabusAssignment.section_id.in_(my_section_ids)
-        ).all()
-
-        return set(a.teacher_id for a in all_assignments)
-
-    @staticmethod
-    def _compute_combined_syllabus_pct(session, syllabus_id, teacher_ids):
-        """Compute combined completion percentage for a syllabus by counting
-        unique subtopics completed by ANY of the specified teachers."""
-        if not teacher_ids:
-            return 0, 'planned'
-
-        # Get all subtopic IDs for this syllabus
-        subtopic_rows = session.query(Subtopic.id).join(
+    def _compute_section_syllabus_pct(session, syllabus_id, section_id):
+        """A section's completion: subtopics completed in that section / all subtopics."""
+        subtopic_ids = [r[0] for r in session.query(Subtopic.id).join(
             Topic, Subtopic.topic_id == Topic.id
         ).join(
             Lesson, Topic.lesson_id == Lesson.id
@@ -213,50 +246,29 @@ class SyllabusService:
             Lesson.is_active == True,
             Topic.is_active == True,
             Subtopic.is_active == True
-        ).all()
-
-        total = len(subtopic_rows)
-        if total == 0:
-            # No subtopics — take the MAX progress among teachers
-            max_progress = session.query(SyllabusProgressTracking).filter(
-                SyllabusProgressTracking.teacher_id.in_(teacher_ids),
-                SyllabusProgressTracking.item_type == 'syllabus',
-                SyllabusProgressTracking.item_id == syllabus_id,
-                SyllabusProgressTracking.is_active == True
-            ).order_by(
-                SyllabusProgressTracking.completion_percentage.desc()
-            ).first()
-            if max_progress:
-                return float(max_progress.completion_percentage), max_progress.status
-            return 0, 'planned'
-
-        subtopic_id_list = [s[0] for s in subtopic_rows]
-
-        # Count unique subtopics completed by any of the teachers
-        completed_rows = session.query(
-            distinct(SyllabusProgressTracking.item_id)
-        ).filter(
-            SyllabusProgressTracking.teacher_id.in_(teacher_ids),
-            SyllabusProgressTracking.item_type == 'subtopic',
-            SyllabusProgressTracking.item_id.in_(subtopic_id_list),
-            SyllabusProgressTracking.is_active == True,
-            SyllabusProgressTracking.is_completed == True
-        ).all()
-
-        completed = len(completed_rows)
-        pct = round((completed / total) * 100, 2)
-
-        if pct >= 100:
-            status = 'completed'
-        elif pct > 0:
-            status = 'in_progress'
-        else:
-            status = 'planned'
-
-        return pct, status
+        ).all()]
+        base = session.query(SyllabusProgressTracking).filter(
+            SyllabusProgressTracking.section_id == section_id,
+            SyllabusProgressTracking.is_active == True)
+        if not subtopic_ids:
+            row = base.filter(SyllabusProgressTracking.item_type == 'syllabus',
+                              SyllabusProgressTracking.item_id == syllabus_id).first()
+            return (float(row.completion_percentage), row.status) if row else (0, 'planned')
+        completed = base.filter(SyllabusProgressTracking.item_type == 'subtopic',
+                                SyllabusProgressTracking.item_id.in_(subtopic_ids),
+                                SyllabusProgressTracking.is_completed == True).count()
+        pct = round((completed / len(subtopic_ids)) * 100, 2)
+        return pct, ('completed' if pct >= 100 else 'in_progress' if pct > 0 else 'planned')
 
     @staticmethod
-    def configure_timeline(skid, teacher_id, item_type, item_id, data):
+    def _own_syllabus_pct(session, syllabus_id, teacher_id):
+        """A teacher's progress without a section (no section assignment)."""
+        row = session.query(SyllabusProgressTracking).filter_by(
+            teacher_id=teacher_id, section_id=None, item_type='syllabus', item_id=syllabus_id, is_active=True).first()
+        return (float(row.completion_percentage), row.status) if row else (0, 'planned')
+
+    @staticmethod
+    def configure_timeline(skid, teacher_id, item_type, item_id, data, section_id=None):
         """Configure planned dates and notes for a syllabus item (Configure step)."""
         try:
             with switch_to_school_db(skid) as session:
@@ -272,10 +284,17 @@ class SyllabusService:
 
                 if not item:
                     raise ValueError(f"{item_type.capitalize()} not found")
+                section_id = _resolve_section(session, teacher_id, _syllabus_id_of(session, item_type, item_id), section_id)
 
-                progress = SyllabusService._get_or_create_progress(session, teacher_id, item_type, item_id)
+                progress = SyllabusService._get_or_create_progress(session, teacher_id, item_type, item_id, section_id)
 
                 # Set planned dates
+                # the planned end can't be before the planned start (it used to be accepted - QA B32)
+                from app.utils.validators import to_date
+                start = to_date(data['planned_start_date'], "Planned start date") if data.get('planned_start_date') else None
+                end = to_date(data['planned_end_date'], "Planned end date") if data.get('planned_end_date') else None
+                if start and end and end < start:
+                    raise ValueError("The planned end date can't be before the planned start date")
                 progress.planned_start_date = data.get('planned_start_date')
                 progress.planned_end_date = data.get('planned_end_date')
 
@@ -302,21 +321,26 @@ class SyllabusService:
                     'message': f'{item_type.capitalize()} timeline configured successfully'
                 }
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to configure timeline: {str(e)}")
 
     @staticmethod
-    def start_item(skid, teacher_id, item_type, item_id):
+    def start_item(skid, teacher_id, item_type, item_id, section_id=None):
         """Start teaching a syllabus item (Start step). Requires item to be configured first."""
         try:
             with switch_to_school_db(skid) as session:
+                syllabus_id = _syllabus_id_of(session, item_type, item_id)
+                if not syllabus_id:
+                    raise ValueError(f"{item_type.capitalize()} not found")
+                section_id = _resolve_section(session, teacher_id, syllabus_id, section_id)
                 # Get tracking record — must exist
-                progress = session.query(SyllabusProgressTracking).filter_by(
-                    teacher_id=teacher_id,
+                progress = _progress_scope(session.query(SyllabusProgressTracking).filter_by(
                     item_type=item_type,
                     item_id=item_id,
                     is_active=True
-                ).first()
+                ), teacher_id, section_id).first()
 
                 if not progress:
                     raise ValueError(f"{item_type.capitalize()} must be configured before starting")
@@ -336,12 +360,11 @@ class SyllabusService:
                     topic = session.query(Topic).filter_by(id=item_id, is_active=True).first()
                     if not topic:
                         raise ValueError("Topic not found")
-                    parent_progress = session.query(SyllabusProgressTracking).filter_by(
-                        teacher_id=teacher_id,
+                    parent_progress = _progress_scope(session.query(SyllabusProgressTracking).filter_by(
                         item_type='lesson',
                         item_id=topic.lesson_id,
                         is_active=True
-                    ).first()
+                    ), teacher_id, section_id).first()
                     if not parent_progress or parent_progress.status not in ('in_progress', 'completed'):
                         raise ValueError("Parent lesson must be started first")
 
@@ -349,18 +372,18 @@ class SyllabusService:
                     subtopic = session.query(Subtopic).filter_by(id=item_id, is_active=True).first()
                     if not subtopic:
                         raise ValueError("Subtopic not found")
-                    parent_progress = session.query(SyllabusProgressTracking).filter_by(
-                        teacher_id=teacher_id,
+                    parent_progress = _progress_scope(session.query(SyllabusProgressTracking).filter_by(
                         item_type='topic',
                         item_id=subtopic.topic_id,
                         is_active=True
-                    ).first()
+                    ), teacher_id, section_id).first()
                     if not parent_progress or parent_progress.status not in ('in_progress', 'completed'):
                         raise ValueError("Parent topic must be started first")
 
                 # Set to in_progress
                 progress.status = 'in_progress'
                 progress.actual_start_date = date.today()
+                progress.teacher_id = teacher_id
 
                 session.commit()
 
@@ -378,7 +401,7 @@ class SyllabusService:
             raise Exception(f"Failed to start item: {str(e)}")
 
     @staticmethod
-    def mark_progress(skid, teacher_id, item_type, item_id, is_completed):
+    def mark_progress(skid, teacher_id, item_type, item_id, is_completed, section_id=None):
         """Mark a syllabus item as complete/incomplete with bidirectional cascade.
         - Cascade DOWN: bulk-complete or revert children
         - Cascade UP: recalculate parent percentages
@@ -399,13 +422,13 @@ class SyllabusService:
                 if not item:
                     raise ValueError(f"{item_type.capitalize()} not found")
 
+                section_id = _resolve_section(session, teacher_id, _syllabus_id_of(session, item_type, item_id), section_id)
                 # Gate: check if item is started
-                existing_progress = session.query(SyllabusProgressTracking).filter_by(
-                    teacher_id=teacher_id,
+                existing_progress = _progress_scope(session.query(SyllabusProgressTracking).filter_by(
                     item_type=item_type,
                     item_id=item_id,
                     is_active=True
-                ).first()
+                ), teacher_id, section_id).first()
 
                 if existing_progress:
                     if existing_progress.status == 'planned':
@@ -413,7 +436,7 @@ class SyllabusService:
                 # If no record exists, this is legacy/grandfathered data — allow and auto-set in_progress
 
                 # Update the target item's progress
-                progress = SyllabusService._get_or_create_progress(session, teacher_id, item_type, item_id)
+                progress = SyllabusService._get_or_create_progress(session, teacher_id, item_type, item_id, section_id)
                 if is_completed:
                     progress.status = 'completed'
                     progress.completion_percentage = Decimal('100.00')
@@ -435,17 +458,17 @@ class SyllabusService:
 
                 # Cascade DOWN (only for lesson/topic — subtopics have no children)
                 if item_type in ('lesson', 'topic'):
-                    SyllabusService._cascade_complete_down(session, teacher_id, item_type, item_id, is_completed)
+                    SyllabusService._cascade_complete_down(session, teacher_id, item_type, item_id, is_completed, section_id)
 
                 session.flush()
 
                 # Cascade UP: recalculate parent completion percentages
                 if item_type == 'subtopic':
-                    SyllabusService._recalculate_teacher_topic_completion(session, teacher_id, item.topic_id)
+                    SyllabusService._recalculate_teacher_topic_completion(session, teacher_id, item.topic_id, section_id)
                 elif item_type == 'topic':
-                    SyllabusService._recalculate_teacher_lesson_completion(session, teacher_id, item.lesson_id)
+                    SyllabusService._recalculate_teacher_lesson_completion(session, teacher_id, item.lesson_id, section_id)
                 elif item_type == 'lesson':
-                    SyllabusService._recalculate_teacher_syllabus_completion(session, teacher_id, item.syllabus_id)
+                    SyllabusService._recalculate_teacher_syllabus_completion(session, teacher_id, item.syllabus_id, section_id)
 
                 session.commit()
 
@@ -456,6 +479,8 @@ class SyllabusService:
                     'message': f'{item_type.capitalize()} {"completed" if is_completed else "reverted"} successfully'
                 }
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to mark progress: {str(e)}")
 
@@ -517,27 +542,17 @@ class SyllabusService:
                     subject = session.query(Subject).filter_by(id=subject_id).first()
                     subject_name = subject.subject_name if subject else 'Unknown'
 
-                    # Get combined progress for the student's section
-                    section_assignments = session.query(TeacherSyllabusAssignment).filter(
-                        TeacherSyllabusAssignment.syllabus_id == syllabus.id,
-                        TeacherSyllabusAssignment.section_id == student.section_id
-                    ).all()
-
-                    if section_assignments:
-                        section_tids = set(a.teacher_id for a in section_assignments)
-                        completion_pct, status = SyllabusService._compute_combined_syllabus_pct(
-                            session, syllabus.id, section_tids
-                        )
+                    # The student's own section's progress (QA B33)
+                    section_assigned = session.query(TeacherSyllabusAssignment).filter_by(
+                        syllabus_id=syllabus.id, section_id=student.section_id).first()
+                    if section_assigned:
+                        completion_pct, status = SyllabusService._compute_section_syllabus_pct(
+                            session, syllabus.id, student.section_id)
+                        result_section = student.section_id
                     else:
-                        # No assignments yet — fall back to individual teacher progress
-                        syllabus_progress = session.query(SyllabusProgressTracking).filter_by(
-                            teacher_id=teacher_id,
-                            item_type='syllabus',
-                            item_id=syllabus.id,
-                            is_active=True
-                        ).first()
-                        completion_pct = float(syllabus_progress.completion_percentage) if syllabus_progress else 0
-                        status = syllabus_progress.status if syllabus_progress else syllabus.status
+                        # No teacher assigned to the section yet: the timetable teacher's own progress
+                        completion_pct, status = SyllabusService._own_syllabus_pct(session, syllabus.id, teacher_id)
+                        result_section = None
 
                     results.append({
                         'syllabus': syllabus.to_dict(),
@@ -545,6 +560,7 @@ class SyllabusService:
                         'teacher_name': teacher_name,
                         'subject_id': subject_id,
                         'subject_name': subject_name,
+                        'section_id': result_section,
                         'completion_percentage': completion_pct,
                         'status': status
                     })
@@ -580,43 +596,27 @@ class SyllabusService:
                 teacher_user = session.query(SchoolUsers).filter_by(id=teacher_id).first()
                 teacher_name = teacher_user.full_name if teacher_user else 'Unknown'
 
-                # Get syllabus-level progress for this teacher
-                syllabus_ids = [s.id for s in syllabi]
-                progress_list = session.query(SyllabusProgressTracking).filter(
-                    SyllabusProgressTracking.teacher_id == teacher_id,
-                    SyllabusProgressTracking.item_type == 'syllabus',
-                    SyllabusProgressTracking.item_id.in_(syllabus_ids),
-                    SyllabusProgressTracking.is_active == True
-                ).all()
-                progress_map = {p.item_id: p for p in progress_list}
-
                 results = []
                 for syllabus in syllabi:
                     subject = session.query(Subject).filter_by(id=syllabus.subject_id).first()
                     subject_name = subject.subject_name if subject else 'Unknown'
-
-                    # Use combined progress if there are section-mates
-                    section_tids = SyllabusService._get_section_teacher_ids(
-                        session, syllabus.id, teacher_id
-                    )
-                    if len(section_tids) > 1:
-                        completion_pct, status = SyllabusService._compute_combined_syllabus_pct(
-                            session, syllabus.id, section_tids
-                        )
-                    else:
-                        sp = progress_map.get(syllabus.id)
-                        completion_pct = float(sp.completion_percentage) if sp else 0
-                        status = sp.status if sp else 'planned'
-
-                    results.append({
+                    row = {
                         'syllabus': syllabus.to_dict(),
                         'teacher_id': teacher_id,
                         'teacher_name': teacher_name,
                         'subject_id': syllabus.subject_id,
                         'subject_name': subject_name,
-                        'completion_percentage': completion_pct,
-                        'status': status
-                    })
+                    }
+                    # one row per section they teach it in (QA B33); their own progress without a section
+                    options = _section_options(session, _teacher_section_ids(session, syllabus.id, teacher_id))
+                    if not options:
+                        pct, status = SyllabusService._own_syllabus_pct(session, syllabus.id, teacher_id)
+                        results.append({**row, 'section_id': None, 'section_label': None,
+                                        'completion_percentage': pct, 'status': status})
+                    for opt in options:
+                        pct, status = SyllabusService._compute_section_syllabus_pct(session, syllabus.id, opt['section_id'])
+                        results.append({**row, 'section_id': opt['section_id'], 'section_label': opt['label'],
+                                        'completion_percentage': pct, 'status': status})
 
                 return results
 
@@ -624,12 +624,19 @@ class SyllabusService:
             raise Exception(f"Failed to get teacher syllabus progress view: {str(e)}")
 
     @staticmethod
-    def get_student_syllabus_detail(skid, syllabus_id, teacher_id):
-        """Get full syllabus hierarchy with a specific teacher's progress overlay (read-only for students)."""
+    def get_student_syllabus_detail(skid, syllabus_id, teacher_id, section_id=None):
+        """Full syllabus hierarchy with the section's progress (read-only); the teacher's own without a section."""
         try:
-            return SyllabusService.get_syllabus_by_id(
-                skid, syllabus_id, teacher_id, include_hierarchy=True, merge_section_progress=True
-            )
+            if section_id:
+                with switch_to_school_db(skid) as session:
+                    assigned = session.query(TeacherSyllabusAssignment).filter_by(
+                        syllabus_id=syllabus_id, section_id=section_id).first()
+                if assigned or not teacher_id:
+                    return SyllabusService.get_syllabus_by_id(skid, syllabus_id, None, include_hierarchy=True,
+                                                             section_id=section_id)
+                # no teacher assigned to the section yet: the timetable teacher's own progress (as the list shows)
+            return SyllabusService.get_syllabus_by_id(skid, syllabus_id, teacher_id, include_hierarchy=True,
+                                                     own_only=True)
         except Exception as e:
             raise Exception(f"Failed to get student syllabus detail: {str(e)}")
 
@@ -691,14 +698,15 @@ class SyllabusService:
             raise Exception(f"Failed to create syllabus: {str(e)}")
 
     @staticmethod
-    def get_syllabus_by_id(skid, syllabus_id, teacher_id=None, include_hierarchy=False, merge_section_progress=False):
-        """Get syllabus by ID with optional full hierarchy and teacher-specific progress.
-        When teacher_id is provided, adds assignment-aware metadata:
-        - is_read_only: True if the teacher has no active assignment (former teacher)
-        - Per item: editable (bool), completed_by (str or None)
-        When merge_section_progress=True, includes progress from section-mates
-        (used for teacher's own view and student view). When False, shows only
-        the specified teacher's individual progress (used for admin per-teacher view).
+    def get_syllabus_by_id(skid, syllabus_id, teacher_id=None, include_hierarchy=False, merge_section_progress=False,
+                           section_id=None, own_only=False):
+        """Get a syllabus, optionally with its full hierarchy and progress (QA B33: progress is per section).
+        - teacher_id (a teacher's own page): their section's progress. With several sections, `section_id`
+          picks one (default: the first); `sections` lists them for the picker. is_read_only when they are no
+          longer assigned. Every item gets editable / completed_by.
+        - section_id without teacher_id (admin, student, parent): that section's progress, read-only.
+        - own_only: the teacher's records without a section (a teacher never assigned to a section).
+        merge_section_progress is kept for old callers; progress is always the section's now.
         """
         try:
             with switch_to_school_db(skid) as session:
@@ -715,171 +723,85 @@ class SyllabusService:
 
                 syllabus_dict = syllabus.to_dict(include_lessons=include_hierarchy)
 
-                if teacher_id:
-                    # Check assignment status for this teacher
-                    active_assignment = session.query(TeacherSyllabusAssignment).filter_by(
-                        syllabus_id=syllabus_id,
-                        teacher_id=teacher_id,
-                        is_active=True
-                    ).first()
-                    is_read_only = active_assignment is None
+                if not teacher_id and not section_id:
+                    return syllabus_dict
 
+                is_read_only = True
+                if teacher_id and not own_only:
+                    mine = _teacher_section_ids(session, syllabus_id, teacher_id)
+                    is_read_only = not mine
+                    if mine:
+                        section_id = _resolve_section(session, teacher_id, syllabus_id, section_id, default_first=True)
+                    else:
+                        # a former teacher: the sections they used to teach, read-only (else their own records)
+                        former = sorted({a.section_id for a in session.query(TeacherSyllabusAssignment).filter_by(
+                            syllabus_id=syllabus_id, teacher_id=teacher_id).all()})
+                        if section_id and int(section_id) not in former:
+                            raise ValueError("You aren't assigned to that section for this syllabus")
+                        section_id = int(section_id) if section_id else (former[0] if former else None)
+                        mine = former
+                    syllabus_dict['sections'] = _section_options(session, mine)
                     syllabus_dict['is_read_only'] = is_read_only
+                syllabus_dict['section_id'] = int(section_id) if section_id else None
 
-                    # Determine section-mates: all teachers assigned to the same
-                    # section(s) for this syllabus (for merged progress view)
-                    other_progress_map = {}  # {(item_type, item_id): {teacher_id: progress}}
-                    other_teacher_names = {}
-                    section_teacher_ids = set()
+                progress_list = _progress_scope(session.query(SyllabusProgressTracking).filter(
+                    SyllabusProgressTracking.is_active == True), teacher_id, section_id).all()
+                progress_map = {(p.item_type, p.item_id): p for p in progress_list}
+                names = {u.id: u.full_name for u in session.query(SchoolUsers).filter(
+                    SchoolUsers.id.in_({p.teacher_id for p in progress_list})).all()} if progress_list else {}
 
-                    if active_assignment and merge_section_progress:
-                        # Get all teachers (active + former) for this teacher's section(s)
-                        my_section_ids = [a.section_id for a in session.query(TeacherSyllabusAssignment).filter_by(
-                            syllabus_id=syllabus_id,
-                            teacher_id=teacher_id
-                        ).all()]
+                def apply_with_attribution(item_dict, item_type, item_id):
+                    """The section's progress, who recorded the completion, and whether this teacher can change it."""
+                    p = progress_map.get((item_type, item_id))
+                    SyllabusService._apply_teacher_progress_to_dict(item_dict, p)
+                    item_dict['editable'] = not is_read_only
+                    done = p and (p.is_completed or p.status == 'completed')
+                    item_dict['completed_by'] = names.get(p.teacher_id, 'Unknown') if done else None
 
-                        section_assignments = session.query(TeacherSyllabusAssignment).filter(
-                            TeacherSyllabusAssignment.syllabus_id == syllabus_id,
-                            TeacherSyllabusAssignment.section_id.in_(my_section_ids),
-                            TeacherSyllabusAssignment.teacher_id != teacher_id
-                        ).all()
-                        section_teacher_ids = set(a.teacher_id for a in section_assignments)
+                apply_with_attribution(syllabus_dict, 'syllabus', syllabus_id)
+                if include_hierarchy and 'lessons' in syllabus_dict:
+                    for lesson in syllabus_dict['lessons']:
+                        apply_with_attribution(lesson, 'lesson', lesson['id'])
+                        for topic in lesson.get('topics', []):
+                            apply_with_attribution(topic, 'topic', topic['id'])
+                            for subtopic in topic.get('subtopics', []):
+                                apply_with_attribution(subtopic, 'subtopic', subtopic['id'])
 
-                        if section_teacher_ids:
-                            # Load names
-                            other_teachers = session.query(SchoolUsers).filter(
-                                SchoolUsers.id.in_(section_teacher_ids)
-                            ).all()
-                            other_teacher_names = {t.id: t.full_name for t in other_teachers}
-
-                            # Load their progress
-                            other_progress_list = session.query(SyllabusProgressTracking).filter(
-                                SyllabusProgressTracking.teacher_id.in_(section_teacher_ids),
-                                SyllabusProgressTracking.is_active == True
-                            ).all()
-                            for p in other_progress_list:
-                                key = (p.item_type, p.item_id)
-                                if key not in other_progress_map:
-                                    other_progress_map[key] = {}
-                                other_progress_map[key][p.teacher_id] = p
-
-                    # Fetch current teacher's progress
-                    progress_list = session.query(SyllabusProgressTracking).filter_by(
-                        teacher_id=teacher_id,
-                        is_active=True
-                    ).all()
-                    progress_map = {(p.item_type, p.item_id): p for p in progress_list}
-
-                    # Load current teacher's name for completed_by attribution
-                    current_teacher_user = session.query(SchoolUsers).filter_by(id=teacher_id).first()
-                    current_teacher_name = current_teacher_user.full_name if current_teacher_user else 'Unknown'
-
-                    def apply_with_attribution(item_dict, item_type, item_id):
-                        """Apply progress and set editable/completed_by metadata."""
-                        my_progress = progress_map.get((item_type, item_id))
-                        SyllabusService._apply_teacher_progress_to_dict(item_dict, my_progress)
-
-                        if is_read_only:
-                            item_dict['editable'] = False
-                            # Show who completed for admin/student views
-                            if my_progress and (my_progress.is_completed or my_progress.status == 'completed'):
-                                item_dict['completed_by'] = current_teacher_name
-                            else:
-                                item_dict['completed_by'] = None
-                            return
-
-                        # Check if another teacher completed this item
-                        other_records = other_progress_map.get((item_type, item_id), {})
-                        completed_by_other = None
-                        for other_tid, other_p in other_records.items():
-                            if other_p.is_completed or other_p.status == 'completed':
-                                completed_by_other = other_teacher_names.get(other_tid, 'Unknown')
-                                break
-
-                        if completed_by_other:
-                            # Item was completed by a previous teacher
-                            item_dict['status'] = 'completed'
-                            item_dict['is_completed'] = True
-                            item_dict['completion_percentage'] = 100.0
-                            item_dict['editable'] = False
-                            item_dict['completed_by'] = completed_by_other
-                        else:
-                            # Item is editable by this teacher
-                            item_dict['editable'] = True
-                            # Show completed_by if current teacher completed it
-                            if my_progress and (my_progress.is_completed or my_progress.status == 'completed'):
-                                item_dict['completed_by'] = current_teacher_name
-                            else:
-                                item_dict['completed_by'] = None
-
-                    # Apply to syllabus level
-                    apply_with_attribution(syllabus_dict, 'syllabus', syllabus_id)
-
-                    # Apply to nested hierarchy
-                    if include_hierarchy and 'lessons' in syllabus_dict:
-                        for lesson in syllabus_dict['lessons']:
-                            apply_with_attribution(lesson, 'lesson', lesson['id'])
-                            if 'topics' in lesson:
-                                for topic in lesson['topics']:
-                                    apply_with_attribution(topic, 'topic', topic['id'])
-                                    if 'subtopics' in topic:
-                                        for subtopic in topic['subtopics']:
-                                            apply_with_attribution(subtopic, 'subtopic', subtopic['id'])
-
-                    # Recalculate parent completion percentages bottom-up from
-                    # the merged child states so that progress completed by
-                    # section-mates is reflected in topic/lesson/syllabus bars.
-                    # Only needed when merging — individual progress is already consistent.
-                    if include_hierarchy and 'lessons' in syllabus_dict and not is_read_only and merge_section_progress:
-                        for lesson in syllabus_dict['lessons']:
-                            if 'topics' in lesson:
-                                for topic in lesson['topics']:
-                                    subtopics = topic.get('subtopics', [])
-                                    if subtopics:
-                                        completed_count = sum(
-                                            1 for s in subtopics
-                                            if s.get('is_completed')
-                                        )
-                                        topic_pct = round(
-                                            (completed_count / len(subtopics)) * 100, 2
-                                        )
-                                        topic['completion_percentage'] = topic_pct
-                                        if topic_pct >= 100:
-                                            topic['status'] = 'completed'
-                                            topic['is_completed'] = True
-                                        elif topic_pct > 0:
-                                            topic['status'] = 'in_progress'
-
-                            topics = lesson.get('topics', [])
-                            if topics:
-                                total_pct = sum(
-                                    float(t.get('completion_percentage', 0))
-                                    for t in topics
-                                )
-                                lesson_pct = round(total_pct / len(topics), 2)
-                                lesson['completion_percentage'] = lesson_pct
-                                if lesson_pct >= 100:
-                                    lesson['status'] = 'completed'
-                                    lesson['is_completed'] = True
-                                elif lesson_pct > 0:
-                                    lesson['status'] = 'in_progress'
-
-                        lessons = syllabus_dict.get('lessons', [])
-                        if lessons:
-                            total_pct = sum(
-                                float(l.get('completion_percentage', 0))
-                                for l in lessons
-                            )
-                            syllabus_pct = round(total_pct / len(lessons), 2)
-                            syllabus_dict['completion_percentage'] = syllabus_pct
-                            if syllabus_pct >= 100:
-                                syllabus_dict['status'] = 'completed'
-                            elif syllabus_pct > 0:
-                                syllabus_dict['status'] = 'in_progress'
+                    # parents' percentages from their children (records carried over from several teachers
+                    # may not have agreed)
+                    for lesson in syllabus_dict['lessons']:
+                        for topic in lesson.get('topics', []):
+                            subtopics = topic.get('subtopics', [])
+                            if subtopics:
+                                topic_pct = round(sum(1 for x in subtopics if x.get('is_completed')) / len(subtopics) * 100, 2)
+                                topic['completion_percentage'] = topic_pct
+                                if topic_pct >= 100:
+                                    topic['status'] = 'completed'
+                                    topic['is_completed'] = True
+                                elif topic_pct > 0 and topic.get('status') != 'completed':
+                                    topic['status'] = 'in_progress'
+                        topics = lesson.get('topics', [])
+                        if topics:
+                            lesson_pct = round(sum(float(t.get('completion_percentage') or 0) for t in topics) / len(topics), 2)
+                            lesson['completion_percentage'] = lesson_pct
+                            if lesson_pct >= 100:
+                                lesson['status'] = 'completed'
+                                lesson['is_completed'] = True
+                            elif lesson_pct > 0 and lesson.get('status') != 'completed':
+                                lesson['status'] = 'in_progress'
+                    lessons = syllabus_dict.get('lessons', [])
+                    if lessons:
+                        syllabus_pct = round(sum(float(x.get('completion_percentage') or 0) for x in lessons) / len(lessons), 2)
+                        syllabus_dict['completion_percentage'] = syllabus_pct
+                        if syllabus_pct >= 100:
+                            syllabus_dict['status'] = 'completed'
+                        elif syllabus_pct > 0:
+                            syllabus_dict['status'] = 'in_progress'
 
                 return syllabus_dict
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to get syllabus: {str(e)}")
 
@@ -1032,8 +954,9 @@ class SyllabusService:
                     raise ValueError("Lesson not found")
 
                 if teacher_id:
-                    # Update teacher-specific progress
-                    progress = SyllabusService._get_or_create_progress(session, teacher_id, 'lesson', lesson_id)
+                    # Update the section's progress
+                    section_id = _resolve_section(session, teacher_id, _syllabus_id_of(session, 'lesson', lesson_id), data.get('section_id'))
+                    progress = SyllabusService._get_or_create_progress(session, teacher_id, 'lesson', lesson_id, section_id)
                     tracking_fields = ['status', 'planned_start_date', 'planned_end_date',
                                       'actual_start_date', 'actual_end_date', 'teacher_notes']
                     for field in tracking_fields:
@@ -1042,7 +965,7 @@ class SyllabusService:
 
                     session.commit()
                     # Recalculate teacher-specific parent completion
-                    SyllabusService._recalculate_teacher_syllabus_completion(session, teacher_id, lesson.syllabus_id)
+                    SyllabusService._recalculate_teacher_syllabus_completion(session, teacher_id, lesson.syllabus_id, section_id)
                     return lesson.to_dict() # Return dict, UI will overlay progress later
                 else:
                     # Update shared content
@@ -1131,8 +1054,9 @@ class SyllabusService:
                     raise ValueError("Topic not found")
 
                 if teacher_id:
-                    # Update teacher-specific progress
-                    progress = SyllabusService._get_or_create_progress(session, teacher_id, 'topic', topic_id)
+                    # Update the section's progress
+                    section_id = _resolve_section(session, teacher_id, _syllabus_id_of(session, 'topic', topic_id), data.get('section_id'))
+                    progress = SyllabusService._get_or_create_progress(session, teacher_id, 'topic', topic_id, section_id)
                     tracking_fields = ['status', 'planned_start_date', 'planned_end_date',
                                       'actual_start_date', 'actual_end_date', 'teacher_notes']
                     for field in tracking_fields:
@@ -1141,7 +1065,7 @@ class SyllabusService:
 
                     session.commit()
                     # Recalculate teacher-specific parent completion
-                    SyllabusService._recalculate_teacher_lesson_completion(session, teacher_id, topic.lesson_id)
+                    SyllabusService._recalculate_teacher_lesson_completion(session, teacher_id, topic.lesson_id, section_id)
                     return topic.to_dict()
                 else:
                     # Update shared content
@@ -1233,8 +1157,9 @@ class SyllabusService:
                     raise ValueError("Subtopic not found")
 
                 if teacher_id:
-                    # Update teacher-specific progress
-                    progress = SyllabusService._get_or_create_progress(session, teacher_id, 'subtopic', subtopic_id)
+                    # Update the section's progress
+                    section_id = _resolve_section(session, teacher_id, _syllabus_id_of(session, 'subtopic', subtopic_id), data.get('section_id'))
+                    progress = SyllabusService._get_or_create_progress(session, teacher_id, 'subtopic', subtopic_id, section_id)
                     tracking_fields = ['status', 'planned_completion_date', 'actual_completion_date',
                                       'is_completed', 'teacher_notes']
                     for field in tracking_fields:
@@ -1248,7 +1173,7 @@ class SyllabusService:
 
                     session.commit()
                     # Recalculate teacher-specific parent completion
-                    SyllabusService._recalculate_teacher_topic_completion(session, teacher_id, subtopic.topic_id)
+                    SyllabusService._recalculate_teacher_topic_completion(session, teacher_id, subtopic.topic_id, section_id)
                     return subtopic.to_dict()
                 else:
                     # Update shared content
@@ -1301,7 +1226,7 @@ class SyllabusService:
     # ============== TEACHER-SPECIFIC COMPLETION CALCULATION ==============
 
     @staticmethod
-    def _recalculate_teacher_topic_completion(session, teacher_id, topic_id):
+    def _recalculate_teacher_topic_completion(session, teacher_id, topic_id, section_id=None):
         """Recalculate teacher-specific topic completion based on subtopics"""
         topic = session.query(Topic).filter_by(id=topic_id).first()
         if not topic:
@@ -1313,8 +1238,7 @@ class SyllabusService:
 
         # Get all subtopic progress for this teacher
         subtopic_ids = [s.id for s in subtopics]
-        progress_records = session.query(SyllabusProgressTracking).filter(
-            SyllabusProgressTracking.teacher_id == teacher_id,
+        progress_records = _progress_scope(session.query(SyllabusProgressTracking), teacher_id, section_id).filter(
             SyllabusProgressTracking.item_type == 'subtopic',
             SyllabusProgressTracking.item_id.in_(subtopic_ids),
             SyllabusProgressTracking.is_active == True
@@ -1324,7 +1248,7 @@ class SyllabusService:
         completion_percentage = Decimal((completed_count / len(subtopics)) * 100)
 
         # Update topic progress
-        progress = SyllabusService._get_or_create_progress(session, teacher_id, 'topic', topic_id)
+        progress = SyllabusService._get_or_create_progress(session, teacher_id, 'topic', topic_id, section_id)
         progress.completion_percentage = completion_percentage
 
         if completion_percentage == 100:
@@ -1338,10 +1262,10 @@ class SyllabusService:
 
         session.commit()
         # Cascade
-        SyllabusService._recalculate_teacher_lesson_completion(session, teacher_id, topic.lesson_id)
+        SyllabusService._recalculate_teacher_lesson_completion(session, teacher_id, topic.lesson_id, section_id)
 
     @staticmethod
-    def _recalculate_teacher_lesson_completion(session, teacher_id, lesson_id):
+    def _recalculate_teacher_lesson_completion(session, teacher_id, lesson_id, section_id=None):
         """Recalculate teacher-specific lesson completion based on topics"""
         lesson = session.query(Lesson).filter_by(id=lesson_id).first()
         if not lesson:
@@ -1353,8 +1277,7 @@ class SyllabusService:
 
         # Get all topic progress for this teacher
         topic_ids = [t.id for t in topics]
-        progress_records = session.query(SyllabusProgressTracking).filter(
-            SyllabusProgressTracking.teacher_id == teacher_id,
+        progress_records = _progress_scope(session.query(SyllabusProgressTracking), teacher_id, section_id).filter(
             SyllabusProgressTracking.item_type == 'topic',
             SyllabusProgressTracking.item_id.in_(topic_ids),
             SyllabusProgressTracking.is_active == True
@@ -1364,7 +1287,7 @@ class SyllabusService:
         completion_percentage = Decimal(total_completion / len(topics))
 
         # Update lesson progress
-        progress = SyllabusService._get_or_create_progress(session, teacher_id, 'lesson', lesson_id)
+        progress = SyllabusService._get_or_create_progress(session, teacher_id, 'lesson', lesson_id, section_id)
         progress.completion_percentage = completion_percentage
 
         if completion_percentage == 100:
@@ -1374,10 +1297,10 @@ class SyllabusService:
 
         session.commit()
         # Cascade
-        SyllabusService._recalculate_teacher_syllabus_completion(session, teacher_id, lesson.syllabus_id)
+        SyllabusService._recalculate_teacher_syllabus_completion(session, teacher_id, lesson.syllabus_id, section_id)
 
     @staticmethod
-    def _recalculate_teacher_syllabus_completion(session, teacher_id, syllabus_id):
+    def _recalculate_teacher_syllabus_completion(session, teacher_id, syllabus_id, section_id=None):
         """Recalculate teacher-specific syllabus completion based on lessons"""
         syllabus = session.query(Syllabus).filter_by(id=syllabus_id).first()
         if not syllabus:
@@ -1389,8 +1312,7 @@ class SyllabusService:
 
         # Get all lesson progress for this teacher
         lesson_ids = [l.id for l in lessons]
-        progress_records = session.query(SyllabusProgressTracking).filter(
-            SyllabusProgressTracking.teacher_id == teacher_id,
+        progress_records = _progress_scope(session.query(SyllabusProgressTracking), teacher_id, section_id).filter(
             SyllabusProgressTracking.item_type == 'lesson',
             SyllabusProgressTracking.item_id.in_(lesson_ids),
             SyllabusProgressTracking.is_active == True
@@ -1400,7 +1322,7 @@ class SyllabusService:
         completion_percentage = Decimal(total_completion / len(lessons))
 
         # Update syllabus progress
-        progress = SyllabusService._get_or_create_progress(session, teacher_id, 'syllabus', syllabus_id)
+        progress = SyllabusService._get_or_create_progress(session, teacher_id, 'syllabus', syllabus_id, section_id)
         progress.completion_percentage = completion_percentage
 
         if completion_percentage == 100:
@@ -1448,9 +1370,9 @@ class SyllabusService:
                 session.add(assignment)
                 session.flush()
 
-                # Ensure a syllabus-level progress tracking record exists
+                # Ensure the section has a syllabus-level progress record (a new teacher carries on from it)
                 progress = session.query(SyllabusProgressTracking).filter_by(
-                    teacher_id=teacher_id,
+                    section_id=section_id,
                     item_type='syllabus',
                     item_id=syllabus_id,
                     is_active=True
@@ -1458,6 +1380,7 @@ class SyllabusService:
                 if not progress:
                     progress = SyllabusProgressTracking(
                         teacher_id=teacher_id,
+                        section_id=section_id,
                         item_type='syllabus',
                         item_id=syllabus_id,
                         status='planned',
@@ -1623,14 +1546,9 @@ class SyllabusService:
                     classes = session.query(Class).filter(Class.id.in_(class_ids)).all()
                     class_map = {c.id: c.class_name for c in classes}
 
-                # Batch-load progress
-                progress_list = session.query(SyllabusProgressTracking).filter(
-                    SyllabusProgressTracking.teacher_id.in_(teacher_ids),
-                    SyllabusProgressTracking.item_type == 'syllabus',
-                    SyllabusProgressTracking.item_id == syllabus_id,
-                    SyllabusProgressTracking.is_active == True
-                ).all()
-                progress_map = {p.teacher_id: p for p in progress_list}
+                # each section's own progress (QA B33)
+                section_pct = {sid: SyllabusService._compute_section_syllabus_pct(session, syllabus_id, sid)
+                               for sid in section_ids}
 
                 # Build per-teacher section lists and active flag
                 teacher_sections = {}  # {teacher_id: [section_info]}
@@ -1647,7 +1565,9 @@ class SyllabusService:
                         'section_id': a.section_id,
                         'section_name': sec.section_name if sec else 'Unknown',
                         'class_id': sec.class_id if sec else None,
-                        'class_name': class_map.get(sec.class_id, 'Unknown') if sec else 'Unknown'
+                        'class_name': class_map.get(sec.class_id, 'Unknown') if sec else 'Unknown',
+                        'completion_percentage': section_pct.get(a.section_id, (0, 'planned'))[0],
+                        'status': section_pct.get(a.section_id, (0, 'planned'))[1],
                     }
                     if section_info not in teacher_sections[a.teacher_id]:
                         teacher_sections[a.teacher_id].append(section_info)
@@ -1655,12 +1575,14 @@ class SyllabusService:
                 # Build results
                 results = []
                 for tid in teacher_ids:
-                    p = progress_map.get(tid)
+                    # a teacher's figure = the average of their sections
+                    secs = teacher_sections.get(tid, [])
+                    pct = round(sum(x['completion_percentage'] for x in secs) / len(secs), 2) if secs else 0
                     results.append({
                         'teacher_id': tid,
                         'teacher_name': teacher_map.get(tid, 'Unknown'),
-                        'completion_percentage': float(p.completion_percentage) if p else 0,
-                        'status': p.status if p else 'planned',
+                        'completion_percentage': pct,
+                        'status': 'completed' if pct >= 100 else 'in_progress' if pct > 0 else 'planned',
                         'is_active': teacher_active.get(tid, False),
                         'sections': teacher_sections.get(tid, [])
                     })
@@ -1877,51 +1799,21 @@ class SyllabusService:
     # ============== ANALYTICS & REPORTING ==============
 
     @staticmethod
-    def get_syllabus_analytics(skid, syllabus_id, teacher_id=None):
+    def get_syllabus_analytics(skid, syllabus_id, teacher_id=None, section_id=None):
         """
-        Analytics for a syllabus. A teacher sees their own progress; admins see the combined progress of the
-        teachers assigned to it (best status across them).
+        Analytics for a syllabus (QA B33): one section's progress - a teacher's own section (the chosen one, else
+        their first), or the section an admin picks. An admin without a section sees all sections combined
+        (best status across them).
         """
         try:
-            if not teacher_id:
-                with switch_to_school_db(skid) as session:
-                    assigned = [a.teacher_id for a in session.query(TeacherSyllabusAssignment).filter_by(
-                        syllabus_id=syllabus_id, is_active=True).all()]
-                combined = SyllabusService.get_syllabus_combined_progress(skid, syllabus_id, assigned or None)
+            if teacher_id or section_id:
+                syllabus_dict = SyllabusService.get_syllabus_by_id(
+                    skid, syllabus_id, teacher_id, include_hierarchy=True, section_id=section_id)
+            else:
+                syllabus_dict = SyllabusService.get_syllabus_combined_progress(skid, syllabus_id, None)
             with switch_to_school_db(skid) as session:
-                syllabus = session.query(Syllabus).options(
-                    joinedload(Syllabus.lessons).joinedload(Lesson.topics).joinedload(Topic.subtopics)
-                ).filter_by(id=syllabus_id, is_active=True).first()
-
-                if not syllabus:
+                if not session.query(Syllabus).filter_by(id=syllabus_id, is_active=True).first():
                     raise ValueError("Syllabus not found")
-
-                syllabus_dict = syllabus.to_dict(include_lessons=True) if teacher_id else combined
-
-                if teacher_id:
-                    # Apply teacher-specific progress to the hierarchy
-                    progress_list = session.query(SyllabusProgressTracking).filter_by(
-                        teacher_id=teacher_id,
-                        is_active=True
-                    ).all()
-                    progress_map = {(p.item_type, p.item_id): p for p in progress_list}
-
-                    SyllabusService._apply_teacher_progress_to_dict(
-                        syllabus_dict, progress_map.get(('syllabus', syllabus_id))
-                    )
-
-                    for lesson in syllabus_dict['lessons']:
-                        SyllabusService._apply_teacher_progress_to_dict(
-                            lesson, progress_map.get(('lesson', lesson['id']))
-                        )
-                        for topic in lesson['topics']:
-                            SyllabusService._apply_teacher_progress_to_dict(
-                                topic, progress_map.get(('topic', topic['id']))
-                            )
-                            for subtopic in topic['subtopics']:
-                                SyllabusService._apply_teacher_progress_to_dict(
-                                    subtopic, progress_map.get(('subtopic', subtopic['id']))
-                                )
 
                 # Calculate stats based on potentially overridden data
                 _with_status_defaults(syllabus_dict)
@@ -1993,18 +1885,16 @@ class SyllabusService:
         """Get summary of all syllabi for a teacher"""
         try:
             syllabi = SyllabusService.get_syllabi_by_teacher(skid, teacher_id, academic_year_id)
-            # every syllabus showed "planned, 0%": apply this teacher's own syllabus-level progress
+            # each syllabus: the average of the teacher's sections (QA B33), their own progress without one
             if syllabi:
                 with switch_to_school_db(skid) as session:
-                    progress = {p.item_id: p for p in session.query(SyllabusProgressTracking).filter(
-                        SyllabusProgressTracking.teacher_id == teacher_id,
-                        SyllabusProgressTracking.item_type == 'syllabus',
-                        SyllabusProgressTracking.is_active.is_(True),
-                        SyllabusProgressTracking.item_id.in_([s['id'] for s in syllabi]),
-                    ).all()}
                     for item in syllabi:
-                        SyllabusService._apply_teacher_progress_to_dict(item, progress.get(item['id']))
-                        item['completion_percentage'] = float(item.get('completion_percentage') or 0)
+                        secs = _teacher_section_ids(session, item['id'], teacher_id)
+                        figures = ([SyllabusService._compute_section_syllabus_pct(session, item['id'], x) for x in secs]
+                                   or [SyllabusService._own_syllabus_pct(session, item['id'], teacher_id)])
+                        pct = round(sum(f[0] for f in figures) / len(figures), 2)
+                        item['completion_percentage'] = pct
+                        item['status'] = 'completed' if pct >= 100 else 'in_progress' if pct > 0 else 'planned'
 
             total_syllabi = len(syllabi)
             completed_syllabi = sum(1 for s in syllabi if s['status'] == 'completed')

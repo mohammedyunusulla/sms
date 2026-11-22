@@ -116,7 +116,7 @@ class TeacherService {
 
         const response = await api.delete(`${this.baseUrl}/delete/${schoolId}/${id}`);
         if (response.code !== 200 || response.status !== 'success') {
-            throw new Error(response.data?.message || 'Failed to delete teacher');
+            throw new Error(response?.message || response.data?.message || 'Failed to delete teacher');
         }
     }
 

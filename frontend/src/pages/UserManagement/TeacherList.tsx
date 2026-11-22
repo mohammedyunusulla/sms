@@ -4,7 +4,7 @@
  */
 
 import { FC, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import toast from 'react-hot-toast';
 import { PageHeader, LoadingSpinner, DataTable, Button, ConfirmDialog, Badge } from '../../components';
 import { teacherService } from '../../services/modules/teacherService';
@@ -49,7 +49,9 @@ const TeacherList: FC = () => {
     const [selectedTeacherIdForDialog, setSelectedTeacherIdForDialog] = useState<string | null>(null);
 
     // Filter states
-    const [searchTerm, setSearchTerm] = useState('');
+    // ?search= comes from the header search (QA A31)
+    const [searchParams] = useSearchParams();
+    const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || '');
     const [genderFilter, setGenderFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
 

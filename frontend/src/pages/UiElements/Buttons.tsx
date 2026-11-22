@@ -8,8 +8,8 @@ export default function Buttons() {
   return (
     <div>
       <PageMeta
-        title="Buttons | Edusphere - Education Management System"
-        description="Buttons page - Edusphere Education Management System"
+        title="Buttons | EduSpyre - Education Management System"
+        description="Buttons page - EduSpyre Education Management System"
       />
       <PageBreadcrumb pageTitle="Buttons" />
       <div className="space-y-5 sm:space-y-6">

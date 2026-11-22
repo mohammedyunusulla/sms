@@ -248,7 +248,7 @@ const StudentProgressTable: FC<StudentProgressTableProps> = ({
                                 {/* Status */}
                                 <td className="px-6 py-4 text-center">
                                     <Badge
-                                        variant={student.status === 'Pass' ? 'success' : 'danger'}
+                                        variant={student.status === 'Pass' ? 'success' : student.status === 'Incomplete' ? 'secondary' : 'danger'}
                                         size="sm"
                                     >
                                         {student.status}

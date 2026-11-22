@@ -23,6 +23,7 @@ const SchoolList: FC = () => {
     const [rows, setRows] = useState<any[]>([]);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [deleteCode, setDeleteCode] = useState('');
     const [assignAdminOpen, setAssignAdminOpen] = useState(false);
     const [selectedSchool, setSelectedSchool] = useState<any>(null);
     const [statusAction, setStatusAction] = useState<string | null>(null);
@@ -97,6 +98,7 @@ const SchoolList: FC = () => {
 
     const handleDelete = (school: any) => {
         setSelectedSchool(school);
+        setDeleteCode('');
         setDeleteConfirmOpen(true);
         setShowActionsMenu(null);
     };
@@ -104,7 +106,7 @@ const SchoolList: FC = () => {
     const handleConfirmDelete = async () => {
         try {
             setLoading(true);
-            await schoolService.deleteSchool(selectedSchool.id);
+            await schoolService.deleteSchool(selectedSchool.id, deleteCode.trim());
             toast.success('School deleted successfully!');
             fetchSchools();
             setDeleteConfirmOpen(false);
@@ -319,7 +321,23 @@ const SchoolList: FC = () => {
                 isLoading={loading}
                 onConfirm={handleConfirmDelete}
                 onCancel={() => setDeleteConfirmOpen(false)}
-            />
+                confirmDisabled={deleteCode.trim().toLowerCase() !== String(selectedSchool?.code || '').toLowerCase()}
+            >
+                {/* type the school code to enable the delete (QA S14: it was one click) */}
+                <div className="mt-4">
+                    <label htmlFor="delete-school-code" className="block text-sm text-gray-700 dark:text-gray-300">
+                        Type <strong className="font-mono">{selectedSchool?.code}</strong> to confirm
+                    </label>
+                    <input
+                        id="delete-school-code"
+                        name="delete_school_code"
+                        value={deleteCode}
+                        onChange={(e) => setDeleteCode(e.target.value)}
+                        autoComplete="off"
+                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    />
+                </div>
+            </ConfirmDialog>
 
             {/* Assign Admin Modal */}
             <Modal

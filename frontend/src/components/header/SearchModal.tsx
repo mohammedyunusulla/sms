@@ -6,6 +6,8 @@
 import { FC, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { usePageSearch } from '../../hooks/usePageSearch';
+import { usePeopleSearch } from '../../hooks/usePeopleSearch';
+import { usePermissions } from '../../hooks/usePermissions';
 import { useAuthStore } from '../../stores/authStore';
 
 interface SearchModalProps {
@@ -20,10 +22,17 @@ const SearchModal: FC<SearchModalProps> = ({ isOpen, searchQuery, onClose }) => 
     const [selectedIndex, setSelectedIndex] = useState(0);
     const resultsRef = useRef<HTMLDivElement>(null);
 
-    const { results, hasResults, totalResults } = usePageSearch({
+    const { canOpen } = usePermissions();
+    const { results: pageResults } = usePageSearch({
         query: searchQuery,
         userRole: user?.role || null,
+        canOpen,
     });
+    // students / teachers as well as pages (QA A31)
+    const { people, loading: peopleLoading } = usePeopleSearch({ query: searchQuery, canOpen });
+    const results = [...people, ...pageResults];
+    const totalResults = results.reduce((n, g) => n + g.pages.length, 0);
+    const hasResults = totalResults > 0;
 
     // Flatten results for keyboard navigation
     const flatResults = results.flatMap((group) => group.pages);
@@ -89,7 +98,8 @@ const SearchModal: FC<SearchModalProps> = ({ isOpen, searchQuery, onClose }) => 
     const highlightMatch = (text: string, query: string) => {
         if (!query.trim()) return text;
 
-        const parts = text.split(new RegExp(`(${query})`, 'gi'));
+        const safe = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const parts = text.split(new RegExp(`(${safe})`, 'gi'));
         return (
             <>
                 {parts.map((part, index) =>
@@ -125,6 +135,8 @@ const SearchModal: FC<SearchModalProps> = ({ isOpen, searchQuery, onClose }) => 
                                 Found <span className="font-semibold text-gray-900 dark:text-white">{totalResults}</span>{' '}
                                 {totalResults === 1 ? 'result' : 'results'}
                             </>
+                        ) : peopleLoading ? (
+                            'Searching…'
                         ) : (
                             'No results found'
                         )}
@@ -225,7 +237,7 @@ const SearchModal: FC<SearchModalProps> = ({ isOpen, searchQuery, onClose }) => 
                     <div className="px-4 py-12 text-center">
                         <div className="text-6xl mb-4">🔍</div>
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                            No pages found for "<span className="font-semibold">{searchQuery}</span>"
+                            {peopleLoading ? 'Searching…' : <>Nothing found for "<span className="font-semibold">{searchQuery}</span>"</>}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-500">
                             Try searching with different keywords

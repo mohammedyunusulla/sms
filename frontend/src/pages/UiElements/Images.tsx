@@ -9,8 +9,8 @@ export default function Images() {
   return (
     <>
       <PageMeta
-        title="Images | Edusphere - Education Management System"
-        description="Images page - Edusphere Education Management System"
+        title="Images | EduSpyre - Education Management System"
+        description="Images page - EduSpyre Education Management System"
       />
       <PageBreadcrumb pageTitle="Images" />
       <div className="space-y-5 sm:space-y-6">

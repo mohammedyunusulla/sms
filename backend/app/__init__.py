@@ -122,8 +122,55 @@ def create_app(config_name=None):
     @jwt.unauthorized_loader
     def missing_token_callback(error):
         return {'message': 'Authorization token is required'}, 401
-    
+
+    _register_error_safety_net(app)
     return app
+
+
+# ---------- error safety net (QA D25) ----------
+# Many routes return f"Failed to X: {error}" with status 500, which put database / Python internals in front of
+# users (e.g. a psycopg2 message for a bad date). Readable messages ("Section already exists") are left alone;
+# replies whose text looks internal are replaced, and the original goes to the server log.
+import re as _re
+GENERIC_SERVER_ERROR = "Something went wrong on the server. Please try again."
+_INTERNAL_ERROR_TEXT = _re.compile(
+    r"psycopg2|sqlalchemy|\(Background on this error|Traceback|time data .* does not match|unconverted data remains"
+    r"|invalid literal for|object has no attribute|NoneType|\[Errno \d+\]|KeyError|IndexError|list index out of range"
+    r"|could not convert|unsupported operand|unexpected keyword argument|required positional argument"
+    r"|is not JSON serializable|SyntaxError|NameError|AttributeError|TypeError|ZeroDivisionError",
+    _re.IGNORECASE,
+)
+
+
+def _register_error_safety_net(app):
+    from flask import request, jsonify, json
+    from werkzeug.exceptions import HTTPException
+
+    @app.after_request
+    def _hide_internal_error_text(response):
+        if response.status_code < 500 or not response.is_json:
+            return response
+        data = response.get_json(silent=True)
+        if not isinstance(data, dict):
+            return response
+        changed = False
+        for key in ('message', 'error', 'detail'):
+            value = data.get(key)
+            if isinstance(value, str) and _INTERNAL_ERROR_TEXT.search(value):
+                app.logger.error(f"{request.method} {request.path} -> {response.status_code}: {value}")
+                data[key] = GENERIC_SERVER_ERROR
+                changed = True
+        if changed:
+            response.set_data(json.dumps(data))
+        return response
+
+    @app.errorhandler(Exception)
+    def _unhandled_error(error):
+        # an error no route caught: a plain JSON reply instead of a stack trace / debugger page
+        if isinstance(error, HTTPException):
+            return error
+        app.logger.exception(f"Unhandled error on {request.method} {request.path}")
+        return jsonify({'status': 'error', 'code': 500, 'message': GENERIC_SERVER_ERROR}), 500
 
 
 def _bootstrap_main_schema(app):
@@ -167,6 +214,37 @@ def _bootstrap_main_schema(app):
 
 # Columns added to existing school databases after they were created (create_all only builds new tables).
 # Each statement must be safe to run on every start.
+_OLD_PROGRESS = """
+    SELECT p.*, a.section_id AS target_section
+    FROM syllabus_progress_tracking p
+    JOIN teacher_syllabus_assignments a ON a.teacher_id = p.teacher_id AND a.syllabus_id = (CASE p.item_type
+              WHEN 'syllabus' THEN p.item_id
+              WHEN 'lesson' THEN (SELECT l.syllabus_id FROM lessons l WHERE l.id = p.item_id)
+              WHEN 'topic' THEN (SELECT l.syllabus_id FROM topics t JOIN lessons l ON l.id = t.lesson_id WHERE t.id = p.item_id)
+              WHEN 'subtopic' THEN (SELECT l.syllabus_id FROM subtopics s JOIN topics t ON t.id = s.topic_id JOIN lessons l ON l.id = t.lesson_id WHERE s.id = p.item_id)
+            END)
+    WHERE p.section_id IS NULL AND p.is_active
+"""
+SYLLABUS_PROGRESS_CARRY_OVER = f"""
+INSERT INTO syllabus_progress_tracking (teacher_id, section_id, item_type, item_id, planned_start_date, planned_end_date,
+    actual_start_date, actual_end_date, planned_completion_date, actual_completion_date, status, completion_percentage,
+    is_completed, teacher_notes, created_at, updated_at, is_active)
+SELECT DISTINCT ON (o.target_section, o.item_type, o.item_id)
+    o.teacher_id, o.target_section, o.item_type, o.item_id, o.planned_start_date, o.planned_end_date,
+    o.actual_start_date, o.actual_end_date, o.planned_completion_date, o.actual_completion_date, o.status,
+    o.completion_percentage, o.is_completed, o.teacher_notes, o.created_at, o.updated_at, TRUE
+FROM ({_OLD_PROGRESS}) o
+WHERE NOT EXISTS (SELECT 1 FROM syllabus_progress_tracking x WHERE x.section_id = o.target_section
+                  AND x.item_type = o.item_type AND x.item_id = o.item_id AND x.is_active)
+ORDER BY o.target_section, o.item_type, o.item_id,
+    (o.is_completed OR o.status = 'completed') DESC, (o.status = 'in_progress') DESC,
+    o.completion_percentage DESC, o.updated_at DESC
+"""
+SYLLABUS_PROGRESS_RETIRE_COPIED = f"""
+UPDATE syllabus_progress_tracking SET is_active = FALSE
+WHERE id IN (SELECT o.id FROM ({_OLD_PROGRESS}) o)
+"""
+
 TENANT_SCHEMA_UPDATES = (
     "ALTER TABLE IF EXISTS attendance ADD COLUMN IF NOT EXISTS marked_by INTEGER",
     "ALTER TABLE IF EXISTS attendance ADD COLUMN IF NOT EXISTS updated_by INTEGER",
@@ -177,6 +255,15 @@ TENANT_SCHEMA_UPDATES = (
     # built-in roles are marked as such (some schools had Clerk / Bus Staff unmarked, so they could be deleted)
     "UPDATE roles SET is_system_role = TRUE WHERE is_system_role IS DISTINCT FROM TRUE AND role_code IN "
     "('SCHOOL_ADMIN','PRINCIPAL','TEACHER','STUDENT','PARENT','BUS_STAFF','CLERK')",
+    # syllabus progress is kept per section (QA B33)
+    "ALTER TABLE IF EXISTS syllabus_progress_tracking ADD COLUMN IF NOT EXISTS section_id INTEGER "
+    "REFERENCES sections(id) ON DELETE CASCADE",
+    "CREATE INDEX IF NOT EXISTS ix_syllabus_progress_tracking_section_id ON syllabus_progress_tracking (section_id)",
+    # carry-over: old progress (no section) is copied to every section its teacher was assigned to for that
+    # syllabus, so each section starts out showing what it showed before; then the old row is retired.
+    # Runs once in effect: it only touches active rows without a section whose teacher has an assignment.
+    SYLLABUS_PROGRESS_CARRY_OVER,
+    SYLLABUS_PROGRESS_RETIRE_COPIED,
 )
 
 

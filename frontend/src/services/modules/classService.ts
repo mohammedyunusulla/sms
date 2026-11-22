@@ -2,15 +2,6 @@ import { getApiClient, getSchoolId } from '../api/client';
 import { IClass } from '../../types/index';
 
 
-interface IClassListParams {
-    search?: string;
-    section?: string;
-    teacher?: string;
-    status?: 'ACTIVE' | 'INACTIVE';
-    page?: number;
-    limit?: number;
-}
-
 
 class ClassService {
     private baseUrl = '/classes';
@@ -93,19 +84,6 @@ class ClassService {
 
 
     // Assign students to a class
-    async assignStudents(classId: string, studentIds: string[]): Promise<void> {
-        const api = getApiClient();
-        const schoolId = getSchoolId();
-
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
-        }
-
-        const response = await api.post(`${this.baseUrl}/${classId}/assign-students/${schoolId}`, { studentIds });
-        if (response.code !== 200 || response.status !== 'success') {
-            throw new Error(response.data?.message || 'Failed to assign students');
-        }
-    }
 
 
     // Get students in a class
@@ -155,23 +133,17 @@ class ClassService {
 
 
     // Update class status (ACTIVE/INACTIVE)
-    async updateStatus(id: string, status: 'ACTIVE' | 'INACTIVE'): Promise<IClass> {
-        const api = getApiClient();
-        const schoolId = getSchoolId();
-
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
-        }
-
-        const response = await api.patch(`${this.baseUrl}/${id}/status/${schoolId}`, { status });
-        if (response.code === 200 && response.status === 'success') {
-            return response?.data;
-        }
-        throw new Error(response.data?.message || 'Failed to update class status');
-    }
 
 
     // Get sections for a specific class
+    /** Put existing students into a section (moves them if they're in another one) - QA A30 */
+    async addStudentsToSection(sectionId: number | string, studentIds: (number | string)[]): Promise<unknown> {
+        const api = getApiClient();
+        const schoolId = getSchoolId();
+        if (!schoolId) throw new Error('School ID not found. Please log in again.');
+        return api.post(`${this.baseUrl}/add-to-section/${schoolId}/${sectionId}`, { student_ids: studentIds.map(Number) });
+    }
+
     async getSections(classId: string): Promise<any[]> {
         const api = getApiClient();
         const schoolId = getSchoolId();
@@ -246,14 +218,6 @@ class ClassService {
 
 
     // Export classes to CSV
-    async exportToCSV(params?: IClassListParams): Promise<Blob> {
-        const api = getApiClient();
-        const response = await api.get(`${this.baseUrl}/export/csv`, {
-            params,
-            responseType: 'blob',
-        });
-        return response.data;
-    }
 }
 
 // Export singleton instance

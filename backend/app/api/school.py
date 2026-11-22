@@ -278,6 +278,14 @@ def deactivate_school(school_id):
 def hard_delete_school(school_id):
     """Hard delete school - removes all users and drops database"""
     try:
+        # the school's code must be typed back, so a stray request or double click can't drop a school (QA S14)
+        school = School.query.get(school_id)
+        if not school:
+            return jsonify({'message': 'School not found', 'status': 'error', 'code': 404}), 404
+        typed = str((request.get_json(silent=True) or {}).get('confirm_code') or '').strip().lower()
+        if typed != (school.code or '').strip().lower():
+            return jsonify({'message': "Type the school's code to confirm the delete", 'status': 'error', 'code': 400}), 400
+
         result = SchoolService.hard_delete_school(school_id)
         
         if result['success']:

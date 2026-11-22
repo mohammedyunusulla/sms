@@ -193,20 +193,17 @@ class AssignmentService:
                     assignment_dict['section_name'] = row.section_name
                     assignment_dict['subject_name'] = row.subject_name
 
-                    # Get completion stats
-                    total = tenant_session.query(func.count(AssignmentSubmission.id)).filter(
-                        AssignmentSubmission.assignment_id == row[0].id
-                    ).scalar() or 0
+                    # Completion stats: the section's ACTIVE students only, both for "done" and the total
+                    # (done counted rows from any section and the total included inactive students - QA D13)
+                    from app.models.tenant.SchoolUsers import SchoolUsers
+                    section_students = tenant_session.query(Student.user_id).join(
+                        SchoolUsers, SchoolUsers.id == Student.user_id
+                    ).filter(Student.section_id == row[0].section_id, SchoolUsers.is_active.is_(True))
+                    student_count = section_students.count()
                     completed = tenant_session.query(func.count(AssignmentSubmission.id)).filter(
-                        and_(
-                            AssignmentSubmission.assignment_id == row[0].id,
-                            AssignmentSubmission.is_completed == True
-                        )
-                    ).scalar() or 0
-
-                    # Count students in the section for total
-                    student_count = tenant_session.query(func.count(Student.user_id)).filter(
-                        Student.section_id == row[0].section_id
+                        AssignmentSubmission.assignment_id == row[0].id,
+                        AssignmentSubmission.is_completed == True,
+                        AssignmentSubmission.student_id.in_(section_students.subquery().select()),
                     ).scalar() or 0
 
                     assignment_dict['completion_stats'] = {
@@ -312,6 +309,16 @@ class AssignmentService:
                     raise ValueError("Assignment not found")
 
                 now = datetime.utcnow()
+
+                # Only students of the assignment's section can be marked (any student used to be accepted - QA D13)
+                from app.models.tenant.SchoolUsers import SchoolUsers
+                in_section = {uid for (uid,) in tenant_session.query(Student.user_id).filter(
+                    Student.section_id == assignment.section_id)}
+                outside = [e.get('student_id') for e in submissions_data if int(e.get('student_id') or 0) not in in_section]
+                if outside:
+                    names = [f"{u.first_name} {u.last_name or ''}".strip() for u in
+                             tenant_session.query(SchoolUsers).filter(SchoolUsers.id.in_([int(x or 0) for x in outside])).all()]
+                    raise ValueError(f"Not in this assignment's section: {', '.join(names) or ', '.join(map(str, outside))}")
 
                 for entry in submissions_data:
                     student_id = entry['student_id']

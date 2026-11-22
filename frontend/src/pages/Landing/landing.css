@@ -3,7 +3,7 @@
  * with the page and never affects the authenticated app.
  */
 
-/* Brand gradient text — mirrors the blue → teal → green of the Edusphere logo */
+/* Brand gradient text — mirrors the blue → teal → green of the EduSpyre logo */
 .landing-gradient-text {
   background-image: linear-gradient(90deg, #465fff 0%, #0ba5ec 55%, #12b76a 100%);
   -webkit-background-clip: text;

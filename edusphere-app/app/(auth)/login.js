@@ -69,7 +69,7 @@ export default function LoginScreen() {
           {/* Logo + Header */}
           <View className="mb-10 items-center">
             <Image
-              source={require("../../assets/edusphere-logo.png")}
+              source={require("../../assets/eduspyre-logo.png")}
               style={{ width: 280, height: 58 }}
               resizeMode="contain"
             />

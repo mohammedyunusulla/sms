@@ -1,10 +1,11 @@
 import { FC, lazy, Suspense, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import toast from 'react-hot-toast';
 import { PageHeader, LoadingSpinner, DataTable, Button, ConfirmDialog, Badge } from '../../components';
 
 const StudentExamTimetableModal = lazy(() => import('../ExamManagement/components/StudentExamTimetableModal'));
 import { studentService } from '../../services/modules/studentService';
+import { classService } from '../../services/modules/classService';
 import { useAuthStore } from '../../stores/authStore';
 import StudentDetailDialog from './components/StudentDetailDialog';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -52,10 +53,29 @@ const StudentList: FC = () => {
     const [examTimetableStudent, setExamTimetableStudent] = useState<any>(null);
 
     // Filter states
-    const [searchTerm, setSearchTerm] = useState('');
+    // ?search= comes from the header search (QA A31)
+    const [searchParams] = useSearchParams();
+    const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || '');
     const [genderFilter, setGenderFilter] = useState('');
     const [classFilter, setClassFilter] = useState('');
     const [sectionFilter, setSectionFilter] = useState('');
+    // every class / the chosen class's sections (they used to come from the rows on the current page)
+    const [classOptions, setClassOptions] = useState<{ id: number; name: string }[]>([]);
+    const [sectionOptions, setSectionOptions] = useState<{ id: number; name: string }[]>([]);
+    useEffect(() => {
+        classService.list()
+            .then((list: { id: number; class_name?: string }[]) =>
+                setClassOptions((list || []).map((c) => ({ id: c.id, name: c.class_name || `Class ${c.id}` }))))
+            .catch(() => setClassOptions([]));
+    }, []);
+    useEffect(() => {
+        setSectionFilter('');
+        if (!classFilter) { setSectionOptions([]); return; }
+        classService.getSections(classFilter)
+            .then((list: { id: number; section_name?: string }[]) =>
+                setSectionOptions((list || []).map((s) => ({ id: s.id, name: s.section_name || `Section ${s.id}` }))))
+            .catch(() => setSectionOptions([]));
+    }, [classFilter]);
     const [statusFilter, setStatusFilter] = useState('');
 
     // Debounce search term to avoid excessive API calls (500ms delay)
@@ -73,11 +93,11 @@ const StudentList: FC = () => {
 
     useEffect(() => {
         setCurrentPage(1); // Reset to first page when filters change
-    }, [debouncedSearchTerm, genderFilter, statusFilter]);
+    }, [debouncedSearchTerm, genderFilter, statusFilter, classFilter, sectionFilter]);
 
     useEffect(() => {
         fetchStudents(currentPage, pageSize);
-    }, [currentPage, pageSize, debouncedSearchTerm, genderFilter, statusFilter, academicYearVersion]);
+    }, [currentPage, pageSize, debouncedSearchTerm, genderFilter, statusFilter, classFilter, sectionFilter, academicYearVersion]);
 
     const fetchStudents = async (page: number, limit: number) => {
         try {
@@ -88,6 +108,9 @@ const StudentList: FC = () => {
                 search: debouncedSearchTerm,
                 gender: genderFilter,
                 status: statusFilter,
+                // filtered on the server, across all pages
+                ...(classFilter ? { class_id: classFilter } : {}),
+                ...(sectionFilter ? { section_id: sectionFilter } : {}),
             });
             const students = response.data.map((student: any, index: number) => ({
                 ...student,
@@ -95,16 +118,7 @@ const StudentList: FC = () => {
                 slNo: (page - 1) * limit + index + 1,
             }));
 
-            // Client-side filtering for class and section (since backend doesn't support yet)
-            let filtered = students;
-            if (classFilter) {
-                filtered = filtered.filter((s: any) => s.class?.id === parseInt(classFilter));
-            }
-            if (sectionFilter) {
-                filtered = filtered.filter((s: any) => s.section?.id === parseInt(sectionFilter));
-            }
-
-            setRows(filtered);
+            setRows(students);
             setPagination(response.meta);
         } catch (error) {
             console.error('Error fetching students:', error);
@@ -203,14 +217,23 @@ const StudentList: FC = () => {
             render: (value) => <span className="text-gray-600 dark:text-gray-400">{value || '-'}</span>,
         },
         {
-            key: 'profile',
-            label: 'Student ID',
-            render: (value) => <Badge variant="secondary">{value.roll_no || '-'}</Badge>,
+            key: 'admission_number',
+            label: 'Admission No.',
+            render: (_value, row) => <Badge variant="secondary">{row.profile?.admission_number || '-'}</Badge>,
+        },
+        {
+            key: 'roll_no',
+            label: 'Roll No.',
+            render: (_value, row) => <span className="text-gray-600 dark:text-gray-400">{row.profile?.roll_no || '-'}</span>,
         },
         {
             key: 'class',
             label: 'Class',
-            render: (value) => <span className="text-gray-600 dark:text-gray-400">{value?.class_name || '-'}</span>,
+            render: (value, row) => (
+                <span className="text-gray-600 dark:text-gray-400">
+                    {[value?.class_name, row.section?.section_name].filter(Boolean).join(' – ') || '-'}
+                </span>
+            ),
         },
         {
             key: 'is_active',
@@ -297,18 +320,9 @@ const StudentList: FC = () => {
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                             <option value="">All Classes</option>
-                            {/* Get unique classes from rows */}
-                            {Array.from(new Set(rows
-                                .filter((r: any) => r.class?.id)
-                                .map((r: any) => r.class?.id)
-                            )).map((classId: any) => {
-                                const classData = rows.find((r: any) => r.class?.id === classId)?.class;
-                                return (
-                                    <option key={classId} value={classId}>
-                                        {classData?.name || `Class ${classId}`}
-                                    </option>
-                                );
-                            })}
+                            {classOptions.map((c) => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
                         </select>
                     </div>
 
@@ -320,21 +334,14 @@ const StudentList: FC = () => {
                         <select
                             value={sectionFilter}
                             onChange={(e) => setSectionFilter(e.target.value)}
+                            disabled={!classFilter}
+                            title={classFilter ? '' : 'Choose a class first'}
                             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                             <option value="">All Sections</option>
-                            {/* Get unique sections from rows */}
-                            {Array.from(new Set(rows
-                                .filter((r: any) => r.section?.id)
-                                .map((r: any) => r.section?.id)
-                            )).map((sectionId: any) => {
-                                const sectionData = rows.find((r: any) => r.section?.id === sectionId)?.section;
-                                return (
-                                    <option key={sectionId} value={sectionId}>
-                                        {sectionData?.name || `Section ${sectionId}`}
-                                    </option>
-                                );
-                            })}
+                            {sectionOptions.map((s) => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
                         </select>
                     </div>
 

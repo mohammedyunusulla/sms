@@ -95,7 +95,7 @@ const ROLES: Role[] = [
     icon: UsersIcon,
     headline: "Stay close to your child's school day",
     description:
-      "Everything about your children in one place, on the web today and in the Edusphere mobile app soon.",
+      "Everything about your children in one place, on the web today and in the EduSpyre mobile app soon.",
     points: [
       "Follow the school bus live on a map (mobile app, coming soon)",
       "Switch between your children in one tap",
@@ -183,7 +183,7 @@ export default function RolesSection() {
           <div className="mt-12 flex justify-center">
             <div
               role="tablist"
-              aria-label="Edusphere users"
+              aria-label="EduSpyre users"
               onKeyDown={onKeyDown}
               className="flex max-w-full gap-1 overflow-x-auto rounded-full border border-gray-200 bg-white p-1.5 shadow-sm [scrollbar-width:none] dark:border-white/10 dark:bg-gray-900"
             >

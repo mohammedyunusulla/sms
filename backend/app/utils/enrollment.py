@@ -73,10 +73,12 @@ def place_student(session, student, section_id, year_id=None):
     return enrollment
 
 
-def unplace_student(session, student, section_id=None, year_id=None):
+def unplace_student(session, student, section_id=None, year_id=None, keep_class=False):
     """
     Take the student out of their current-year section (only that enrollment; older years stay).
-    With section_id, only if they are in that section. Returns True if anything changed.
+    With section_id, only if they are in that section. keep_class: they stay in their class with no section
+    (Remove from section used to clear the class too, so the student vanished from it - QA A30).
+    Returns True if anything changed.
     """
     enrollment = current_enrollment(session, student.user_id, year_id)
     changed = False
@@ -84,9 +86,10 @@ def unplace_student(session, student, section_id=None, year_id=None):
         session.delete(enrollment)
         changed = True
     if section_id is None or student.section_id == int(section_id):
-        if student.class_id is not None or student.section_id is not None:
+        if student.section_id is not None or (student.class_id is not None and not keep_class):
             changed = True
-        student.class_id = None
+        if not keep_class:
+            student.class_id = None
         student.section_id = None
     return changed
 

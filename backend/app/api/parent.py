@@ -210,6 +210,8 @@ def get_parent_detail(parent_id, skid):
             'code': 200
         }), 200
         
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 404}), 404
     except Exception as e:
         return jsonify({
             'message': f'Failed to fetch parent: {str(e)}',

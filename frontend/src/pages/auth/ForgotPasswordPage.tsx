@@ -11,7 +11,7 @@ export default function ForgotPasswordPage() {
   return (
     <>
       <PageMeta
-        title="Forgot Password | Edusphere"
+        title="Forgot Password | EduSpyre"
         description="Reset your password"
       />
       <AuthLayout>

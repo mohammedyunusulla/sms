@@ -6,7 +6,7 @@ const STEPS = [
   {
     icon: BuildingIcon,
     title: "Your school is set up",
-    body: "Your school is registered on Edusphere and gets its own dedicated, isolated workspace and database.",
+    body: "Your school is registered on EduSpyre and gets its own dedicated, isolated workspace and database.",
   },
   {
     icon: UploadIcon,
@@ -46,7 +46,7 @@ export default function HowItWorksSection() {
           <SectionHeading
             eyebrow="How it works"
             title="Up and running in three steps"
-            description="No servers to manage and no complicated setup. Use Edusphere in any browser, with a mobile app coming soon."
+            description="No servers to manage and no complicated setup. Use EduSpyre in any browser, with a mobile app coming soon."
           />
         </Reveal>
 

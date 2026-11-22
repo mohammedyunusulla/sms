@@ -334,7 +334,6 @@ class FeeService:
                     ).all()
                     
                     # ✅ Debug: Check if fee structures exist
-                    print(f"Found {len(fee_structures)} fee structures for class_id={student.class_id}, year={academic_year_id}")
                     
                     for fee_struct in fee_structures:
                         # Check if already assigned
@@ -345,7 +344,6 @@ class FeeService:
                         ).first()
                         
                         if existing:
-                            print(f"Fee {fee_struct.fee_name} already assigned to student {student_id}")
                             continue
                         
                         # ✅ Create new student fee
@@ -359,7 +357,6 @@ class FeeService:
                         )
                         tenant_session.add(student_fee)
                         assigned_fees.append(student_fee)
-                        print(f"Assigned fee {fee_struct.fee_name} to student {student_id}")
                 
                 tenant_session.commit()
                 
@@ -373,9 +370,11 @@ class FeeService:
 
     
     @staticmethod
-    def bulk_assign_fees_to_class(class_id, academic_year_id, skid):
-        """Assign fees to all students in a class with detailed results"""
+    def bulk_assign_fees_to_class(class_id, academic_year_id, skid, due_date=None):
+        """Assign the class's mandatory fees to all its students, due on due_date (default: today + 30 days)"""
         try:
+            from app.utils.validators import to_date
+            due = to_date(due_date, "Due date") if due_date else date.today() + timedelta(days=30)
             with switch_to_school_db(skid) as tenant_session:
                 # ✅ First check if fee structures exist
                 fee_structures = tenant_session.query(FeeStructure).filter_by(
@@ -419,7 +418,7 @@ class FeeService:
                             student_id=student.user_id,
                             fee_structure_id=fee_struct.id,
                             academic_year_id=academic_year_id,
-                            due_date=date.today() + timedelta(days=30),
+                            due_date=due,
                             total_amount=fee_struct.amount,
                             status=PaymentStatus.PENDING,
                             # has_installments=fee_struct.allows_installments

@@ -7,8 +7,8 @@ export default function BasicTables() {
   return (
     <>
       <PageMeta
-        title="Basic Tables | Edusphere - Education Management System"
-        description="Basic tables page - Edusphere Education Management System"
+        title="Basic Tables | EduSpyre - Education Management System"
+        description="Basic tables page - EduSpyre Education Management System"
       />
       <PageBreadcrumb pageTitle="Basic Tables" />
       <div className="space-y-6">

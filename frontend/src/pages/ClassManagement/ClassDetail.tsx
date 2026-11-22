@@ -35,7 +35,6 @@ const ClassDetail: FC = () => {
     const [sections, setSections] = useState<Section[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     // State for active section and tabs
     const [activeSection, setActiveSection] = useState<number | null>(null);
@@ -94,20 +93,6 @@ const ClassDetail: FC = () => {
             toast.error(err.message || 'Failed to fetch class');
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleDeleteClass = async () => {
-        try {
-            setLoading(true);
-            await classService.delete(id!);
-            toast.success('Class deleted successfully!');
-            navigate('/classes');
-        } catch (err: any) {
-            toast.error(err.message || 'Failed to delete class');
-        } finally {
-            setLoading(false);
-            setShowDeleteConfirm(false);
         }
     };
 
@@ -323,17 +308,6 @@ const ClassDetail: FC = () => {
                     )}
                 </div>
             )}
-
-            {/* Delete Class Confirmation Dialog */}
-            <ConfirmDialog
-                isOpen={showDeleteConfirm}
-                onCancel={() => setShowDeleteConfirm(false)}
-                onConfirm={handleDeleteClass}
-                title="Delete Class?"
-                message="Are you sure you want to delete this class? This action cannot be undone."
-                confirmText="Delete"
-                type="danger"
-            />
 
             <ConfirmDialog
                 isOpen={!!sectionToDelete}

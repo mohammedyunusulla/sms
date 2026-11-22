@@ -15,6 +15,7 @@ export { default as ExamSubjectConfigForm } from './ExamSubjectConfigForm';
 // Exam Timetable
 export { default as ExamTimetable } from './ExamTimetable';
 export { default as StudentExamTimetable } from './StudentExamTimetable';
+export { default as ParentExamTimetable } from './ParentExamTimetable';
 export { default as TeacherInvigilatorSchedule } from './TeacherInvigilatorSchedule';
 
 // Seating Arrangement

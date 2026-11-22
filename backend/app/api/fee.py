@@ -54,7 +54,6 @@ def get_fee_structures(skid):
     try:
         academic_year_id = request.args.get('academic_year_id')
         class_id = request.args.get('class_id')
-        print("Academic year id-------", academic_year_id)
         result = FeeService.get_fee_structures(skid, academic_year_id, class_id)
         
         return jsonify({
@@ -114,7 +113,8 @@ def bulk_assign_fees_to_class(skid):
         result = FeeService.bulk_assign_fees_to_class(
             data['class_id'],
             data['academic_year_id'],
-            skid
+            skid,
+            due_date=data.get('due_date'),  # chosen in the dialog (it was always today + 30 days - QA C24)
         )
         
         return jsonify({

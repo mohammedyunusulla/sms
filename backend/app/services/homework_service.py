@@ -2,7 +2,7 @@ import os
 import shutil
 import uuid
 from collections import Counter
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
@@ -64,6 +64,13 @@ def load_images(paths) -> List[Tuple[bytes, str]]:
 class HomeworkService:
     STUDENT_ROLE = "STUDENT"
     STAFF_UNRESTRICTED = ("SUPER_ADMIN", "SCHOOL_ADMIN", "PRINCIPAL")
+
+    @staticmethod
+    def _is_late(assignment, session) -> bool:
+        """Submitted after the due date. Due dates are entered in local (India) time, submissions are stored in UTC."""
+        if not assignment.due_date or not session.submitted_at:
+            return False
+        return session.submitted_at + timedelta(hours=5, minutes=30) > assignment.due_date
 
     @staticmethod
     def _utc_now() -> datetime:
@@ -462,6 +469,8 @@ class HomeworkService:
                 return cls._error("Session not found", 404)
             if session.status not in ("in_progress", "paused"):
                 return cls._error("Hints are available only for active sessions", 400)
+            if session.status == "paused":  # hints used to work while paused (QA D15)
+                return cls._error("Resume the homework to ask for a hint", 400)
 
             assignment = tenant_session.query(HomeworkAssignment).filter_by(id=session.assignment_id, is_active=True).first()
             if not assignment:
@@ -722,6 +731,8 @@ class HomeworkService:
                             "has_start_photo": bool(s.start_image_path),
                             "page_count": len(s.submission_image_paths or []),
                             "integrity": s.integrity_json or {},
+                            # handed in after the due date: accepted, but flagged (owner's choice - QA D15)
+                            "is_late": cls._is_late(assignment, s),
                         }
                         for s in sessions
                     ],

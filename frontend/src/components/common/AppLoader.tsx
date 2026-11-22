@@ -6,7 +6,7 @@ interface AppLoaderProps {
 }
 
 /**
- * Full-screen branded loader: Edusphere logo with a small indeterminate
+ * Full-screen branded loader: EduSpyre logo with a small indeterminate
  * loading bar beneath it. Used while route chunks load and while auth state
  * is restored. Fades in after a short delay so quick loads don't flash.
  */
@@ -18,18 +18,18 @@ const AppLoader: FC<AppLoaderProps> = ({ message = "Loading…" }) => (
   >
     <div className="app-loader-logo">
       <img
-        src="/images/logo/edusphere-light-transparent.png"
+        src="/images/logo/eduspyre/eduspyre-logo-light.png"
         alt=""
-        width={332}
-        height={96}
-        className="h-14 w-auto dark:hidden"
+        width={734}
+        height={256}
+        className="h-[37px] w-auto dark:hidden"
       />
       <img
-        src="/images/logo/edusphere-dark-clean.png"
+        src="/images/logo/eduspyre/eduspyre-logo-dark.png"
         alt=""
-        width={331}
-        height={96}
-        className="hidden h-14 w-auto dark:block"
+        width={734}
+        height={256}
+        className="hidden h-[37px] w-auto dark:block"
       />
     </div>
 

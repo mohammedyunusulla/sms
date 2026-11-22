@@ -66,10 +66,23 @@ class MarksService:
                 
                 updated_count = 0
                 created_count = 0
+                cleared_count = 0
 
                 from app.utils.validators import student_marks
                 from app.models.tenant.SchoolUsers import SchoolUsers
+                def _blank(value):
+                    return value is None or (isinstance(value, str) and not value.strip())
+
                 for data in marks_data:
+                    # Not entered (no marks, not absent): nothing is saved, and a mark saved earlier is removed.
+                    # Blank students used to be saved as 0 and showed as Fail (QA B22).
+                    if not data.get('is_absent') and _blank(data.get('total_marks'))                             and _blank(data.get('internal_marks')) and _blank(data.get('external_marks')):
+                        cleared = tenant_session.query(MarksEntry).filter_by(
+                            exam_config_id=exam_config_id, student_id=data.get('student_id'),
+                            academic_year_id=academic_year_id,
+                        ).delete(synchronize_session=False)
+                        cleared_count += cleared
+                        continue
                     # Validate marks: 0..maximum, and internal + external = total (negative marks and
                     # mismatched splits like 5 + 5 = 99 used to be saved). Nothing is saved if any row is wrong.
                     person = tenant_session.query(SchoolUsers).filter_by(id=data.get('student_id')).first()
@@ -110,6 +123,7 @@ class MarksService:
                 return {
                     "created": created_count,
                     "updated": updated_count,
+                    "cleared": cleared_count,
                     "total": len(marks_data)
                 }
         except ValueError:

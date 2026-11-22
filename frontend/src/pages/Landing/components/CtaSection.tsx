@@ -16,10 +16,10 @@ export default function CtaSection() {
           <div aria-hidden="true" className="absolute -bottom-28 -left-24 size-80 rounded-full bg-success-400/25 blur-3xl" />
 
           <h2 className="relative mx-auto max-w-2xl text-3xl font-bold tracking-tight text-white sm:text-5xl sm:leading-tight">
-            See Edusphere in action.
+            See EduSpyre in action.
           </h2>
           <p className="relative mx-auto mt-5 max-w-xl text-lg text-brand-100">
-            Book a demo with the Klopterz team and see how Edusphere fits the way your school works.
+            Book a demo with the Klopterz team and see how EduSpyre fits the way your school works.
           </p>
           <div className="relative mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <a

@@ -104,7 +104,7 @@ const ParentSyllabusView: FC = () => {
                         <div
                             key={`${entry.syllabus.id}-${entry.teacher_id}-${index}`}
                             onClick={() =>
-                                navigate(`/parent/syllabus/${entry.syllabus.id}?teacherId=${entry.teacher_id}`)
+                                navigate(`/parent/syllabus/${entry.syllabus.id}?teacherId=${entry.teacher_id}${entry.section_id ? `&sectionId=${entry.section_id}` : ''}`)
                             }
                             className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
                         >

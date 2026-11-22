@@ -4,6 +4,8 @@ import { Modal, Button } from '../../components';
 import { syllabusService } from '../../services/modules/syllabusService';
 
 interface ConfigureTimelineModalProps {
+    /** the section the timeline is for (QA B33) */
+    sectionId?: number | null;
     isOpen: boolean;
     onClose: () => void;
     onSuccess: () => void;
@@ -18,6 +20,7 @@ interface ConfigureTimelineModalProps {
 }
 
 const ConfigureTimelineModal: FC<ConfigureTimelineModalProps> = ({
+    sectionId,
     isOpen,
     onClose,
     onSuccess,
@@ -68,7 +71,7 @@ const ConfigureTimelineModal: FC<ConfigureTimelineModalProps> = ({
                 planned_start_date: plannedStartDate,
                 planned_end_date: plannedEndDate,
                 teacher_notes: teacherNotes || undefined,
-            });
+            }, sectionId);
             toast.success(`${itemType.charAt(0).toUpperCase() + itemType.slice(1)} timeline configured`);
             onSuccess();
         } catch (err: any) {

@@ -10,8 +10,8 @@ export default function Videos() {
   return (
     <>
       <PageMeta
-        title="Videos | Edusphere - Education Management System"
-        description="Videos page - Edusphere Education Management System"
+        title="Videos | EduSpyre - Education Management System"
+        description="Videos page - EduSpyre Education Management System"
       />
       <PageBreadcrumb pageTitle="Videos" />
       <div className="grid grid-cols-1 gap-5 sm:gap-6 xl:grid-cols-2">

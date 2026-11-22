@@ -406,6 +406,10 @@ export interface ISyllabus {
     lessons: ILesson[];
     created_at?: string;
     updated_at?: string;
+    /** progress is per section (QA B33): the section shown, and a teacher's sections for the picker */
+    section_id?: number | null;
+    sections?: { section_id: number; label: string }[];
+    is_read_only?: boolean;
 }
 
 export interface ISyllabusFormData {
@@ -486,6 +490,9 @@ export interface ITeacherSectionInfo {
     section_name: string;
     class_id: number;
     class_name: string;
+    /** that section's own progress (QA B33) */
+    completion_percentage?: number;
+    status?: string;
 }
 
 export interface ISyllabusTeacherProgress {
@@ -519,6 +526,9 @@ export interface IStudentSyllabusEntry {
     subject_name: string;
     completion_percentage: number;
     status: string;
+    /** the section this progress is for (QA B33); a teacher gets one row per section */
+    section_id?: number | null;
+    section_label?: string | null;
 }
 
 // ============================================
@@ -589,9 +599,10 @@ export interface IStudentWithMarks {
 
 export interface IStudentMarkEntry {
     student_id: string;
-    internal_marks: number;
-    external_marks: number;
-    total_marks: number;
+    // null = not entered (nothing is saved for that student); 0 is a real score
+    internal_marks: number | null;
+    external_marks: number | null;
+    total_marks: number | null;
     is_absent: boolean;
     remarks: string;
 }
@@ -629,8 +640,17 @@ export interface IStudentProgress {
     max_marks: number;
     percentage: number;
     grade: string;
-    status: 'Pass' | 'Fail';
-    subject_marks?: { subject_id: number | string; marks: number; max_marks: number }[];
+    // Pass only if every subject reaches its pass mark; Incomplete while any subject's marks aren't entered
+    status: 'Pass' | 'Fail' | 'Incomplete';
+    subject_marks?: {
+        subject_id: number | string;
+        marks: number | null; // null = not entered
+        max_marks: number;
+        min_passing?: number;
+        is_absent?: boolean;
+        not_entered?: boolean;
+        passed?: boolean | null;
+    }[];
 }
 
 // ============================================
@@ -642,13 +662,16 @@ export interface IProgressCardSubject {
     subject_name: string;
     subject_code: string;
     has_internal_external: boolean;
-    internal_marks: number;
-    external_marks: number;
-    total_marks: number;
+    internal_marks: number | null;
+    external_marks: number | null;
+    total_marks: number | null; // null = marks not entered yet
     max_marks: number;
-    percentage: number;
+    percentage: number | null;
     grade: string;
     is_absent: boolean;
+    not_entered?: boolean;
+    min_passing_marks?: number;
+    passed?: boolean | null; // reached this subject's pass mark
     remarks: string;
 }
 
@@ -671,6 +694,7 @@ export interface IProgressCard {
     overall_max_marks: number;
     overall_percentage: number;
     overall_grade: string;
+    result?: 'Pass' | 'Fail' | 'Incomplete'; // Pass only if every subject is passed
     rank: number;
     total_students: number;
     subject_details: IProgressCardSubject[];
@@ -1059,6 +1083,10 @@ export interface IConfirmDialogProps {
     type?: 'info' | 'warning' | 'danger' | 'success';
     isDangerous?: boolean; // Alias for type="danger"
     isLoading?: boolean;
+    /** extra content under the message (e.g. a "type the code to confirm" box) */
+    children?: React.ReactNode;
+    /** keeps the confirm button off (e.g. until the code is typed) */
+    confirmDisabled?: boolean;
 }
 
 // ============================================

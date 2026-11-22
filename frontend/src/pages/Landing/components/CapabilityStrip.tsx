@@ -9,7 +9,7 @@ const ITEMS = [
 
 export default function CapabilityStrip() {
   return (
-    <section aria-label="Edusphere at a glance" className="px-5 sm:px-8">
+    <section aria-label="EduSpyre at a glance" className="px-5 sm:px-8">
       <Reveal className="mx-auto max-w-6xl">
         <ul className="grid grid-cols-2 gap-px overflow-hidden rounded-3xl border border-gray-200 bg-gray-200 shadow-sm lg:grid-cols-4 dark:border-white/10 dark:bg-white/10">
           {ITEMS.map((item) => (

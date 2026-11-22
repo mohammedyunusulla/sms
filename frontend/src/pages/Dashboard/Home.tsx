@@ -10,8 +10,8 @@ export default function Home() {
   return (
     <>
       <PageMeta
-        title="Dashboard | Edusphere - Education Management System"
-        description="Dashboard - Edusphere Education Management System"
+        title="Dashboard | EduSpyre - Education Management System"
+        description="Dashboard - EduSpyre Education Management System"
       />
       <div className="grid grid-cols-12 gap-4 md:gap-6">
         <div className="col-span-12 space-y-6 xl:col-span-7">

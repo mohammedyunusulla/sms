@@ -45,7 +45,7 @@ export default function AuthLayout({
           <span className="inline-flex items-center gap-1.5 max-[359px]:hidden">
             <LockIcon className="size-3.5" /> Protected sign-in
           </span>
-          <span>© {year} Edusphere · Built by Klopterz</span>
+          <span>© {year} EduSpyre · Built by Klopterz</span>
         </footer>
       </div>
 

@@ -243,11 +243,14 @@ export const generateTransferCertificatePdf = async (
 
     // ─── Output ───
     if (action === 'print') {
-        pdfMake.createPdf(docDefinition).print();
+        // awaited, so a blocked print window reaches the caller instead of failing silently
+        await pdfMake.createPdf(docDefinition).print();
     } else if (action === 'download') {
         const filename = `Transfer_Certificate_${student_name.replace(/\s+/g, '_')}_${tc_number}.pdf`;
-        pdfMake.createPdf(docDefinition).download(filename);
+        // awaited, so a blocked print window reaches the caller instead of failing silently
+        await pdfMake.createPdf(docDefinition).download(filename);
     } else {
-        pdfMake.createPdf(docDefinition).open();
+        // awaited, so a blocked print window reaches the caller instead of failing silently
+        await pdfMake.createPdf(docDefinition).open();
     }
 };

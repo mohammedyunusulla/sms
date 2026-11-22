@@ -62,7 +62,7 @@ export default function BusStaffProfile() {
                         activeOpacity={0.7}
                     >
                         <View className="flex-1">
-                            <Text className="font-lexend-medium text-sm text-dark-900">About EduSphere</Text>
+                            <Text className="font-lexend-medium text-sm text-dark-900">About EduSpyre</Text>
                             <Text className="font-lexend text-xs text-dark-500 mt-0.5">Version 1.0.0</Text>
                         </View>
                         <Text className="font-lexend text-dark-400 text-lg">&rsaquo;</Text>

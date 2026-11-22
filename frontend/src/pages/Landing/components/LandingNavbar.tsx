@@ -62,9 +62,9 @@ export default function LandingNavbar() {
             scrollToTop();
           }}
           className="flex shrink-0 items-center rounded-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/30"
-          aria-label="Edusphere home"
+          aria-label="EduSpyre home"
         >
-          <Logo className="h-9 sm:h-11" />
+          <Logo />
         </a>
 
         <ul className="hidden items-center gap-1 lg:flex">

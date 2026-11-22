@@ -17,8 +17,8 @@ export default function LandingPage() {
   return (
     <>
       <PageMeta
-        title="Edusphere | Smart Education Management System"
-        description="Edusphere brings attendance, timetables, exams, fees, AI-assisted homework and school transport together, with a tailored dashboard for administrators, teachers, parents and students."
+        title="EduSpyre | Smart Education Management System"
+        description="EduSpyre brings attendance, timetables, exams, fees, AI-assisted homework and school transport together, with a tailored dashboard for administrators, teachers, parents and students."
       />
       <div className="relative z-1 min-h-screen overflow-x-clip bg-white text-gray-900 antialiased dark:bg-gray-950 dark:text-white">
         <a

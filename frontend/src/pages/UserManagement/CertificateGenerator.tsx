@@ -6,7 +6,8 @@
 import { FC, useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import toast from 'react-hot-toast';
-import { PageHeader, FormField, FormInput, FormTextarea, LoadingSpinner, Button } from '../../components';
+import { PageHeader, FormField, FormInput, FormTextarea, LoadingSpinner, Button, PrintActions } from '../../components';
+import type { PdfAction } from '../../prints';
 import { studentService } from '../../services/modules/studentService';
 import { useAuthStore } from '../../stores/authStore';
 import {
@@ -20,6 +21,18 @@ import {
 } from '../../prints';
 
 type CertificateTab = 'transfer' | 'bonafide' | 'idcard';
+
+// A certificate's father / mother line: the stored name, else the linked parent's account name when the
+// relation matches (Father / Mother / Guardian), else N/A. QA's parents often have only an account name.
+const parentName = (student: any, which: 'father' | 'mother') => {
+    const p = student?.parent;
+    if (!p) return 'N/A';
+    const stored = which === 'father' ? p.father_full_name : p.mother_full_name;
+    if (stored) return stored;
+    const relation = String(p.relation_type || '').toLowerCase();
+    const matches = which === 'mother' ? relation === 'mother' : relation !== 'mother';
+    return matches && p.full_name ? p.full_name : 'N/A';
+};
 
 const CertificateGenerator: FC = () => {
     const { studentId } = useParams<{ studentId: string }>();
@@ -96,7 +109,7 @@ const CertificateGenerator: FC = () => {
         };
     };
 
-    const handleGenerate = async () => {
+    const handleGenerate = async (action: PdfAction = 'print') => {
         try {
             setLoading(true);
 
@@ -115,21 +128,21 @@ const CertificateGenerator: FC = () => {
                         class_name: student.class?.class_name || 'N/A',
                         section_name: student.section?.section_name || 'N/A',
                         date_of_birth: student.date_of_birth || '',
-                        father_name: student.parent?.father_full_name || 'N/A',
-                        mother_name: student.parent?.mother_full_name || 'N/A',
+                        father_name: parentName(student, 'father'),
+                        mother_name: parentName(student, 'mother'),
                         admission_date: formData.admissionDate || student.profile?.admission_date,
                         tc_number: formData.tcNumber,
                         issue_date: formData.issueDate,
                         reason: formData.reason || 'N/A',
                         remarks: formData.remarks,
-                        academic_year: (user?.academic_year as any)?.year || 'N/A',
+                        academic_year: user?.current_academic_year?.year_name || 'N/A',
                         last_attended_date: formData.lastAttendedDate,
                         total_working_days: formData.totalWorkingDays ? parseInt(formData.totalWorkingDays) : undefined,
                         days_present: formData.daysPresent ? parseInt(formData.daysPresent) : undefined,
                     };
 
-                    await generateTransferCertificatePdf(transferData, schoolData, 'print');
-                    toast.success('Transfer Certificate generated successfully');
+                    await generateTransferCertificatePdf(transferData, schoolData, action);
+                    toast.success(`Transfer Certificate ${action === 'download' ? 'downloaded' : 'sent to the printer'}`);
                     break;
 
                 case 'bonafide':
@@ -139,16 +152,16 @@ const CertificateGenerator: FC = () => {
                         class_name: student.class?.class_name || 'N/A',
                         section_name: student.section?.section_name || 'N/A',
                         date_of_birth: student.date_of_birth || '',
-                        father_name: student.parent?.father_full_name || 'N/A',
-                        mother_name: student.parent?.mother_full_name || 'N/A',
+                        father_name: parentName(student, 'father'),
+                        mother_name: parentName(student, 'mother'),
                         issue_date: formData.issueDate,
                         purpose: formData.purpose || '',
                         remarks: formData.remarks,
-                        academic_year: (user?.academic_year as any)?.year || 'N/A',
+                        academic_year: user?.current_academic_year?.year_name || 'N/A',
                     };
 
-                    await generateBonafideCertificatePdf(bonafideData, schoolData, 'print');
-                    toast.success('Bonafide Certificate generated successfully');
+                    await generateBonafideCertificatePdf(bonafideData, schoolData, action);
+                    toast.success(`Bonafide Certificate ${action === 'download' ? 'downloaded' : 'sent to the printer'}`);
                     break;
 
                 case 'idcard':
@@ -169,21 +182,24 @@ const CertificateGenerator: FC = () => {
                         section_name: student.section?.section_name || 'N/A',
                         date_of_birth: student.date_of_birth || '',
                         blood_group: formData.bloodGroup,
-                        student_photo: student.photo_url,
+                        student_photo: student.profile?.student_photo || student.photo_url || undefined,
                         issue_date: formData.issueDate,
                         valid_until: formData.validUntil,
                         emergency_contact: formData.emergencyContact,
-                        academic_year: (user?.academic_year as any)?.year || 'N/A',
+                        academic_year: user?.current_academic_year?.year_name || 'N/A',
                         qr_data: qrPayload,
                     };
 
-                    await generateStudentIDCardPdf(idCardData, schoolData, 'print');
-                    toast.success('Student ID Card generated successfully');
+                    await generateStudentIDCardPdf(idCardData, schoolData, action);
+                    toast.success(`Student ID Card ${action === 'download' ? 'downloaded' : 'sent to the printer'}`);
                     break;
             }
         } catch (error: any) {
             console.error('Error generating certificate:', error);
-            toast.error('Failed to generate certificate');
+            // the browser blocked the print window (pdfmake's "blocked by browser" error)
+            toast.error(/blocked/i.test(String(error?.message))
+                ? 'Your browser blocked the print window. Allow pop-ups for this site, or use Download.'
+                : 'Failed to generate certificate');
         } finally {
             setLoading(false);
         }
@@ -447,13 +463,7 @@ const CertificateGenerator: FC = () => {
 
                     {/* Action Buttons */}
                     <div className="flex gap-3 mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
-                        <Button
-                            variant="primary"
-                            onClick={handleGenerate}
-                            disabled={loading}
-                        >
-                            Generate & Print
-                        </Button>
+                        <PrintActions onAction={handleGenerate} disabled={loading} />
                         <Button
                             variant="outline"
                             onClick={() => navigate('/students')}

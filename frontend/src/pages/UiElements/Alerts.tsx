@@ -7,8 +7,8 @@ export default function Alerts() {
   return (
     <>
       <PageMeta
-        title="Alerts | Edusphere - Education Management System"
-        description="Alerts page - Edusphere Education Management System"
+        title="Alerts | EduSpyre - Education Management System"
+        description="Alerts page - EduSpyre Education Management System"
       />
       <PageBreadcrumb pageTitle="Alerts" />
       <div className="space-y-5 sm:space-y-6">

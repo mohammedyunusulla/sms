@@ -4,6 +4,8 @@ from app.decorators import login_required
 from app.utils.db_manager import switch_to_school_db
 from app.utils.teaching_scope import current_teacher_id, forbidden
 from app.models.tenant.Announcement import Announcement as AnnouncementModel
+import logging
+_log = logging.getLogger(__name__)
 
 announcement_bp = Blueprint('announcements', __name__)
 
@@ -84,6 +86,7 @@ def get_announcements(skid):
         academic_year_id = request.args.get('academic_year_id', type=int)
         announcement_type = request.args.get('announcement_type')
         priority = request.args.get('priority')
+        search = (request.args.get('search') or '').strip()
         
         # Who is asking comes from the login token, never from the URL: the old
         # user_role / school_user_id query params let any user see every announcement
@@ -104,6 +107,8 @@ def get_announcements(skid):
             filters['announcement_type'] = announcement_type
         if priority:
             filters['priority'] = priority
+        if search:
+            filters['search'] = search  # the page always sent it; it used to be ignored (QA C17)
         
         # Always filter by the logged-in user (admins/principal see everything inside the filter)
         user_info = {
@@ -127,7 +132,7 @@ def get_announcements(skid):
         
     except Exception as e:
         import traceback
-        print(traceback.format_exc())
+        _log.error(traceback.format_exc())
         return jsonify({
             'code': 500,
             'status': 'error',

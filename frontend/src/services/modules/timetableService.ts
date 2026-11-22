@@ -185,22 +185,6 @@ class TimetableService {
         throw new Error(response.data?.message || 'Failed to update time slot');
     }
 
-    /**
-     * Delete time slot
-     */
-    async deleteTimeSlot(timetableId: string, slotId: string): Promise<void> {
-        const api = getApiClient();
-        const schoolId = getSchoolId();
-
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
-        }
-
-        const response = await api.delete(`${this.baseUrl}/${timetableId}/slots/${slotId}/${schoolId}`);
-        if (response.code !== 200 || response.status !== 'success') {
-            throw new Error(response.data?.message || 'Failed to delete time slot');
-        }
-    }
 
     /**
      * Get a student's timetable for a specific day.

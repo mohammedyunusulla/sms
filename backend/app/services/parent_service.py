@@ -8,6 +8,13 @@ from app.utils.db_manager import switch_to_school_db
 from app.services.userRole_service import UserRolesService
 from datetime import datetime, date
 from sqlalchemy.orm import joinedload
+import logging
+_log = logging.getLogger(__name__)
+
+
+def _account_phone(data):
+    """The login account's phone: the form only has father / mother phones (it used to be left empty - QA A24)."""
+    return data.get('phone') or data.get('father_phone') or data.get('mother_phone')
 
 
 class ParentService:
@@ -41,7 +48,7 @@ class ParentService:
                     email=data['email'],
                     first_name=data['first_name'],
                     last_name=data['last_name'],
-                    phone=data.get('phone'),
+                    phone=_account_phone(data),
                     role=UserRole.PARENT,
                     skid=skid,
                     plan=getattr(plan, 'value', plan),  # store the plan name, not the enum object
@@ -58,7 +65,7 @@ class ParentService:
                     email=data['email'],
                     first_name=data['first_name'],
                     last_name=data['last_name'],
-                    phone=data.get('phone'),
+                    phone=_account_phone(data),
                     gender=data.get('gender'),
                     date_of_birth=data.get('date_of_birth'),
                     skid=skid,
@@ -119,7 +126,7 @@ class ParentService:
                 try:
                     remove_school_user(skid, school_user_id)
                 except Exception as cleanup_err:
-                    print(f"[Cleanup failed] Could not remove school user {school_user_id}: {cleanup_err}")
+                    _log.error(f"[Cleanup failed] Could not remove school user {school_user_id}: {cleanup_err}")
             raise Exception(f"Failed to create parent user: {str(e)}")
 
 
@@ -414,11 +421,44 @@ class ParentService:
                 parent = tenant_session.query(Parent).filter(
                     Parent.user_id == parent_id
                 ).first()
-                
+
                 if not parent:
                     raise ValueError("Parent not found")
-                
-                return parent.to_dict()
+
+                # The profile used to be all there was: no username / email / active status (the detail showed
+                # "Inactive", editing showed a blank username) and no children (QA A23/A25/A26).
+                user = tenant_session.query(SchoolUsers).filter_by(id=parent.user_id).first()
+                result = parent.to_dict()
+                if user:
+                    result.update({
+                        'username': user.username, 'email': user.email, 'phone': user.phone,
+                        'first_name': user.first_name, 'last_name': user.last_name,
+                        'full_name': f"{user.first_name} {user.last_name or ''}".strip(),
+                        'is_active': user.is_active,
+                    })
+                from app.models.tenant import Class
+                from app.models.tenant.Sections import Section
+                children = []
+                for link, child, child_user in tenant_session.query(StudentParent, Student, SchoolUsers).join(
+                    Student, Student.user_id == StudentParent.student_user_id
+                ).join(
+                    SchoolUsers, SchoolUsers.id == Student.user_id
+                ).filter(StudentParent.parent_user_id == parent.user_id).all():
+                    cls = tenant_session.query(Class).filter_by(id=child.class_id).first() if child.class_id else None
+                    sec = tenant_session.query(Section).filter_by(id=child.section_id).first() if child.section_id else None
+                    children.append({
+                        'student_user_id': child.user_id,
+                        'name': f"{child_user.first_name} {child_user.last_name or ''}".strip(),
+                        'admission_number': child.admission_number,
+                        'class_name': cls.class_name if cls else None,
+                        'section_name': sec.section_name if sec else None,
+                        'relation_type': getattr(link.relation_type, 'value', link.relation_type),
+                        'is_active': child_user.is_active,
+                    })
+                result['children'] = children
+                return result
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to fetch parent: {str(e)}")
 

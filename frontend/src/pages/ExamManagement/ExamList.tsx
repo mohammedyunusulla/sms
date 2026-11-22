@@ -264,6 +264,9 @@ const ExamList: FC = () => {
                         columns={columns}
                         data={exams}
                         loading={loading}
+                        selectable={hasPermission(Permission.MANAGE_EXAMS)}
+                        // the table only knows what's ticked through this (without it each tick started from nothing)
+                        selectedRows={selectedRows.map((r) => r.id) as unknown as string[]}
                         onSelectionChange={(selected) => {
                             setSelectedRows(selected.map(item => item as unknown as IExamConfig) || []);
                         }}

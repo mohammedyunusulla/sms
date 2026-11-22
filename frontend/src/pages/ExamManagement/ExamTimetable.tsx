@@ -505,6 +505,8 @@ const ExamTimetable: FC = () => {
                             columns={columns}
                             data={entries}
                             loading={loading}
+                            selectable={canManage}
+                            selectedRows={selectedRows.map((r) => r.id) as unknown as string[]}
                             onSelectionChange={canManage ? (selected) => {
                                 setSelectedRows(selected as unknown as IExamTimetableEntry[]);
                             } : undefined}

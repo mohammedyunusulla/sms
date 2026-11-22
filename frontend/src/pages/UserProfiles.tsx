@@ -165,7 +165,7 @@ const UserProfiles: FC = () => {
 
     return (
         <div className="space-y-6">
-            <PageMeta title="My Profile | Edusphere - Education Management System" description="Your Edusphere account" />
+            <PageMeta title="My Profile | EduSpyre - Education Management System" description="Your EduSpyre account" />
             <PageHeader title="My Profile" subtitle="Your account details and password" />
 
             {loadError ? (

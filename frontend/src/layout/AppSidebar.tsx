@@ -124,6 +124,12 @@ const allMenuItems: NavItem[] = [
         name: "My Child's Results",
         path: "/parent/results",
     },
+    // Exam timetable – Parent (linked child)
+    {
+        icon: <CalenderIcon />,
+        name: "My Child's Exam Timetable",
+        path: "/parent/exam-timetable",
+    },
     // AI Homework Tracking (Teacher/Student/Admin)
     {
         icon: <TaskIcon />,
@@ -504,24 +510,24 @@ const AppSidebar: React.FC = () => {
                     {isExpanded || isHovered || isMobileOpen ? (
                         <>
                             <img
-                                className="dark:hidden"
-                                src="/images/logo/edusphere-light.png"
-                                alt="Edusphere"
-                                width={180}
-                                height={48}
+                                className="h-[37px] w-auto dark:hidden"
+                                src="/images/logo/eduspyre/eduspyre-logo-light.png"
+                                alt="EduSpyre"
+                                width={106}
+                                height={37}
                             />
                             <img
-                                className="hidden dark:block"
-                                src="/images/logo/edusphere-dark.png"
-                                alt="Edusphere"
-                                width={180}
-                                height={48}
+                                className="hidden h-[37px] w-auto dark:block"
+                                src="/images/logo/eduspyre/eduspyre-logo-dark.png"
+                                alt="EduSpyre"
+                                width={106}
+                                height={37}
                             />
                         </>
                     ) : (
                         <img
-                            src="/images/logo/edusphere-light.png"
-                            alt="Edusphere"
+                            src="/images/logo/eduspyre/eduspyre-icon.png"
+                            alt="EduSpyre"
                             width={40}
                             height={40}
                         />

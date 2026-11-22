@@ -19,6 +19,8 @@ const ConfirmDialog: FC<IConfirmDialogProps> = ({
   type = 'info',
   isDangerous = false,
   isLoading = false,
+  children,
+  confirmDisabled = false,
 }) => {
   // isDangerous is an alias for type="danger"
   const effectiveType = isDangerous ? 'danger' : type;
@@ -96,6 +98,7 @@ const ConfirmDialog: FC<IConfirmDialogProps> = ({
         <p className="text-center text-gray-700 dark:text-gray-300">
           {message}
         </p>
+        {children}
 
         {/* Actions */}
         <div className="flex gap-3 w-full mt-6">
@@ -111,6 +114,7 @@ const ConfirmDialog: FC<IConfirmDialogProps> = ({
             variant={confirmVariant[effectiveType]}
             fullWidth
             onClick={onConfirm}
+            disabled={confirmDisabled}
             isLoading={isLoading}
             loadingText="Processing..."
           >

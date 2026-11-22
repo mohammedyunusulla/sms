@@ -29,7 +29,8 @@ export interface AttendanceDay {
     day: string;
     date: string;
     present: number;
-    absent: number;
+    absent: number; // marked Absent only
+    leave?: number; // on leave (not counted as absent)
     total: number;
     percentage: number;
 }
@@ -39,6 +40,7 @@ export interface AttendanceOverview {
     weekly_trend: AttendanceDay[];
     today_present: number;
     today_absent: number;
+    today_leave?: number;
     today_total_marked: number;
     today_percentage: number;
 }

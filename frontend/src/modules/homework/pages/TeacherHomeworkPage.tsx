@@ -387,7 +387,10 @@ export default function TeacherHomeworkPage() {
                     <Fragment key={row.session_id}>
                     <tr>
                       <td className="py-2 pr-3">{row.student_name || `Student ${row.student_id}`}</td>
-                      <td className="py-2 pr-3">{row.status}</td>
+                      <td className="py-2 pr-3">
+                        {row.status}
+                        {row.is_late && <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-800" title="Handed in after the due date">Late</span>}
+                      </td>
                       <td className="py-2 pr-3">{Math.round(row.active_duration_seconds / 60)} min</td>
                       <td className="py-2 pr-3">{row.hints_used_count}</td>
                       <td className="py-2 pr-3">{row.accuracy_score ?? '-'}</td>

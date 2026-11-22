@@ -18,6 +18,7 @@ import Modal from '../../components/modals/Modal';
 import FormSelect from '../../components/forms/FormSelect';
 import FormInput from '../../components/forms/FormInput';
 import FormTextarea from '../../components/forms/FormTextarea';
+import AddExistingStudentModal from './AddExistingStudentModal';
 
 interface Section {
     id: number;
@@ -59,6 +60,7 @@ const SectionStudents: FC<SectionStudentsProps> = ({
     const userRole = useAuthStore((state) => state.user?.role);
     const canManageStudents = userRole === UserRole.SCHOOL_ADMIN || userRole === UserRole.SUPER_ADMIN;
     const canMoveStudents = canManageStudents || userRole === UserRole.PRINCIPAL;
+    const [showAddExisting, setShowAddExisting] = useState(false);
     // The class the viewed section belongs to = the students' current class (sent as from_class_id)
     const currentClassId = sections.find((s) => s.id === activeSection)?.class_id;
 
@@ -544,6 +546,11 @@ const SectionStudents: FC<SectionStudentsProps> = ({
                         >
                             Reset Filters
                         </Button>
+                        {canMoveStudents && activeSection && (
+                            <Button variant="primary" onClick={() => setShowAddExisting(true)} className="flex-1">
+                                Add existing student
+                            </Button>
+                        )}
                     </div>
                 </div>
 
@@ -1074,6 +1081,16 @@ const SectionStudents: FC<SectionStudentsProps> = ({
                     )}
                 </div>
             </Modal>
+
+            {activeSection && (
+                <AddExistingStudentModal
+                    isOpen={showAddExisting}
+                    sectionId={activeSection}
+                    sectionLabel={`Section ${sections.find((x) => x.id === activeSection)?.section_name || ''}`.trim()}
+                    onClose={() => setShowAddExisting(false)}
+                    onAdded={() => fetchSectionStudents(currentPage, pageSize)}
+                />
+            )}
         </div>
     );
 };

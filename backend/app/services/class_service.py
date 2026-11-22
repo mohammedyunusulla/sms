@@ -3,7 +3,7 @@ from app.models.tenant import Class, Teacher, SchoolUsers, Student, StudentEnrol
 from app.models.tenant.Sections import Section
 from app.utils.db_manager import switch_to_school_db
 from app.utils.usage_check import usage_summary, CLASS_REFERENCES, SECTION_REFERENCES, blocked_message
-from sqlalchemy import text
+from sqlalchemy import text, func
 from datetime import date
 
 
@@ -17,6 +17,16 @@ def _section_teacher_id(value):
         raise ValueError("Invalid class teacher")
 
 
+def _class_name(data):
+    """The class name, trimmed; blank or spaces-only names are refused."""
+    name = str((data or {}).get('class_name') or '').strip()
+    if not name:
+        raise ValueError("Enter a class name")
+    if len(name) > 100:
+        raise ValueError("Class name is too long (100 characters at most)")
+    return name
+
+
 class ClassService:
     @staticmethod
     def create_class(data, skid):
@@ -27,18 +37,19 @@ class ClassService:
             if not skid:
                 raise ValueError("School ID (skid) is required")
             
+            name = _class_name(data)
             # Create class in tenant DB
             with switch_to_school_db(skid) as tenant_session:
-                # Check if class name already exists
-                existing_class = tenant_session.query(Class).filter_by(
-                    class_name=data['class_name']
+                # Check if class name already exists (any capitalisation)
+                existing_class = tenant_session.query(Class).filter(
+                    func.lower(Class.class_name) == name.lower()
                 ).first()
                 
                 if existing_class:
-                    raise ValueError(f"Class '{data['class_name']}' already exists")
+                    raise ValueError(f"Class '{existing_class.class_name}' already exists")
                 
                 new_class = Class(
-                    class_name=data['class_name']
+                    class_name=name
                 )
                 
                 tenant_session.add(new_class)
@@ -48,6 +59,8 @@ class ClassService:
                 tenant_session.refresh(new_class)
                 return new_class.to_dict()
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to create class: {str(e)}")
 
@@ -62,21 +75,24 @@ class ClassService:
                 if not class_obj:
                     raise ValueError("Class not found")
                 
-                # Check if new class name already exists (excluding current class)
+                name = _class_name(data)
+                # Check if new class name already exists (excluding current class, any capitalisation)
                 existing_class = tenant_session.query(Class).filter(
-                    Class.class_name == data['class_name'],
+                    func.lower(Class.class_name) == name.lower(),
                     Class.id != class_id
                 ).first()
                 
                 if existing_class:
-                    raise ValueError(f"Class '{data['class_name']}' already exists")
+                    raise ValueError(f"Class '{existing_class.class_name}' already exists")
                 
-                class_obj.class_name = data['class_name']
+                class_obj.class_name = name
                 tenant_session.commit()
                 
                 tenant_session.refresh(class_obj)
                 return class_obj.to_dict()
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to update class: {str(e)}")
 
@@ -421,7 +437,7 @@ class ClassService:
                 student = tenant_session.query(Student).filter_by(user_id=student_id).first()
                 if not student:
                     raise ValueError("Student not found")
-                if not unplace_student(tenant_session, student, section_id):
+                if not unplace_student(tenant_session, student, section_id, keep_class=True):
                     raise ValueError("This student isn't in this section for the current academic year")
 
                 tenant_session.commit()
@@ -465,28 +481,3 @@ class ClassService:
             tenant_session.rollback()
             raise Exception(f"Failed to move student: {str(e)}")
 
-    @staticmethod
-    def remove_subject_from_section(skid, section_id, subject_id):
-        """
-        Remove a subject from a section by unsetting the section_id
-        """
-        try:
-            with switch_to_school_db(skid) as tenant_session:
-                # Find the subject
-                subject = tenant_session.query(Subject).filter_by(
-                    id=subject_id,
-                    section_id=section_id
-                ).first()
-                
-                if not subject:
-                    raise ValueError("Subject not found in this section")
-                
-                # Remove section association (set to NULL)
-                subject.section_id = None
-                
-                tenant_session.commit()
-                return True
-                    
-        except Exception as e:
-            tenant_session.rollback()
-            raise Exception(f"Failed to remove subject from section: {str(e)}")

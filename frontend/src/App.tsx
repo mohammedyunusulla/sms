@@ -96,6 +96,7 @@ const ExamSubjectConfigList = lazy(() => import("./pages/ExamManagement").then(m
 const ExamTimetable = lazy(() => import("./pages/ExamManagement").then(m => ({ default: m.ExamTimetable })));
 const SeatingArrangement = lazy(() => import("./pages/ExamManagement").then(m => ({ default: m.SeatingArrangement })));
 const StudentExamTimetable = lazy(() => import("./pages/ExamManagement").then(m => ({ default: m.StudentExamTimetable })));
+const ParentExamTimetable = lazy(() => import("./pages/ExamManagement").then(m => ({ default: m.ParentExamTimetable })));
 const TeacherInvigilatorSchedule = lazy(() => import("./pages/ExamManagement").then(m => ({ default: m.TeacherInvigilatorSchedule })));
 
 // Lazy loaded Academics Management
@@ -302,6 +303,7 @@ function AppContent() {
                         {/* published exam results: every student / parent (backend limits to own child + published exams) */}
                         <Route path="/academics/my-results" element={<MyResults />} />
                         <Route path="/parent/results" element={<ParentResults />} />
+                        <Route path="/parent/exam-timetable" element={<ParentExamTimetable />} />
 
                         {/* Announcements Routes */}
                         <Route path="/announcements" element={guarded('/announcements', <AnnouncementList />)} />

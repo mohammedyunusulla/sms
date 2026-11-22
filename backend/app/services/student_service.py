@@ -9,6 +9,8 @@ from flask import jsonify
 from app.utils.db_manager import switch_to_school_db
 from app.services.userRole_service import UserRolesService
 from datetime import datetime, date, timedelta
+import logging
+_log = logging.getLogger(__name__)
 
 class StudentService:
 
@@ -60,6 +62,7 @@ class StudentService:
                     phone=data.get('phone'),
                     gender=data.get('gender'),
                     date_of_birth=data.get('date_of_birth'),
+                    address=data.get('address'),  # was only saved on edit (QA A22)
                     skid=skid,
                     is_active=True
                 )
@@ -135,7 +138,7 @@ class StudentService:
                 try:
                     remove_school_user(skid, school_user_id)
                 except Exception as cleanup_err:
-                    print(f"[Cleanup failed] Could not remove school user {school_user_id}: {cleanup_err}")
+                    _log.error(f"[Cleanup failed] Could not remove school user {school_user_id}: {cleanup_err}")
 
             raise Exception(f"Failed to create school user: {str(e)}")
 
@@ -418,7 +421,8 @@ class StudentService:
             return f"Error checking for duplicates: {str(e)}"
     
     @staticmethod
-    def get_students_paginated(skid, page=1, limit=10, search='', status='', gender='', section_ids=None):
+    def get_students_paginated(skid, page=1, limit=10, search='', status='', gender='', section_ids=None,
+                               class_id=None, section_id=None):
         """
         Get paginated list of students with filtering
         """
@@ -435,11 +439,16 @@ class StudentService:
                 # Apply filters
                 if search:
                     search_term = f"%{search}%"
+                    # full name ("Asha Patel") and admission / roll number too - the header search uses this (QA A31)
+                    full_name = func.concat(SchoolUsers.first_name, ' ', func.coalesce(SchoolUsers.last_name, ''))
                     query = query.filter(
                         (SchoolUsers.first_name.ilike(search_term)) |
                         (SchoolUsers.last_name.ilike(search_term)) |
+                        (full_name.ilike(search_term)) |
                         (SchoolUsers.email.ilike(search_term)) |
-                        (SchoolUsers.phone.ilike(search_term))
+                        (SchoolUsers.phone.ilike(search_term)) |
+                        (Student.admission_number.ilike(search_term)) |
+                        (Student.roll_no.ilike(search_term))
                     )
 
                 if status:
@@ -451,6 +460,11 @@ class StudentService:
                 # A teacher sees only the sections they teach (section_ids=None: everyone)
                 if section_ids is not None:
                     query = query.filter(Student.section_id.in_(list(section_ids)))
+                # Class / Section filters on the Students page (they used to filter only the page already loaded)
+                if class_id:
+                    query = query.filter(Student.class_id == class_id)
+                if section_id:
+                    query = query.filter(Student.section_id == section_id)
 
                 # Get total count before pagination
                 total = query.count()
@@ -586,6 +600,8 @@ class StudentService:
                         link, parent_obj, parent_user = parent_result
                         parent_data = {
                             'id': parent_obj.user_id,
+                            # the account name: certificates fall back to it when no father / mother name is stored
+                            'full_name': f"{parent_user.first_name} {parent_user.last_name or ''}".strip(),
                             'relation_type': link.relation_type,
                             'father_full_name': parent_obj.father_full_name,
                             'mother_full_name': parent_obj.mother_full_name,
@@ -603,7 +619,7 @@ class StudentService:
                             'mother_qualification': parent_obj.mother_qualification
                         }
                     except (ValueError, TypeError, AttributeError) as e:
-                        print(f"Error unpacking parent data: {e}")
+                        _log.error(f"Error unpacking parent data: {e}")
                         parent_data = None
                 
                 # ✅ Set parent data outside the if block
@@ -803,6 +819,7 @@ class StudentService:
                             phone=student_data.get('phone'),
                             gender=student_data.get('gender'),
                             date_of_birth=StudentService._parse_excel_date(student_data.get('date_of_birth'), 'date_of_birth'),
+                            address=student_data.get('address'),  # was only saved on edit (QA A22)
                             skid=skid,
                             is_active=True
                         )
@@ -882,7 +899,7 @@ class StudentService:
                         try:
                             remove_school_user(skid, school_user_id)
                         except Exception as cleanup_err:
-                            print(f"[Cleanup failed] Could not remove school user {school_user_id}: {cleanup_err}")
+                            _log.error(f"[Cleanup failed] Could not remove school user {school_user_id}: {cleanup_err}")
 
                     # Translate noisy DB errors into a friendly message.
                     if isinstance(e, IntegrityError):

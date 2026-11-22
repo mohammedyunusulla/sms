@@ -43,6 +43,7 @@ const buildProgressCardContent = (
         overall_max_marks,
         overall_percentage,
         overall_grade,
+        result,
         rank,
         total_students,
         class_teacher_name,
@@ -130,8 +131,8 @@ const buildProgressCardContent = (
         if (hasInternalExternal) {
             if (subj.has_internal_external) {
                 row.push(
-                    { text: subj.is_absent ? '-' : subj.internal_marks, alignment: 'center', fontSize: 10 },
-                    { text: subj.is_absent ? '-' : subj.external_marks, alignment: 'center', fontSize: 10 }
+                    { text: subj.is_absent || subj.internal_marks === null ? '-' : subj.internal_marks, alignment: 'center', fontSize: 10 },
+                    { text: subj.is_absent || subj.external_marks === null ? '-' : subj.external_marks, alignment: 'center', fontSize: 10 }
                 );
             } else {
                 row.push(
@@ -143,19 +144,20 @@ const buildProgressCardContent = (
 
         row.push(
             {
-                text: subj.is_absent ? 'AB' : subj.total_marks,
+                // AB = absent, "-" = marks not entered yet; red when below the subject's pass mark
+                text: subj.is_absent ? 'AB' : subj.total_marks === null ? '-' : subj.total_marks,
                 alignment: 'center',
                 fontSize: 10,
                 bold: true,
-                color: subj.is_absent ? '#f44336' : '#333333',
+                color: subj.is_absent || subj.passed === false ? '#f44336' : '#333333',
             },
             { text: subj.max_marks, alignment: 'center', fontSize: 10 },
             {
-                text: subj.is_absent ? '-' : subj.grade,
+                text: subj.is_absent || subj.total_marks === null ? '-' : subj.grade,
                 alignment: 'center',
                 fontSize: 10,
                 bold: true,
-                color: subj.is_absent ? '#cccccc' : gradeColor(subj.grade),
+                color: subj.is_absent || subj.total_marks === null ? '#cccccc' : gradeColor(subj.grade),
             },
             { text: subj.remarks || '-', fontSize: 8, color: '#666666' }
         );
@@ -205,9 +207,24 @@ const buildProgressCardContent = (
     const performanceSummary: any = {
         style: 'section',
         table: {
-            widths: ['*', '*', '*'],
+            widths: result ? ['*', '*', '*', '*'] : ['*', '*', '*'],
             body: [
                 [
+                    ...(result ? [{
+                        stack: [
+                            { text: 'Result', fontSize: 9, color: '#666666', alignment: 'center' },
+                            {
+                                text: result === 'Incomplete' ? 'Incomplete (marks pending)' : result,
+                                fontSize: result === 'Incomplete' ? 11 : 16,
+                                bold: true,
+                                color: result === 'Pass' ? '#2e7d32' : result === 'Fail' ? '#c62828' : '#757575',
+                                alignment: 'center',
+                                margin: [0, 5, 0, 0],
+                            },
+                        ],
+                        fillColor: '#f5f5f5',
+                        margin: [10, 10, 10, 10],
+                    }] : []),
                     {
                         stack: [
                             { text: 'Overall Percentage', fontSize: 9, color: '#666666', alignment: 'center' },

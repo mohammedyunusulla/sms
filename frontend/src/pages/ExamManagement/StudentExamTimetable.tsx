@@ -38,8 +38,16 @@ interface IStudentExamEntry {
     section_name?: string | null;
 }
 
-const StudentExamTimetable: FC = () => {
+// Used by students (their own) and parents (the child picked in the header): QA D22
+interface IStudentExamTimetableProps {
+    studentId?: number | string;
+    title?: string;
+    subtitle?: string;
+}
+
+const StudentExamTimetable: FC<IStudentExamTimetableProps> = ({ studentId, title, subtitle }) => {
     const user = useAuthStore((s) => s.user);
+    const forStudentId = studentId ?? user?.school_user_id;
     const currentAcademicYear = useAuthStore((s) => s.user?.current_academic_year);
     const academicYearVersion = useAuthStore((s) => s.academicYearVersion);
 
@@ -74,11 +82,11 @@ const StudentExamTimetable: FC = () => {
     };
 
     const fetchStudentTimetable = async () => {
-        if (!user?.school_user_id || !selectedExamType) return;
+        if (!forStudentId || !selectedExamType) return;
         setLoading(true);
         try {
             const data = await examService.getStudentExamTimetable(
-                user.school_user_id,
+                Number(forStudentId),
                 Number(selectedExamType),
                 currentAcademicYear?.id
             );
@@ -153,11 +161,11 @@ const StudentExamTimetable: FC = () => {
     return (
         <div className="space-y-6">
             <PageHeader
-                title="My Exam Timetable"
-                subtitle="View your exam schedule with room and seat details"
+                title={title || 'My Exam Timetable'}
+                subtitle={subtitle || 'View your exam schedule with room and seat details'}
                 breadcrumbs={[
                     { label: 'Dashboard', href: '/dashboard' },
-                    { label: 'My Exam Timetable', href: '#' },
+                    { label: title || 'My Exam Timetable', href: '#' },
                 ]}
             />
 

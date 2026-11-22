@@ -7,8 +7,8 @@ export default function BarChart() {
   return (
     <div>
       <PageMeta
-        title="Bar Chart | Edusphere - Education Management System"
-        description="Bar chart page - Edusphere Education Management System"
+        title="Bar Chart | EduSpyre - Education Management System"
+        description="Bar chart page - EduSpyre Education Management System"
       />
       <PageBreadcrumb pageTitle="Bar Chart" />
       <div className="space-y-6">

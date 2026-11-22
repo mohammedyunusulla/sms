@@ -1,5 +1,5 @@
 import React, { FC, useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, useSearchParams } from 'react-router';
 import toast from 'react-hot-toast';
 import { PageHeader, Button, LoadingSpinner, Badge, ConfirmDialog } from '../../components';
 import { syllabusService } from '../../services/modules/syllabusService';
@@ -268,10 +268,11 @@ const SyllabusDetail: FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [isReadOnly, setIsReadOnly] = useState(false);
 
-    // Teacher selector state (admin/principal only)
+    // Progress is per section (QA B33). viewSection = the section shown: a teacher's chosen section (from
+    // ?section= or their first), or the section an admin / principal picks (none = content only).
+    const [searchParams] = useSearchParams();
+    const [viewSection, setViewSection] = useState<number | null>(() => Number(searchParams.get('section')) || null);
     const [teachers, setTeachers] = useState<ISyllabusTeacherProgress[]>([]);
-    const [selectedTeacherId, setSelectedTeacherId] = useState<number | 'combined' | null>(null);
-    const [combinedTeacherIds, setCombinedTeacherIds] = useState<number[]>([]);
     const [loadingTeachers, setLoadingTeachers] = useState(false);
 
     // Accordion states
@@ -324,7 +325,16 @@ const SyllabusDetail: FC = () => {
     const [assignTeacherList, setAssignTeacherList] = useState<{ teacher_id: number; teacher_name: string }[]>([]);
 
     // Show detailed timeline when admin views a specific (non-combined) teacher
-    const showDetailedTimeline = isAdminOrPrincipal && !!selectedTeacherId && selectedTeacherId !== 'combined';
+    const showDetailedTimeline = isAdminOrPrincipal && !!viewSection;
+    const sectionOptions = (() => {
+        const map = new Map<number, { section_id: number; label: string; completion_percentage: number; names: string[] }>();
+        teachers.forEach((t) => (t.sections || []).forEach((sec) => {
+            const o = map.get(sec.section_id) || { section_id: sec.section_id, label: `${sec.class_name} - ${sec.section_name}`, completion_percentage: sec.completion_percentage ?? 0, names: [] };
+            o.names.push(t.is_active ? t.teacher_name : `${t.teacher_name} (former)`);
+            map.set(sec.section_id, o);
+        }));
+        return [...map.values()].map((o) => ({ ...o, teacherNames: o.names.join(', ') })).sort((a, b) => a.label.localeCompare(b.label));
+    })();
 
     const fetchTeachers = async () => {
         if (!syllabusId || !isAdminOrPrincipal) return;
@@ -422,20 +432,17 @@ const SyllabusDetail: FC = () => {
         }
     };
 
-    const fetchSyllabusDetail = async (teacherId?: number | 'combined' | null, teacherIds?: number[]) => {
+    const fetchSyllabusDetail = async (sectionId?: number | null) => {
         if (!syllabusId) return;
 
         try {
             setLoading(true);
             setError(null);
-            const data = await syllabusService.fetchSyllabusDetail(
-                syllabusId,
-                true,
-                teacherId ?? undefined,
-                teacherId === 'combined' ? teacherIds : undefined
-            );
+            const data = await syllabusService.fetchSyllabusDetail(syllabusId, true, undefined, undefined, sectionId);
             setSyllabus(data);
-            setIsReadOnly(!!(data as any).is_read_only);
+            setIsReadOnly(!!data.is_read_only);
+            // a teacher's page says which of their sections it is showing
+            if (isTeacher) setViewSection(data.section_id ?? null);
         } catch (err: any) {
             setError(err.message || 'Failed to fetch syllabus details');
             toast.error('Failed to fetch syllabus details');
@@ -445,29 +452,16 @@ const SyllabusDetail: FC = () => {
     };
 
     useEffect(() => {
-        fetchSyllabusDetail(selectedTeacherId, combinedTeacherIds);
+        fetchSyllabusDetail(viewSection);
         fetchTeachers();
         fetchAssignments();
     }, [syllabusId, academicYearVersion]);
 
-    const handleTeacherChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const value = e.target.value;
-        if (value.startsWith('combined:')) {
-            // combined:<teacher_id1>,<teacher_id2>,...
-            const ids = value.replace('combined:', '').split(',').map(Number);
-            setSelectedTeacherId('combined');
-            setCombinedTeacherIds(ids);
-            fetchSyllabusDetail('combined', ids);
-        } else if (value) {
-            const teacherId = Number(value);
-            setSelectedTeacherId(teacherId);
-            setCombinedTeacherIds([]);
-            fetchSyllabusDetail(teacherId);
-        } else {
-            setSelectedTeacherId(null);
-            setCombinedTeacherIds([]);
-            fetchSyllabusDetail(null);
-        }
+    // the section whose progress is shown (teacher: which section they are recording for)
+    const handleSectionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const value = Number(e.target.value) || null;
+        setViewSection(value);
+        fetchSyllabusDetail(value);
     };
 
     const toggleLesson = (lessonId: string) => {
@@ -500,9 +494,9 @@ const SyllabusDetail: FC = () => {
         const key = `${itemType}-${itemId}`;
         setMarkingProgress(key);
         try {
-            await syllabusService.markProgress(itemType, itemId, !currentlyCompleted);
+            await syllabusService.markProgress(itemType, itemId, !currentlyCompleted, viewSection);
             toast.success(`${itemType.charAt(0).toUpperCase() + itemType.slice(1)} ${!currentlyCompleted ? 'completed' : 'reverted'}`);
-            await fetchSyllabusDetail(selectedTeacherId, combinedTeacherIds);
+            await fetchSyllabusDetail(viewSection);
         } catch (err: any) {
             toast.error(err.message || 'Failed to update progress');
         } finally {
@@ -529,7 +523,7 @@ const SyllabusDetail: FC = () => {
     const handleConfigureSuccess = () => {
         setShowConfigureModal(false);
         setConfigureTarget(null);
-        fetchSyllabusDetail(selectedTeacherId, combinedTeacherIds);
+        fetchSyllabusDetail(viewSection);
     };
 
     // Timeline Start handler
@@ -538,9 +532,9 @@ const SyllabusDetail: FC = () => {
         const key = `${itemType}-${itemId}`;
         setStartingItem(key);
         try {
-            await syllabusService.startItem(itemType, itemId);
+            await syllabusService.startItem(itemType, itemId, viewSection);
             toast.success(`${itemType.charAt(0).toUpperCase() + itemType.slice(1)} started`);
-            await fetchSyllabusDetail(selectedTeacherId, combinedTeacherIds);
+            await fetchSyllabusDetail(viewSection);
         } catch (err: any) {
             toast.error(err.message || 'Failed to start item');
         } finally {
@@ -629,7 +623,7 @@ const SyllabusDetail: FC = () => {
 
             setShowDeleteDialog(false);
             setDeleteTarget(null);
-            fetchSyllabusDetail(selectedTeacherId, combinedTeacherIds);
+            fetchSyllabusDetail(viewSection);
         } catch (err: any) {
             toast.error(err.message || `Failed to delete ${deleteTarget.type}`);
         } finally {
@@ -646,7 +640,7 @@ const SyllabusDetail: FC = () => {
         setEditSubtopic(null);
         setParentLessonId(null);
         setParentTopicId(null);
-        fetchSyllabusDetail(selectedTeacherId, combinedTeacherIds);
+        fetchSyllabusDetail(viewSection);
     };
 
     const isItemCompleted = (status: SyllabusStatus) => status === SyllabusStatus.COMPLETED;
@@ -703,7 +697,7 @@ const SyllabusDetail: FC = () => {
                         <Button
                             variant="secondary"
                             leftIcon={<ChartIcon />}
-                            onClick={() => navigate(`/syllabus/${syllabusId}/analytics`)}
+                            onClick={() => navigate(`/syllabus/${syllabusId}/analytics${viewSection ? `?section=${viewSection}` : ''}`)}
                         >
                             Analytics
                         </Button>
@@ -761,97 +755,38 @@ const SyllabusDetail: FC = () => {
                     </div>
                 </div>
 
-                {/* Teacher Selector (Admin/Principal only) */}
+                {/* Section selector (Admin/Principal): progress is kept per section (QA B33) */}
                 {isAdminOrPrincipal && (
                     <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
                         <div className="flex items-center gap-4 flex-wrap">
                             <div className="flex-1 min-w-0 sm:min-w-[250px] max-w-md">
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                                    View Teacher Progress
+                                <label htmlFor="syllabus-section" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                    View Section Progress
                                 </label>
                                 <select
-                                    value={
-                                        selectedTeacherId === 'combined'
-                                            ? `combined:${combinedTeacherIds.join(',')}`
-                                            : selectedTeacherId ?? ''
-                                    }
-                                    onChange={handleTeacherChange}
+                                    id="syllabus-section"
+                                    name="syllabus_section"
+                                    value={viewSection ?? ''}
+                                    onChange={handleSectionChange}
                                     disabled={loadingTeachers}
                                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50"
                                 >
-                                    <option value="">-- Select a teacher --</option>
-                                    {(() => {
-                                        // Group teachers by section (backend now returns correct section
-                                        // info from assignment records, so no frontend merging needed)
-                                        const sectionGroups: Record<string, { label: string; teacherIds: number[]; teachers: typeof teachers }> = {};
-                                        const ungrouped: typeof teachers = [];
-
-                                        teachers.forEach((t) => {
-                                            if (t.sections && t.sections.length > 0) {
-                                                t.sections.forEach((sec) => {
-                                                    const key = `${sec.class_id}-${sec.section_id}`;
-                                                    if (!sectionGroups[key]) {
-                                                        sectionGroups[key] = {
-                                                            label: `${sec.class_name} - ${sec.section_name}`,
-                                                            teacherIds: [],
-                                                            teachers: []
-                                                        };
-                                                    }
-                                                    if (!sectionGroups[key].teacherIds.includes(t.teacher_id)) {
-                                                        sectionGroups[key].teacherIds.push(t.teacher_id);
-                                                        sectionGroups[key].teachers.push(t);
-                                                    }
-                                                });
-                                            } else {
-                                                ungrouped.push(t);
-                                            }
-                                        });
-
-                                        const groups = Object.values(sectionGroups);
-
-                                        return (
-                                            <>
-                                                {groups.map((group) => (
-                                                    <optgroup key={group.label} label={group.label}>
-                                                        {group.teacherIds.length > 1 && (
-                                                            <option value={`combined:${group.teacherIds.join(',')}`}>
-                                                                Combined Progress ({group.label})
-                                                            </option>
-                                                        )}
-                                                        {group.teachers.map((t) => (
-                                                            <option key={t.teacher_id} value={t.teacher_id}>
-                                                                {t.teacher_name} ({t.completion_percentage}% - {t.status}){t.is_active ? '' : ' (Former)'}
-                                                            </option>
-                                                        ))}
-                                                    </optgroup>
-                                                ))}
-                                                {ungrouped.length > 0 && (
-                                                    <optgroup label="Other Teachers">
-                                                        {ungrouped.map((t) => (
-                                                            <option key={t.teacher_id} value={t.teacher_id}>
-                                                                {t.teacher_name} ({t.completion_percentage}% - {t.status}){t.is_active ? '' : ' (Former)'}
-                                                            </option>
-                                                        ))}
-                                                    </optgroup>
-                                                )}
-                                            </>
-                                        );
-                                    })()}
+                                    <option value="">-- Select a section --</option>
+                                    {sectionOptions.map((o) => (
+                                        <option key={o.section_id} value={o.section_id}>
+                                            {o.label} ({o.completion_percentage}%) – {o.teacherNames}
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
-                            {selectedTeacherId && (
+                            {viewSection && (
                                 <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                                     <span className="text-sm text-blue-700 dark:text-blue-300">
-                                        {selectedTeacherId === 'combined' ? (
-                                            <>Viewing: <strong>Combined Progress ({combinedTeacherIds.length} teachers)</strong></>
-                                        ) : (
-                                            <>Viewing progress for: <strong>{teachers.find(t => t.teacher_id === selectedTeacherId)?.teacher_name}</strong></>
-                                        )}
+                                        Viewing: <strong>{sectionOptions.find((o) => o.section_id === viewSection)?.label}</strong>
                                     </span>
                                     <button
                                         onClick={() => {
-                                            setSelectedTeacherId(null);
-                                            setCombinedTeacherIds([]);
+                                            setViewSection(null);
                                             fetchSyllabusDetail(null);
                                         }}
                                         className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
@@ -860,15 +795,38 @@ const SyllabusDetail: FC = () => {
                                     </button>
                                 </div>
                             )}
-                            {!selectedTeacherId && teachers.length > 0 && (
+                            {!viewSection && sectionOptions.length > 0 && (
                                 <p className="text-sm text-gray-500 dark:text-gray-400 italic">
-                                    Select a teacher to view their specific progress on this syllabus
+                                    Select a section to see how far it has got
                                 </p>
                             )}
                             {loadingTeachers && (
                                 <SmallSpinner />
                             )}
                         </div>
+                    </div>
+                )}
+
+                {/* A teacher with several sections records progress for one at a time (QA B33) */}
+                {isTeacher && (syllabus.sections?.length ?? 0) > 1 && (
+                    <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                        <label htmlFor="syllabus-my-section" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Section
+                        </label>
+                        <select
+                            id="syllabus-my-section"
+                            name="syllabus_my_section"
+                            value={viewSection ?? ''}
+                            onChange={handleSectionChange}
+                            className="w-full max-w-xs px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500"
+                        >
+                            {syllabus.sections!.map((o) => (
+                                <option key={o.section_id} value={o.section_id}>{o.label}</option>
+                            ))}
+                        </select>
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Progress, dates and ticks below are for this section only.
+                        </p>
                     </div>
                 )}
             </div>
@@ -1099,7 +1057,7 @@ const SyllabusDetail: FC = () => {
                                         )
                                     )}
                                     {/* Admin status icon when viewing teacher progress */}
-                                    {isAdminOrPrincipal && selectedTeacherId && (
+                                    {isAdminOrPrincipal && viewSection && (
                                         <span className="flex-shrink-0">{getStatusIcon(lesson.status)}</span>
                                     )}
                                     <div
@@ -1140,7 +1098,7 @@ const SyllabusDetail: FC = () => {
                                         <TimelineDetail item={lesson} showDates={showDetailedTimeline} showNotes={showDetailedTimeline || isTeacher} />
                                     </div>
                                 </div>
-                                <div className={`flex items-center gap-1 sm:gap-2 flex-wrap ${isTeacher || (isAdminOrPrincipal && selectedTeacherId) ? 'pl-16' : 'pl-8'} sm:pl-0`}>
+                                <div className={`flex items-center gap-1 sm:gap-2 flex-wrap ${isTeacher || (isAdminOrPrincipal && viewSection) ? 'pl-16' : 'pl-8'} sm:pl-0`}>
                                     <span className="text-sm text-gray-600 dark:text-gray-400 mr-2">
                                         {lesson.completion_percentage || 0}%
                                     </span>
@@ -1299,7 +1257,7 @@ const SyllabusDetail: FC = () => {
                                                             )
                                                         )}
                                                         {/* Admin status icon when viewing teacher progress */}
-                                                        {isAdminOrPrincipal && selectedTeacherId && (
+                                                        {isAdminOrPrincipal && viewSection && (
                                                             <span className="flex-shrink-0">{getStatusIcon(topic.status)}</span>
                                                         )}
                                                         <div
@@ -1340,7 +1298,7 @@ const SyllabusDetail: FC = () => {
                                                             <TimelineDetail item={topic} showDates={showDetailedTimeline} showNotes={showDetailedTimeline || isTeacher} />
                                                         </div>
                                                     </div>
-                                                    <div className={`flex items-center gap-1 sm:gap-2 flex-wrap ${isTeacher || (isAdminOrPrincipal && selectedTeacherId) ? 'pl-16' : 'pl-8'} sm:pl-0`}>
+                                                    <div className={`flex items-center gap-1 sm:gap-2 flex-wrap ${isTeacher || (isAdminOrPrincipal && viewSection) ? 'pl-16' : 'pl-8'} sm:pl-0`}>
                                                         <span className="text-sm text-gray-600 dark:text-gray-400 mr-2">
                                                             {topic.completion_percentage || 0}%
                                                         </span>
@@ -1702,6 +1660,7 @@ const SyllabusDetail: FC = () => {
                     itemType={configureTarget.itemType}
                     itemId={configureTarget.itemId}
                     itemTitle={configureTarget.itemTitle}
+                    sectionId={viewSection}
                     existingDates={configureTarget.existingDates}
                 />
             )}

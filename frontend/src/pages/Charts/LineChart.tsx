@@ -7,8 +7,8 @@ export default function LineChart() {
   return (
     <>
       <PageMeta
-        title="Line Chart | Edusphere - Education Management System"
-        description="Line chart page - Edusphere Education Management System"
+        title="Line Chart | EduSpyre - Education Management System"
+        description="Line chart page - EduSpyre Education Management System"
       />
       <PageBreadcrumb pageTitle="Line Chart" />
       <div className="space-y-6">

@@ -51,10 +51,10 @@ const StudentSyllabusView: FC = () => {
     const handleCardClick = (entry: IStudentSyllabusEntry) => {
         if (isTeacher) {
             // Teachers go to the main syllabus detail page (with progress toggles)
-            navigate(`/syllabus/${entry.syllabus.id}`);
+            navigate(`/syllabus/${entry.syllabus.id}${entry.section_id ? `?section=${entry.section_id}` : ''}`);
         } else {
             // Students go to the read-only detail page
-            navigate(`/syllabus/my-progress/${entry.syllabus.id}?teacherId=${entry.teacher_id}`);
+            navigate(`/syllabus/my-progress/${entry.syllabus.id}?teacherId=${entry.teacher_id}${entry.section_id ? `&sectionId=${entry.section_id}` : ''}`);
         }
     };
 
@@ -119,6 +119,7 @@ const StudentSyllabusView: FC = () => {
                                     </svg>
                                     <span className="text-sm text-gray-600 dark:text-gray-400">
                                         {entry.teacher_name}
+                                        {isTeacher && entry.section_label ? ` · ${entry.section_label}` : ''}
                                     </span>
                                 </div>
 

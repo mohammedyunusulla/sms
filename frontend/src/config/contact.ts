@@ -1,4 +1,4 @@
-/** Public contact details for Klopterz, the team behind Edusphere. */
+/** Public contact details for Klopterz, the team behind EduSpyre. */
 export const CONTACT = {
   email: "info@klopterz.com",
   linkedinLabel: "linkedin.com/company/klopterz",

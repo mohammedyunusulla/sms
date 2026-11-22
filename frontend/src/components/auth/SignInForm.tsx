@@ -196,7 +196,7 @@ export default function SignInForm() {
                 <div className="mt-6 rounded-2xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-center text-sm short:mt-4 short:py-2.5 very-short:mt-3 very-short:py-2 sm:mt-8 sm:px-5 sm:py-4 lg:text-left leading-relaxed text-gray-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-400">
                     <p>No account? Ask your school administrator.</p>
                     <p className="mt-1">
-                        New to Edusphere?{" "}
+                        New to EduSpyre?{" "}
                         <a
                             href={CONTACT.demoUrl}
                             target="_blank"

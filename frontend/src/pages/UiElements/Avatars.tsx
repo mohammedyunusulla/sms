@@ -7,8 +7,8 @@ export default function Avatars() {
   return (
     <>
       <PageMeta
-        title="Avatars | Edusphere - Education Management System"
-        description="Avatars page - Edusphere Education Management System"
+        title="Avatars | EduSpyre - Education Management System"
+        description="Avatars page - EduSpyre Education Management System"
       />
       <PageBreadcrumb pageTitle="Avatars" />
       <div className="space-y-5 sm:space-y-6">

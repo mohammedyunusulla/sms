@@ -20,13 +20,16 @@ interface ExamResult {
     total_marks: number;
     obtained_marks: number;
     percentage: number;
+    result?: 'Pass' | 'Fail' | 'Incomplete';
     grade: string;
     rank: number;
     subjects: Array<{
         subject_name: string;
         max_marks: number;
-        obtained_marks: number;
+        obtained_marks: number | null; // null = not entered yet
         grade: string;
+        is_absent?: boolean;
+        passed?: boolean | null;
     }>;
 }
 
@@ -225,6 +228,11 @@ export const AnnualResultsView: FC<{ studentId?: string; forFamily?: boolean }> 
                                             <div className="text-right">
                                                 <p className="text-2xl font-bold">{result.percentage.toFixed(2)}%</p>
                                                 <p className="text-sm">Grade: {result.grade} | Rank: {result.rank}</p>
+                                                {result.result && (
+                                                    <span data-testid="exam-result" className={`mt-1 inline-block rounded px-2 py-0.5 text-xs font-semibold ${result.result === 'Pass' ? 'bg-green-100 text-green-800' : result.result === 'Fail' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-700'}`}>
+                                                        {result.result === 'Incomplete' ? 'Incomplete (marks pending)' : result.result}
+                                                    </span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -247,9 +255,9 @@ export const AnnualResultsView: FC<{ studentId?: string; forFamily?: boolean }> 
                                                         <tr key={idx} className="border-b border-gray-100 dark:border-gray-700">
                                                             <td className="py-2 px-4 text-sm text-gray-900 dark:text-white">{subject.subject_name}</td>
                                                             <td className="py-2 px-4 text-sm text-center text-gray-700 dark:text-gray-300">{subject.max_marks}</td>
-                                                            <td className="py-2 px-4 text-sm text-center font-semibold text-gray-900 dark:text-white">{subject.obtained_marks}</td>
+                                                            <td className="py-2 px-4 text-sm text-center font-semibold text-gray-900 dark:text-white">{subject.is_absent ? 'AB' : subject.obtained_marks ?? '-'}</td>
                                                             <td className="py-2 px-4 text-sm text-center text-gray-700 dark:text-gray-300">
-                                                                {((subject.obtained_marks / subject.max_marks) * 100).toFixed(2)}%
+                                                                {subject.obtained_marks === null ? '-' : `${((subject.obtained_marks / subject.max_marks) * 100).toFixed(2)}%`}
                                                             </td>
                                                             <td className="py-2 px-4 text-sm text-center">
                                                                 <span className="px-2 py-1 rounded bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 font-semibold">

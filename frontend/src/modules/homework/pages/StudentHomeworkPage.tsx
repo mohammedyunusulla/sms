@@ -182,7 +182,7 @@ export default function StudentHomeworkPage() {
               <p className="mb-2 text-sm text-gray-600 dark:text-gray-300">
                 Take a photo of the <strong>blank page</strong> you will write on, with its <strong>QR sticker</strong> clearly visible.
               </p>
-              <PhotoPicker photos={startPhotos} onChange={setStartPhotos} max={1} label="Blank page with QR sticker" disabled={isBusy} />
+              <PhotoPicker photos={startPhotos} onChange={setStartPhotos} max={1} label="Blank page with QR sticker" disabled={isBusy} tip="Hold the phone close so the QR sticker is large, in focus and fully in the photo." />
             </div>
           )}
         </div>
