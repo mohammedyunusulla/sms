@@ -166,10 +166,10 @@ def get_expenses(skid):
             'end_date': request.args.get('end_date')
         }
         # a bad date reached the database and came back as a psycopg2 error (QA D25)
-        if filters['start_date']:
-            to_date(filters['start_date'], "From date")
-        if filters['end_date']:
-            to_date(filters['end_date'], "To date")
+        start = to_date(filters['start_date'], "Start date") if filters['start_date'] else None
+        end = to_date(filters['end_date'], "End date") if filters['end_date'] else None
+        if start and end and end < start:
+            raise ValueError("End date is before the start date")  # it returned an empty list (QA C30)
         expenses = ExpenseService.get_expenses(skid, filters)
         return jsonify({
             'expenses': expenses,

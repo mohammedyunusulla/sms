@@ -587,6 +587,8 @@ export interface IExamConfig {
 export interface IStudentWithMarks {
     student_id: string;
     roll_no: string;
+    /** what the marks API sends (QA B23) */
+    roll_number?: string | null;
     student_name: string;
     existing_marks?: {
         internal_marks: number;

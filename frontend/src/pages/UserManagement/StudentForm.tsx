@@ -12,6 +12,7 @@ import { classService } from '../../services/modules/classService';
 import { parentService } from '../../services/modules/parentService';
 import ParentForm from './ParentForm';
 import { useDebounce } from '../../hooks/useDebounce';
+import { useAuthStore } from '../../stores/authStore';
 import { blanksToNull, fieldInputClass, isValidEmail, isValidPhone, passwordProblem } from '../../utils/formValidation';
 
 // Optional fields: a blank value is sent as null ('' breaks class/section/roll numbers and the unique admission number)
@@ -33,6 +34,9 @@ const StudentForm: FC<IStudentFormProps> = ({ initialData, mode: propMode = 'cre
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
+    // Basic plan: students get no login, so no password is asked for (QA A40)
+    const schoolPlan = String(useAuthStore((st) => st.user?.plan) || '').toUpperCase();
+    const createsLogin = schoolPlan === 'STANDARD' || schoolPlan === 'PREMIUM';
     // Auto-detect mode based on URL - if id exists, it's update mode
     const mode = id ? 'update' : propMode;
     const [student, setStudent] = useState<any>(null);
@@ -236,7 +240,7 @@ const StudentForm: FC<IStudentFormProps> = ({ initialData, mode: propMode = 'cre
         const next: Record<string, string> = {};
         if (!v('username')) next.username = 'Username is required';
         else if (v('username').length < 3) next.username = 'Username must be at least 3 characters';
-        if (mode === 'create') {
+        if (mode === 'create' && createsLogin) {
             const problem = passwordProblem(String(formData.password ?? ''));
             if (problem) next.password = problem;
         }
@@ -396,8 +400,14 @@ const StudentForm: FC<IStudentFormProps> = ({ initialData, mode: propMode = 'cre
                             {fieldError('username')}
                         </div>
 
-                        {/* Password */}
-                        {mode === 'create' && (
+                        {/* Password (only where student logins are part of the plan) */}
+                        {mode === 'create' && !createsLogin && (
+                            <div className="md:col-span-1 rounded-lg bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                                Student logins aren't part of the Basic plan, so no password is needed. Use
+                                &quot;Create Login&quot; on the students list later if this student needs one.
+                            </div>
+                        )}
+                        {mode === 'create' && createsLogin && (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                     Password *

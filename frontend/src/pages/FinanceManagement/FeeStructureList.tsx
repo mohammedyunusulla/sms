@@ -12,6 +12,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { IGroupedFeeStructure, IFeeRow } from '../../types/index';
 import { usePermissions } from '../../hooks/usePermissions';
 import { Permission } from '../../config/permissions';
+import { formatAmount } from '../../utils/money';
 
 // the bits of a fee structure the assign dialog needs
 type AssignableFee = { id: number; fee_name: string; amount: number | string; is_mandatory?: boolean };
@@ -158,7 +159,7 @@ const FeeStructureList: FC = () => {
             label: 'Total Amount',
             className: 'text-right',
             render: (value: number) => (
-                <span className="font-semibold">{'\u20B9'}{value?.toLocaleString('en-IN')}</span>
+                <span className="font-semibold">{'\u20B9'}{formatAmount(value)}</span>
             ),
         },
     ];
@@ -173,7 +174,7 @@ const FeeStructureList: FC = () => {
             key: 'amount',
             label: 'Amount',
             className: 'text-right',
-            render: (value: number) => <span>{'\u20B9'}{parseFloat(String(value)).toLocaleString('en-IN')}</span>,
+            render: (value: number) => <span>{'\u20B9'}{formatAmount(value)}</span>,
         },
         {
             key: 'is_mandatory',
@@ -343,10 +344,10 @@ const FeeStructureList: FC = () => {
                                     <p className="text-sm font-medium">Fees assigned to every student:</p>
                                     <ul className="ml-4 list-disc text-sm">
                                         {mandatory.map((f) => (
-                                            <li key={f.id}>{f.fee_name}: {'\u20B9'}{Number(f.amount || 0).toLocaleString('en-IN')}</li>
+                                            <li key={f.id}>{f.fee_name}: {'\u20B9'}{formatAmount(f.amount || 0)}</li>
                                         ))}
                                     </ul>
-                                    <p className="text-sm"><strong>Total per student:</strong> {'\u20B9'}{total.toLocaleString('en-IN')}</p>
+                                    <p className="text-sm"><strong>Total per student:</strong> {'\u20B9'}{formatAmount(total)}</p>
                                     {optional.length > 0 && (
                                         <p className="text-xs text-gray-500 dark:text-gray-400">
                                             Not assigned (optional): {optional.map((f) => f.fee_name).join(', ')}
@@ -378,7 +379,7 @@ const FeeStructureList: FC = () => {
             <ConfirmDialog
                 isOpen={showDeleteDialog}
                 title="Delete Fee Structures"
-                message={selectedClass ? `Delete all ${selectedClass.fee_count} fee structure(s) for ${selectedClass.class_name} with total amount \u20B9${selectedClass.total_amount?.toLocaleString('en-IN')}? This action cannot be undone and will fail if fees are already assigned to students.` : ''}
+                message={selectedClass ? `Delete all ${selectedClass.fee_count} fee structure(s) for ${selectedClass.class_name} with total amount \u20B9${formatAmount(selectedClass.total_amount)}? This action cannot be undone and will fail if fees are already assigned to students.` : ''}
                 onConfirm={confirmDelete}
                 onCancel={() => { setShowDeleteDialog(false); setSelectedClass(null); }}
                 confirmText="Delete All"

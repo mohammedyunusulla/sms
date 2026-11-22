@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router";
 import { useEffect, ReactNode, lazy, Suspense } from "react";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { PermissionGuard } from "./components/auth/PermissionGuard";
@@ -16,27 +16,14 @@ const LandingPage = lazy(() => import("./pages/Landing/LandingPage"));
 
 // Lazy loaded auth pages (loaded immediately for login)
 const SignIn = lazy(() => import("./pages/AuthPages/SignIn"));
-const SignUp = lazy(() => import("./pages/AuthPages/SignUp"));
 const ForgotPasswordPage = lazy(() => import("./pages/auth/ForgotPasswordPage"));
 const NotFound = lazy(() => import("./pages/OtherPage/NotFound"));
 
 // Lazy loaded common pages
 const DashboardRouter = lazy(() => import("./pages/Dashboard/DashboardRouter"));
 const UserProfiles = lazy(() => import("./pages/UserProfiles"));
-const Calendar = lazy(() => import("./pages/Calendar"));
-const Blank = lazy(() => import("./pages/Blank"));
 
 // Lazy loaded UI Elements (rarely used)
-const Videos = lazy(() => import("./pages/UiElements/Videos"));
-const Images = lazy(() => import("./pages/UiElements/Images"));
-const Alerts = lazy(() => import("./pages/UiElements/Alerts"));
-const Badges = lazy(() => import("./pages/UiElements/Badges"));
-const Avatars = lazy(() => import("./pages/UiElements/Avatars"));
-const Buttons = lazy(() => import("./pages/UiElements/Buttons"));
-const LineChart = lazy(() => import("./pages/Charts/LineChart"));
-const BarChart = lazy(() => import("./pages/Charts/BarChart"));
-const BasicTables = lazy(() => import("./pages/Tables/BasicTables"));
-const FormElements = lazy(() => import("./pages/Forms/FormElements"));
 
 // Lazy loaded School Management
 const SchoolList = lazy(() => import("./pages/SchoolManagement").then(m => ({ default: m.SchoolList })));
@@ -211,7 +198,8 @@ function AppContent() {
 
                     {/* Auth Routes */}
                     <Route path="/signin" element={<SignIn />} />
-                    <Route path="/signup" element={<SignUp />} />
+                    {/* there is no self sign-up (the old page only pretended to create an account - QA S13) */}
+                    <Route path="/signup" element={<Navigate to="/signin" replace />} />
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
 
                     {/* Protected Dashboard Layout */}
@@ -226,27 +214,6 @@ function AppContent() {
 
                         {/* Others Page */}
                         <Route path="/profile" element={<UserProfiles />} />
-                        <Route path="/calendar" element={<Calendar />} />
-                        <Route path="/blank" element={<Blank />} />
-
-                        {/* Forms */}
-                        <Route path="/form-elements" element={<FormElements />} />
-
-                        {/* Tables */}
-                        <Route path="/basic-tables" element={<BasicTables />} />
-
-                        {/* Ui Elements */}
-                        <Route path="/alerts" element={<Alerts />} />
-                        <Route path="/avatars" element={<Avatars />} />
-                        <Route path="/badge" element={<Badges />} />
-                        <Route path="/buttons" element={<Buttons />} />
-                        <Route path="/images" element={<Images />} />
-                        <Route path="/videos" element={<Videos />} />
-
-                        {/* Charts */}
-                        <Route path="/line-chart" element={<LineChart />} />
-                        <Route path="/bar-chart" element={<BarChart />} />
-
                         {/* School Management Routes */}
                         <Route path="/schools" element={guarded('/schools', <SchoolList />)} />
                         <Route path="/schools/new" element={guarded('/schools/new', <SchoolForm />)} />

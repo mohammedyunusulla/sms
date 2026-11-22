@@ -254,7 +254,7 @@ const StudentExamTimetable: FC<IStudentExamTimetableProps> = ({ studentId, title
                                         <span className="text-gray-500 dark:text-gray-400 text-xs block">Seat</span>
                                         {entry.seat_label
                                             ? <span className="text-purple-600 dark:text-purple-400 font-medium">{entry.seat_label}</span>
-                                            : <span className="text-yellow-600 dark:text-yellow-400 text-xs">Not assigned</span>
+                                            : <span className="text-yellow-600 dark:text-yellow-400 text-xs">{entry.room ? 'Not assigned yet' : 'Not assigned'}</span>
                                         }
                                     </div>
                                     <div>
@@ -309,9 +309,9 @@ const StudentExamTimetable: FC<IStudentExamTimetableProps> = ({ studentId, title
                                 {
                                     key: 'seat_label',
                                     label: 'Seat',
-                                    render: (value: any) => value
+                                    render: (value: any, row: { room?: string | null }) => value
                                         ? <span className="text-purple-600 dark:text-purple-400 font-medium">{value}</span>
-                                        : <span className="text-yellow-600 dark:text-yellow-400 text-xs">Not assigned</span>,
+                                        : <span className="text-yellow-600 dark:text-yellow-400 text-xs">{row?.room ? 'Not assigned yet' : 'Not assigned'}</span>,
                                 },
                                 {
                                     key: 'invigilator_name',

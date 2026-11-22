@@ -5,6 +5,7 @@ import Chart from 'react-apexcharts';
 import { useAuth } from '../../../hooks/useAuth';
 import { useTheme } from '../../../context/ThemeContext';
 import dashboardService, { ExpenseBreakdown } from '../../../services/dashboardService';
+import { formatAmount } from '../../../utils/money';
 
 const MONTHS = [
     { value: 1, label: 'January' },
@@ -157,7 +158,7 @@ const ExpenseTrendCard: FC = () => {
         tooltip: {
             theme: isDark ? 'dark' : 'light',
             y: {
-                formatter: (val: number) => val.toLocaleString('en-IN'),
+                formatter: (val: number) => formatAmount(val),
             },
         },
         states: {
@@ -202,7 +203,7 @@ const ExpenseTrendCard: FC = () => {
                     <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50">
                         <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">Total Expenses</p>
                         <p className="text-xl font-bold text-blue-700 dark:text-blue-300">
-                            {breakdown!.total_expenses.toLocaleString('en-IN')}
+                            {formatAmount(breakdown!.total_expenses)}
                         </p>
                     </div>
                     <div className="p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600">
@@ -235,7 +236,7 @@ const ExpenseTrendCard: FC = () => {
                                     className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full ${color.light} ${color.text}`}
                                 >
                                     <span className={`w-2 h-2 rounded-full ${color.dot}`}></span>
-                                    {cat}: {total.toLocaleString('en-IN')}
+                                    {cat}: {formatAmount(total)}
                                 </span>
                             );
                         })}

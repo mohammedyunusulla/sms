@@ -8,6 +8,7 @@ import { FC, useEffect, useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { Modal, Badge, Button, FormInput } from '../../components';
 import { financeService } from '../../services/modules/financeService';
+import { formatAmount } from '../../utils/money';
 
 interface InstallmentDialogProps {
     isOpen: boolean;
@@ -183,10 +184,10 @@ const InstallmentDialog: FC<InstallmentDialogProps> = ({ isOpen, onClose, studen
                     <div className="flex justify-between items-start">
                         <div>
                             <p className="font-semibold text-gray-900 dark:text-white">
-                                Total Fee: {'\u20B9'}{studentFee.total_amount?.toLocaleString('en-IN')}
+                                Total Fee: {'\u20B9'}{formatAmount(studentFee.total_amount)}
                             </p>
                             <p className="text-sm text-gray-600 dark:text-gray-400">
-                                Balance to pay: {'\u20B9'}{studentFee.balance_amount?.toLocaleString('en-IN')}
+                                Balance to pay: {'\u20B9'}{formatAmount(studentFee.balance_amount)}
                             </p>
                         </div>
                         {studentFee.fee_structure?.is_recurring && (
@@ -249,7 +250,7 @@ const InstallmentDialog: FC<InstallmentDialogProps> = ({ isOpen, onClose, studen
                                         <span className="text-sm font-medium text-gray-900 dark:text-white">{inst.name}</span>
                                     </div>
                                     <div className="flex items-center gap-4">
-                                        <span className="font-bold text-gray-900 dark:text-white">{'\u20B9'}{inst.amount.toLocaleString('en-IN')}</span>
+                                        <span className="font-bold text-gray-900 dark:text-white">{'\u20B9'}{formatAmount(inst.amount)}</span>
                                         <span className="text-xs text-gray-500 dark:text-gray-400">Due: {formatDate(inst.dueDate)}</span>
                                     </div>
                                 </div>
@@ -333,13 +334,13 @@ const InstallmentDialog: FC<InstallmentDialogProps> = ({ isOpen, onClose, studen
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400">Total Installment Amount</p>
                             <p className={`text-lg font-bold ${isValidTotal ? 'text-green-600' : 'text-red-600'}`}>
-                                {'\u20B9'}{totalAmount.toLocaleString('en-IN')}
+                                {'\u20B9'}{formatAmount(totalAmount)}
                             </p>
                         </div>
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400">Expected Amount</p>
                             <p className="text-lg font-bold text-gray-900 dark:text-white">
-                                {'\u20B9'}{expectedAmount.toLocaleString('en-IN')}
+                                {'\u20B9'}{formatAmount(expectedAmount)}
                             </p>
                         </div>
                     </div>

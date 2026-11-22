@@ -82,13 +82,13 @@ const ConfigForm: FC<ConfigFormProps> = ({ isOpen, onClose, onSaved, editingConf
                 examService.list(),
                 classService.list(),
                 roomService.list(),
-                teacherService.list(),
+                teacherService.listAll(),
             ]);
             setExamTypes(Array.isArray(examRes) ? examRes : examRes?.data || []);
             setClasses(Array.isArray(classRes) ? classRes : classRes?.data || []);
             const roomList = Array.isArray(roomRes) ? roomRes : roomRes?.data || [];
             setRooms(roomList.filter((r: any) => r.seating_layout?.length > 0));
-            setTeachers(teacherRes?.data || []);
+            setTeachers(teacherRes || []);
         } catch {
             toast.error('Failed to load form data');
         } finally {

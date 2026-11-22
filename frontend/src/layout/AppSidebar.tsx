@@ -513,14 +513,14 @@ const AppSidebar: React.FC = () => {
                                 className="h-[37px] w-auto dark:hidden"
                                 src="/images/logo/eduspyre/eduspyre-logo-light.png"
                                 alt="EduSpyre"
-                                width={106}
+                                width={135}
                                 height={37}
                             />
                             <img
                                 className="hidden h-[37px] w-auto dark:block"
                                 src="/images/logo/eduspyre/eduspyre-logo-dark.png"
                                 alt="EduSpyre"
-                                width={106}
+                                width={135}
                                 height={37}
                             />
                         </>

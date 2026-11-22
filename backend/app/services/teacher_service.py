@@ -330,9 +330,16 @@ class TeacherService:
                 # The list showed "-" for Employee ID / Designation: only the school-user record was returned.
                 teacher_rows = {t.user_id: t for t in tenant_session.query(Teacher).filter(
                     Teacher.user_id.in_([u.id for u in teachers_data])).all()} if teachers_data else {}
+                # the subjects each teacher teaches: the timetable's teacher dropdown shows only those (QA B10)
+                subject_map = {}
+                if teachers_data:
+                    for ts in tenant_session.query(TeacherSubject).filter(
+                            TeacherSubject.teacher_id.in_([u.id for u in teachers_data])).all():
+                        subject_map.setdefault(ts.teacher_id, []).append(ts.subject_id)
                 teacher_list = []
                 for school_user in teachers_data:
                     item = school_user.to_dict()
+                    item['subject_ids'] = sorted(subject_map.get(school_user.id, []))
                     teacher = teacher_rows.get(school_user.id)
                     item['employee_id'] = teacher.employee_id if teacher else None
                     item['designation'] = teacher.designation if teacher else None

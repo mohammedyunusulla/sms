@@ -1,4 +1,4 @@
-import { FC, lazy, Suspense, useEffect, useState } from 'react';
+import { FC, lazy, Suspense, useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import toast from 'react-hot-toast';
 import { PageHeader, LoadingSpinner, DataTable, Button, ConfirmDialog, Badge } from '../../components';
@@ -99,7 +99,11 @@ const StudentList: FC = () => {
         fetchStudents(currentPage, pageSize);
     }, [currentPage, pageSize, debouncedSearchTerm, genderFilter, statusFilter, classFilter, sectionFilter, academicYearVersion]);
 
+    // only the latest request may fill the table: with quick filter changes an older, slower reply
+    // could arrive last and show stale results (QA A37)
+    const latestRequest = useRef(0);
     const fetchStudents = async (page: number, limit: number) => {
+        const requestId = ++latestRequest.current;
         try {
             setLoading(true);
             const response = await studentService.list({
@@ -112,6 +116,7 @@ const StudentList: FC = () => {
                 ...(classFilter ? { class_id: classFilter } : {}),
                 ...(sectionFilter ? { section_id: sectionFilter } : {}),
             });
+            if (requestId !== latestRequest.current) return;
             const students = response.data.map((student: any, index: number) => ({
                 ...student,
                 key: student.id,
@@ -121,11 +126,12 @@ const StudentList: FC = () => {
             setRows(students);
             setPagination(response.meta);
         } catch (error) {
+            if (requestId !== latestRequest.current) return;
             console.error('Error fetching students:', error);
             toast.error('Failed to fetch students');
             setRows([]);
         } finally {
-            setLoading(false);
+            if (requestId === latestRequest.current) setLoading(false);
         }
     };
 

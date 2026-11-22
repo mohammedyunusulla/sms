@@ -74,6 +74,8 @@ class ExamService:
                 tenant_session.refresh(new_exam)
                 
                 return new_exam.to_dict()
+        except ValueError:
+            raise  # "Exam code 'X' already exists" came back as a 500 with the message doubled (QA B17)
         except Exception as e:
             raise Exception(f"Failed to create exam type: {str(e)}")
     
@@ -132,6 +134,8 @@ class ExamService:
                 tenant_session.refresh(exam)
                 
                 return exam.to_dict()
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to update exam type: {str(e)}")
     
@@ -617,6 +621,34 @@ class ExamService:
             raise Exception(f"Failed to bulk delete exam timetable entries: {str(e)}")
 
     @staticmethod
+    def _overlapping_configs(session, exam_type_id, exam_date, start_time, end_time):
+        """Seating configs of this exam type on that day whose time overlaps start..end."""
+        query = session.query(ExamSeatingConfig).filter(
+            ExamSeatingConfig.exam_type_id == exam_type_id,
+            ExamSeatingConfig.exam_date == exam_date,
+        )
+        if start_time and end_time:
+            query = query.filter(ExamSeatingConfig.start_time < end_time, ExamSeatingConfig.end_time > start_time)
+        return query.order_by(ExamSeatingConfig.start_time, ExamSeatingConfig.id).all()
+
+    @staticmethod
+    def _student_seating_config(session, entry, enrollment, student_id, exam_type_id):
+        configs = ExamService._overlapping_configs(session, exam_type_id, entry.exam_date, entry.start_time, entry.end_time)
+        # seated in one of them
+        for config in configs:
+            if session.query(SeatingPlan).filter_by(config_id=config.id, student_id=student_id).first():
+                return config
+        # not generated yet: a config that takes the student's class (and section, if it names one)
+        for config in configs:
+            if config.is_generated:
+                continue
+            for assignment in (config.class_assignments or []):
+                if assignment.get('class_id') == enrollment.class_id and \
+                        assignment.get('section_id') in (None, enrollment.section_id):
+                    return config
+        return None
+
+    @staticmethod
     def get_student_exam_timetable(skid, student_id, exam_type_id, academic_year_id=None):
         """
         Get a student's exam timetable enriched with room, seat, and invigilator
@@ -661,15 +693,10 @@ class ExamService:
                 for entry in entries:
                     item = ExamService._enrich_timetable_entry(entry, session)
 
-                    # Find the student's seating assignment for this exam slot
-                    seating_config = session.query(ExamSeatingConfig).join(
-                        SeatingPlan, SeatingPlan.config_id == ExamSeatingConfig.id
-                    ).filter(
-                        SeatingPlan.student_id == student_id,
-                        ExamSeatingConfig.exam_type_id == exam_type_id,
-                        ExamSeatingConfig.exam_date == entry.exam_date,
-                        ExamSeatingConfig.start_time == entry.start_time,
-                    ).first()
+                    # The room booked for this exam (QA D28): a seating config that day whose time overlaps the
+                    # exam's - it had to start at exactly the same minute - and that seats the student, or (seats
+                    # not generated yet) takes their class / section. The invigilator saw the room either way.
+                    seating_config = ExamService._student_seating_config(session, entry, enrollment, student_id, exam_type_id)
 
                     if seating_config:
                         # Get the specific seat plan
@@ -735,7 +762,8 @@ class ExamService:
                     tt_entries = session.query(ExamTimetable).filter(
                         ExamTimetable.exam_type_id == exam_type_id,
                         ExamTimetable.exam_date == config.exam_date,
-                        ExamTimetable.start_time == config.start_time,
+                        ExamTimetable.start_time < config.end_time,
+                        ExamTimetable.end_time > config.start_time,
                     )
                     if academic_year_id:
                         tt_entries = tt_entries.filter(ExamTimetable.academic_year_id == academic_year_id)

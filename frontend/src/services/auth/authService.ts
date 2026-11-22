@@ -14,8 +14,6 @@ import {
     ForgotPasswordResponse,
     ResetPasswordRequest,
     ResetPasswordResponse,
-    SignupRequest,
-    SignupResponse,
 } from '../../types/auth';
 
 const client = getApiClient();
@@ -151,22 +149,6 @@ export const authService = {
     },
 
     /**
-     * Sign up new user
-     */
-    async signup(request: SignupRequest): Promise<SignupResponse> {
-        try {
-            // Note: Response interceptor returns response.data directly, so we need type assertion
-            const response = (await client.post<SignupResponse>(
-                '/auth/signup',
-                request
-            )) as unknown as SignupResponse;
-            return response;
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    /**
      * The logged-in user's own account (GET /auth/me)
      */
     async getMe(): Promise<Record<string, unknown>> {
@@ -227,6 +209,7 @@ export const authService = {
      */
     clearStoredUser() {
         localStorage.removeItem('loggedUser');
+        localStorage.removeItem('parentSelectedChild');
     },
 
     /**

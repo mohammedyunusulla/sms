@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../../../hooks/useAuth';
 import dashboardService, { FinanceSummary } from '../../../services/dashboardService';
+import { formatAmount } from '../../../utils/money';
 
 const formatCurrency = (amount: number): string => {
     if (amount >= 100000) {
@@ -11,7 +12,7 @@ const formatCurrency = (amount: number): string => {
     if (amount >= 1000) {
         return `${(amount / 1000).toFixed(1)}K`;
     }
-    return amount.toLocaleString('en-IN');
+    return formatAmount(amount);
 };
 
 const FinanceSummaryCard: FC = () => {
@@ -190,7 +191,7 @@ const FinanceSummaryCard: FC = () => {
                                     </p>
                                 </div>
                                 <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 ml-2">
-                                    +{payment.amount.toLocaleString('en-IN')}
+                                    +{formatAmount(payment.amount)}
                                 </span>
                             </div>
                         ))}

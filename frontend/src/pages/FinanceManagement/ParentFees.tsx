@@ -4,6 +4,7 @@ import { PageHeader, Skeleton } from '../../components';
 import { financeService } from '../../services/modules/financeService';
 import { useAuthStore } from '../../stores/authStore';
 import { useParentStore } from '../../stores/parentStore';
+import { formatAmount } from '../../utils/money';
 
 type FeeStatus = 'PAID' | 'PARTIAL' | 'PENDING' | 'OVERDUE' | 'CANCELLED';
 
@@ -66,7 +67,7 @@ const STATUS_BADGE: Record<FeeStatus, { label: string; classes: string }> = {
 
 function formatCurrency(amount?: number): string {
     if (amount == null) return '₹0';
-    return `₹${Number(amount).toLocaleString('en-IN')}`;
+    return `₹${formatAmount(amount)}`;
 }
 
 function formatDate(dateStr?: string): string {

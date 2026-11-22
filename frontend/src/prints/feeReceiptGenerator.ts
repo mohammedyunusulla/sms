@@ -14,6 +14,7 @@ import {
     formatDate,
 } from './HeaderAndFooterComponent';
 import type { SchoolData, PdfAction } from './printTypes';
+import { formatAmount } from '../utils/money';
 
 export interface FeeReceiptData {
     receiptNumber: string;
@@ -299,21 +300,21 @@ export const generateFeeReceiptPdf = async (
                             {
                                 columns: [
                                     { text: 'Total Fee Amount:', bold: true, width: 150, fontSize: 9 },
-                                    { text: `₹ ${totalAmount.toLocaleString('en-IN')}`, fontSize: 9 }
+                                    { text: `₹ ${formatAmount(totalAmount)}`, fontSize: 9 }
                                 ],
                                 margin: [0, 5, 0, 5]
                             },
                             {
                                 columns: [
                                     { text: 'Total Paid:', bold: true, width: 150, fontSize: 9 },
-                                    { text: `₹ ${paidAmount.toLocaleString('en-IN')}`, fontSize: 9, color: '#27ae60' }
+                                    { text: `₹ ${formatAmount(paidAmount)}`, fontSize: 9, color: '#27ae60' }
                                 ],
                                 margin: [0, 5, 0, 5]
                             },
                             {
                                 columns: [
                                     { text: 'Remaining Balance:', bold: true, width: 150, fontSize: 9 },
-                                    { text: `₹ ${balanceAmount.toLocaleString('en-IN')}`, fontSize: 9, color: balanceAmount > 0 ? '#e74c3c' : '#27ae60' }
+                                    { text: `₹ ${formatAmount(balanceAmount)}`, fontSize: 9, color: balanceAmount > 0 ? '#e74c3c' : '#27ae60' }
                                 ],
                                 margin: [0, 5, 0, 0]
                             }
@@ -439,7 +440,7 @@ export const generateFeeSummaryReceiptPdf = async (
                     { text: 'Roll No.:', bold: true, fontSize: 9, border: [true, true, false, true] },
                     { text: rollNumber, fontSize: 9, border: [false, true, false, true] },
                     { text: 'Total Amount:', bold: true, fontSize: 9, border: [false, true, false, true] },
-                    { text: `₹ ${totalAmount.toLocaleString('en-IN')}`, fontSize: 9, border: [false, true, true, true] }
+                    { text: `₹ ${formatAmount(totalAmount)}`, fontSize: 9, border: [false, true, true, true] }
                 ],
                 // Row 3
                 [
@@ -472,8 +473,8 @@ export const generateFeeSummaryReceiptPdf = async (
         ...installmentPayments.map((inst, index) => [
             { text: index + 1, alignment: 'center', fontSize: 9 },
             { text: inst.installmentName, fontSize: 9 },
-            { text: inst.amount.toLocaleString('en-IN'), alignment: 'right', fontSize: 9 },
-            { text: inst.paidAmount.toLocaleString('en-IN'), alignment: 'right', fontSize: 9, color: '#27ae60' },
+            { text: formatAmount(inst.amount), alignment: 'right', fontSize: 9 },
+            { text: formatAmount(inst.paidAmount), alignment: 'right', fontSize: 9, color: '#27ae60' },
             { text: formatDate(inst.paymentDate), alignment: 'center', fontSize: 8 },
             { text: inst.paymentMode, alignment: 'center', fontSize: 8 }
         ])
@@ -505,21 +506,21 @@ export const generateFeeSummaryReceiptPdf = async (
                         {
                             columns: [
                                 { text: 'Total Amount:', bold: true, width: '*', fontSize: 10 },
-                                { text: `₹ ${totalAmount.toLocaleString('en-IN')}`, bold: true, fontSize: 10 }
+                                { text: `₹ ${formatAmount(totalAmount)}`, bold: true, fontSize: 10 }
                             ],
                             margin: [0, 8, 0, 8]
                         },
                         {
                             columns: [
                                 { text: 'Total Paid:', bold: true, width: '*', fontSize: 10 },
-                                { text: `₹ ${totalPaid.toLocaleString('en-IN')}`, bold: true, fontSize: 10, color: '#27ae60' }
+                                { text: `₹ ${formatAmount(totalPaid)}`, bold: true, fontSize: 10, color: '#27ae60' }
                             ],
                             margin: [0, 8, 0, 8]
                         },
                         {
                             columns: [
                                 { text: 'Balance Due:', bold: true, width: '*', fontSize: 10 },
-                                { text: `₹ ${balanceAmount.toLocaleString('en-IN')}`, bold: true, fontSize: 10, color: balanceAmount > 0 ? '#e74c3c' : '#27ae60' }
+                                { text: `₹ ${formatAmount(balanceAmount)}`, bold: true, fontSize: 10, color: balanceAmount > 0 ? '#e74c3c' : '#27ae60' }
                             ],
                             margin: [0, 8, 0, 0]
                         }

@@ -99,7 +99,14 @@ const MarksEntryTable: FC<MarksEntryTableProps> = ({
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                         {students.map((student, index) => {
                             const marks = marksData[student.student_id] || {};
-                            const status = getPassFailStatus(marks.total_marks || 0, marks.is_absent || false);
+                            // marks above the maximum would be refused on save: say so instead of "Pass" (QA B23)
+                            const overMax = !marks.is_absent && (
+                                (marks.total_marks ?? 0) > examConfig.total_max_marks
+                                || (!!examConfig.has_internal_external && ((marks.internal_marks ?? 0) > (examConfig.internal_max_marks || 0)
+                                    || (marks.external_marks ?? 0) > (examConfig.external_max_marks || 0))));
+                            const status = overMax
+                                ? { label: 'Over max', color: '' }
+                                : getPassFailStatus(marks.total_marks || 0, marks.is_absent || false);
 
                             return (
                                 <tr key={student.student_id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
@@ -110,7 +117,7 @@ const MarksEntryTable: FC<MarksEntryTableProps> = ({
 
                                     {/* Roll No Column */}
                                     <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
-                                        {student.student_id}
+                                        {student.roll_number || student.roll_no || '-'}
                                     </td>
 
                                     {/* Student Name Column */}
@@ -196,7 +203,7 @@ const MarksEntryTable: FC<MarksEntryTableProps> = ({
                                     <td className="px-4 py-3 text-center">
                                         {!marks.is_absent && marks.total_marks !== null && (
                                             <Badge
-                                                variant={status.label === 'Pass' ? 'success' : status.label === 'Fail' ? 'danger' : 'secondary'}
+                                                variant={status.label === 'Pass' ? 'success' : status.label === 'Fail' || status.label === 'Over max' ? 'danger' : 'secondary'}
                                                 size="sm"
                                             >
                                                 {status.label}

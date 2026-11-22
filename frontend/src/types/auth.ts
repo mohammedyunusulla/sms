@@ -144,24 +144,3 @@ export interface ResetPasswordResponse {
   message: string;
 }
 
-/**
- * Signup Request
- */
-export interface SignupRequest {
-  name: string;
-  email: string;
-  password: string;
-  password_confirmation: string;
-  role: UserRole;
-  institution_id?: string;
-}
-
-/**
- * Signup Response
- */
-export interface SignupResponse {
-  access_token?: string;
-  refresh_token?: string;
-  message: string;
-  user?: AuthUser;
-}

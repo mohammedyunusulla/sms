@@ -3,7 +3,7 @@
  * Display and manage list of teachers with pagination and actions
  */
 
-import { FC, useEffect, useState } from 'react';
+import { FC, useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import toast from 'react-hot-toast';
 import { PageHeader, LoadingSpinner, DataTable, Button, ConfirmDialog, Badge } from '../../components';
@@ -76,7 +76,11 @@ const TeacherList: FC = () => {
         fetchTeachers(currentPage, pageSize);
     }, [currentPage, pageSize, debouncedSearchTerm, genderFilter, statusFilter]);
 
+    // only the latest request may fill the table: with quick filter changes an older, slower reply
+    // could arrive last and show stale results (QA A37)
+    const latestRequest = useRef(0);
     const fetchTeachers = async (page: number, limit: number) => {
+        const requestId = ++latestRequest.current;
         try {
             setLoading(true);
             const response = await teacherService.list({
@@ -86,6 +90,7 @@ const TeacherList: FC = () => {
                 gender: genderFilter,
                 status: statusFilter,
             });
+            if (requestId !== latestRequest.current) return;
             const teachers = response.data.map((teacher: any, index: number) => ({
                 ...teacher,
                 key: teacher.id,
@@ -94,11 +99,12 @@ const TeacherList: FC = () => {
             setRows(teachers);
             setPagination(response.meta);
         } catch (error) {
+            if (requestId !== latestRequest.current) return;
             console.error('Error fetching teachers:', error);
             toast.error('Failed to fetch teachers');
             setRows([]);
         } finally {
-            setLoading(false);
+            if (requestId === latestRequest.current) setLoading(false);
         }
     };
 

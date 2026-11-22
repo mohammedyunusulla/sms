@@ -75,10 +75,15 @@ const SubjectDialog: FC<ISubjectDialogProps> = ({
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
+        setFormData((prev) => {
+            const next = { ...prev, [name]: value };
+            // a teacher picked for another subject may not teach the new one
+            if (name === 'subjectId' && prev.teacherId) {
+                const teacher = teachers.find((t) => String(t.id) === String(prev.teacherId)) as { subject_ids?: number[] } | undefined;
+                if (Array.isArray(teacher?.subject_ids) && !teacher.subject_ids.map(String).includes(String(value))) next.teacherId = '';
+            }
+            return next;
+        });
     };
 
     const handleSave = () => {
@@ -103,6 +108,12 @@ const SubjectDialog: FC<ISubjectDialogProps> = ({
             type: formData.type as 'Regular' | 'Lab' | 'Tutorial' | 'Practical',
         });
     };
+
+    // teachers list carries subject_ids; an older payload without them keeps everyone
+    const subjectTeachers = teachers.filter((t) => {
+        const ids = (t as { subject_ids?: number[] }).subject_ids;
+        return !formData.subjectId || !Array.isArray(ids) || ids.map(String).includes(String(formData.subjectId));
+    });
 
     return (
         <Modal
@@ -170,13 +181,13 @@ const SubjectDialog: FC<ISubjectDialogProps> = ({
                     />
                 </FormField>
 
-                {/* Teacher Selection */}
+                {/* Teacher Selection: only teachers of the chosen subject (QA B10; the server refuses others) */}
                 <FormField label="Teacher" required>
                     <FormSelect
                         name="teacherId"
                         value={formData.teacherId}
                         onChange={handleChange}
-                        options={teachers.map((t) => ({
+                        options={subjectTeachers.map((t) => ({
                             label: t.full_name || t.name,
                             value: String(t.id),
                         }))}
@@ -184,6 +195,11 @@ const SubjectDialog: FC<ISubjectDialogProps> = ({
                         required
                         disabled={!formData.subjectId}
                     />
+                    {formData.subjectId && subjectTeachers.length === 0 && (
+                        <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                            No teacher teaches this subject yet. Add the subject to a teacher first.
+                        </p>
+                    )}
                 </FormField>
 
                 {/* Room Selection */}

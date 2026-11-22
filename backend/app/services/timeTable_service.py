@@ -292,9 +292,34 @@ class TimetableService:
             raise
 
     @staticmethod
+    def _check_entries(session, entries: Dict) -> None:
+        """
+        Every entry is on a real weekday and its teacher teaches that subject (QA B10: 'Funday' and any
+        teacher / subject pair were accepted). Runs for drafts too. Raises ValueError naming the problem.
+        """
+        from app.models.tenant import TeacherSubject, Subject, SchoolUsers
+        days = {'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'}
+        taught = {(ts.teacher_id, ts.subject_id) for ts in session.query(TeacherSubject).all()}
+        for key, entry in entries.items():
+            day = str(key).split('-', 1)[0]
+            if day not in days:
+                raise ValueError(f"'{day}' isn't a day of the week")
+            subject_id = entry.get('subject_id') or (entry.get('subject') or {}).get('id')
+            teacher_id = entry.get('teacher_id') or (entry.get('teacher') or {}).get('id')
+            if subject_id and teacher_id and (int(teacher_id), int(subject_id)) not in taught:
+                teacher = session.query(SchoolUsers).filter_by(id=int(teacher_id)).first()
+                subject = session.query(Subject).filter_by(id=int(subject_id)).first()
+                raise ValueError(
+                    f"{teacher.full_name if teacher else 'This teacher'} doesn't teach "
+                    f"{subject.subject_name if subject else 'this subject'} ({day} {str(key).split('-', 1)[-1]}). "
+                    f"Add the subject to the teacher first, or choose another teacher.")
+
+    @staticmethod
     def create_or_update_timetable(skid: str, data: Dict, is_draft: bool = False) -> Dict:
         """Create or update timetable with draft support"""
         try:
+            if data.get('semester') is not None:
+                data['semester'] = str(data['semester'])  # stored as text; a number made the lookups fail
             # Validate data only if not saving as draft
             if not is_draft:
                 validation_result = TimetableService.validate_timetable_conflicts(skid, data)
@@ -310,6 +335,7 @@ class TimetableService:
                 from app.models.tenant.TimeTable import Timetable
                 from app.models.tenant.TimeTableEntry import TimetableEntry
                 ensure_timetable_schema(tenant_session, skid)
+                TimetableService._check_entries(tenant_session, data.get('entries') or {})
 
                 # Check if timetable already exists
                 existing_timetable = tenant_session.query(Timetable).filter(
@@ -396,12 +422,15 @@ class TimetableService:
                     'is_draft': is_draft
                 }
                 
+        except ValueError as e:
+            return {'success': False, 'message': str(e)}
         except IntegrityError as e:
             logger.error(f"Integrity error creating timetable: {str(e)}")
             return {'success': False, 'message': 'Timetable validation failed. Check for conflicts.'}
         except Exception as e:
+            # the database's own text used to reach the user (QA D25): log it, show a plain message
             logger.error(f"Error creating timetable: {str(e)}")
-            return {'success': False, 'message': f'Error creating timetable: {str(e)}'}
+            return {'success': False, 'message': "Couldn't save the timetable. Please try again."}
 
     @staticmethod
     def get_timetable_by_id(skid: str, timetable_id: int) -> Optional[Dict]:

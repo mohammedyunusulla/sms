@@ -84,9 +84,26 @@ const RolePermissionsList: FC = () => {
         navigate(`/roles/${role.id}/edit`, { state: { role, mode: 'update' } });
     };
 
-    const handleManagePermissions = (role: any) => {
+    // switch a custom role on / off (QA A36: the server supported it but the page had no button)
+    type ToggleTarget = { id: number | string; role_name: string; is_active?: boolean };
+    const [toggleRole, setToggleRole] = useState<ToggleTarget | null>(null);
+    const handleToggle = (role: ToggleTarget) => {
+        setToggleRole(role);
         setShowActionsMenu(null);
-        navigate(`/roles/${role.id}/edit`, { state: { role, mode: 'update' } });
+    };
+    const handleConfirmToggle = async () => {
+        if (!toggleRole) return;
+        try {
+            setLoading(true);
+            await roleService.toggleStatus(toggleRole.id);
+            toast.success(`Role "${toggleRole.role_name}" ${toggleRole.is_active ? 'switched off' : 'switched on'}`);
+            setToggleRole(null);
+            fetchRoles(currentPage, pageSize);
+        } catch (err) {
+            toast.error((err as Error).message || 'Failed to change the role');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleDelete = (role: any) => {
@@ -220,18 +237,19 @@ const RolePermissionsList: FC = () => {
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
-                                Edit Role
+                                Edit role &amp; permissions
                             </button>
                         )}
-                        {hasPermission(Permission.MANAGE_ROLES) && (
+                        {/* custom roles can be switched off / on; built-in roles can't (owner's rule) */}
+                        {hasPermission(Permission.MANAGE_ROLES) && !rows.find(r => r.id === showActionsMenu)?.is_system_role && (
                             <button
-                                onClick={() => handleManagePermissions(rows.find(r => r.id === showActionsMenu)!)}
+                                onClick={() => handleToggle(rows.find(r => r.id === showActionsMenu)!)}
                                 className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 text-gray-900 dark:text-gray-100"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636a9 9 0 11-12.728 0M12 3v9" />
                                 </svg>
-                                Manage Permissions
+                                {rows.find(r => r.id === showActionsMenu)?.is_active ? 'Switch off' : 'Switch on'}
                             </button>
                         )}
                         {/* Built-in roles can't be deleted (the server refuses) */}
@@ -260,6 +278,20 @@ const RolePermissionsList: FC = () => {
                 isLoading={loading}
                 onConfirm={handleConfirmDelete}
                 onCancel={() => setDeleteConfirmOpen(false)}
+            />
+
+            <ConfirmDialog
+                isOpen={!!toggleRole}
+                title={toggleRole?.is_active ? 'Switch off role' : 'Switch on role'}
+                message={toggleRole?.is_active
+                    ? `People with the role "${toggleRole?.role_name}" lose its permissions until it's switched back on.`
+                    : `People with the role "${toggleRole?.role_name}" get its permissions back.`}
+                type={toggleRole?.is_active ? 'warning' : 'info'}
+                confirmText={toggleRole?.is_active ? 'Switch off' : 'Switch on'}
+                cancelText="Cancel"
+                isLoading={loading}
+                onConfirm={handleConfirmToggle}
+                onCancel={() => setToggleRole(null)}
             />
         </div>
     );

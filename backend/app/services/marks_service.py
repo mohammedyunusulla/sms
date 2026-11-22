@@ -1,6 +1,7 @@
 from app.models.tenant.ExamModels import ExamSubjectConfig
 from app.models.tenant.MarksModels import MarksEntry
 from app.models.tenant.Student import Student
+from app.models.tenant.SchoolUsers import SchoolUsers
 from app.utils.db_manager import switch_to_school_db
 
 class MarksService:
@@ -16,10 +17,18 @@ class MarksService:
                 if 'section_id' not in data:
                     raise ValueError("section_id is required")
                 
-                # Fetch students with their school user info
-                students = tenant_session.query(Student).filter_by(
-                    section_id=data['section_id']
-                ).order_by(Student.roll_no).all()
+                # Fetch the section's active students (deactivated ones were listed too), in roll-number order:
+                # numbers by value, so roll 2 comes before 10 (it was text order - QA B23)
+                students = tenant_session.query(Student).join(
+                    SchoolUsers, SchoolUsers.id == Student.user_id
+                ).filter(
+                    Student.section_id == data['section_id'],
+                    SchoolUsers.is_active.is_(True),
+                ).all()
+                def _roll_key(student):
+                    roll = (student.roll_no or '').strip()
+                    return (0, int(roll), '') if roll.isdigit() else (1, 0, roll.lower() or '~')
+                students.sort(key=_roll_key)
                 
                 if not students:
                     return []

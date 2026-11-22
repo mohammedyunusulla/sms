@@ -9,6 +9,7 @@ import { PageHeader, DataTable, Badge, Button, StatCard, Modal, ConfirmDialog, F
 import { financeService } from '../../services/modules/financeService';
 import { useAuthStore } from '../../stores/authStore';
 import { ISalaryPayment, ISalaryPaymentForm } from '../../types/index';
+import { formatAmount } from '../../utils/money';
 
 const MONTHS = [
     { label: 'January', value: '1' }, { label: 'February', value: '2' },
@@ -170,7 +171,7 @@ const SalaryPayments: FC = () => {
             key: 'basic_salary',
             label: 'Basic',
             className: 'text-right',
-            render: (value: number) => <span>{'\u20B9'}{parseFloat(String(value)).toLocaleString('en-IN')}</span>,
+            render: (value: number) => <span>{'\u20B9'}{formatAmount(value)}</span>,
         },
         {
             key: 'allowances_paid',
@@ -178,7 +179,7 @@ const SalaryPayments: FC = () => {
             className: 'text-right',
             render: (value: any) => {
                 const total = Object.values(value || {}).reduce((sum: number, val: any) => sum + (parseFloat(val) || 0), 0);
-                return <span>{'\u20B9'}{total.toLocaleString('en-IN')}</span>;
+                return <span>{'\u20B9'}{formatAmount(total)}</span>;
             },
         },
         {
@@ -187,7 +188,7 @@ const SalaryPayments: FC = () => {
             className: 'text-right',
             render: (value: any) => {
                 const total = Object.values(value || {}).reduce((sum: number, val: any) => sum + (parseFloat(val) || 0), 0);
-                return <span className="text-red-600 dark:text-red-400">-{'\u20B9'}{total.toLocaleString('en-IN')}</span>;
+                return <span className="text-red-600 dark:text-red-400">-{'\u20B9'}{formatAmount(total)}</span>;
             },
         },
         {
@@ -196,7 +197,7 @@ const SalaryPayments: FC = () => {
             className: 'text-right',
             render: (value: number) => (
                 <span className="font-bold text-green-600 dark:text-green-400">
-                    {'\u20B9'}{parseFloat(String(value)).toLocaleString('en-IN')}
+                    {'\u20B9'}{formatAmount(value)}
                 </span>
             ),
         },
@@ -266,9 +267,9 @@ const SalaryPayments: FC = () => {
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <StatCard title="Paid Salaries" value={`\u20B9${totals.paid.toLocaleString('en-IN')}`} icon="✅" />
-                <StatCard title="Pending Salaries" value={`\u20B9${totals.pending.toLocaleString('en-IN')}`} icon="⏳" />
-                <StatCard title="Total Amount" value={`\u20B9${totals.total.toLocaleString('en-IN')}`} icon="💰" />
+                <StatCard title="Paid Salaries" value={`\u20B9${formatAmount(totals.paid)}`} icon="✅" />
+                <StatCard title="Pending Salaries" value={`\u20B9${formatAmount(totals.pending)}`} icon="⏳" />
+                <StatCard title="Total Amount" value={`\u20B9${formatAmount(totals.total)}`} icon="💰" />
             </div>
 
             {/* Payments Table */}
@@ -320,7 +321,7 @@ const SalaryPayments: FC = () => {
                         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
                             <p className="font-semibold text-gray-900 dark:text-white">Staff: {selectedPayment.staff_name}</p>
                             <p className="text-sm text-gray-700 dark:text-gray-300">
-                                Amount: {'\u20B9'}{parseFloat(String(selectedPayment.net_amount_paid)).toLocaleString('en-IN')}
+                                Amount: {'\u20B9'}{formatAmount(selectedPayment.net_amount_paid)}
                             </p>
                             <p className="text-sm text-gray-700 dark:text-gray-300">
                                 Period: {selectedPayment.payment_month}/{selectedPayment.payment_year}

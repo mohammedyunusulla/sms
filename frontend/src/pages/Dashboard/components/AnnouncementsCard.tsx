@@ -2,6 +2,8 @@ import { FC, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../../../hooks/useAuth';
+import { usePermissions } from '../../../hooks/usePermissions';
+import { Permission } from '../../../config/permissions';
 import dashboardService, { AnnouncementItem } from '../../../services/dashboardService';
 
 const AnnouncementsCard: FC = () => {
@@ -12,7 +14,12 @@ const AnnouncementsCard: FC = () => {
 
     const skid = user?.skid || '';
     const academicYearId = user?.current_academic_year?.id;
-    const canFetch = Boolean(skid && academicYearId);
+    // Staff need the announcements tick (the server refuses them otherwise and the box showed "Failed to load
+    // announcements"); students and parents always see their school's announcements.
+    const { hasAnyPermission } = usePermissions();
+    const canSee = user?.role === 'STUDENT' || user?.role === 'PARENT'
+        || hasAnyPermission([Permission.VIEW_ANNOUNCEMENTS, Permission.MANAGE_ANNOUNCEMENTS]);
+    const canFetch = Boolean(skid && academicYearId && canSee);
 
     useEffect(() => {
         if (canFetch) {
@@ -41,7 +48,9 @@ const AnnouncementsCard: FC = () => {
     };
 
     if (!canFetch) {
-        return (
+        if (!canSee) return null;
+
+    return (
             <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-6 h-full">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Announcements</h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
