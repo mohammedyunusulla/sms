@@ -226,7 +226,8 @@ class ClassService:
         """
         try:
             with switch_to_school_db(skid) as tenant_session:
-                sections = tenant_session.query(Section).filter_by(class_id=class_id).all()
+                # by name: with no order the tabs swapped after an edit (QA A39)
+                sections = tenant_session.query(Section).filter_by(class_id=class_id).order_by(Section.section_name, Section.id).all()
     
                 for section in sections:
                     if section.teacher_id:

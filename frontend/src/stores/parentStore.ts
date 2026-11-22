@@ -31,6 +31,26 @@ interface ParentStore {
     reset: () => void;
 }
 
+// The chosen child survives a reload (it reset to the first child - QA D26). Stored with the parent's id, so
+// another parent signing in on the same device starts from their own first child; cleared at sign-out.
+export const SELECTED_CHILD_KEY = 'parentSelectedChild';
+const currentParentId = (): number | null => {
+    try {
+        return JSON.parse(localStorage.getItem('loggedUser') || 'null')?.school_user_id ?? null;
+    } catch {
+        return null;
+    }
+};
+const rememberedChild = (children: ParentChild[]): ParentChild | null => {
+    try {
+        const saved = JSON.parse(localStorage.getItem(SELECTED_CHILD_KEY) || 'null');
+        if (!saved || saved.parent !== currentParentId()) return null;
+        return children.find((c) => c.student_id === saved.child) || null;
+    } catch {
+        return null;
+    }
+};
+
 export const useParentStore = create<ParentStore>((set) => ({
     children: [],
     selectedChild: null,
@@ -40,11 +60,14 @@ export const useParentStore = create<ParentStore>((set) => ({
     setChildren: (children) =>
         set({
             children,
-            selectedChild: children.length > 0 ? children[0] : null,
+            selectedChild: rememberedChild(children) || (children.length > 0 ? children[0] : null),
             loaded: true,
         }),
 
-    selectChild: (child) => set({ selectedChild: child }),
+    selectChild: (child) => {
+        localStorage.setItem(SELECTED_CHILD_KEY, JSON.stringify({ parent: currentParentId(), child: child?.student_id ?? null }));
+        set({ selectedChild: child });
+    },
 
     setLoading: (loading) => set({ loading }),
 

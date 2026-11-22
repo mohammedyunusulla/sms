@@ -32,7 +32,8 @@ const Badge: FC<IBadgeProps> = ({
     <span
       className={`inline-flex items-center ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
     >
-      {children || text}
+      {/* a 0 counts as content (it showed blank, e.g. Lowest marks 0 - QA B28) */}
+      {children ?? text}
     </span>
   );
 };

@@ -64,8 +64,11 @@ const ExpenseList: FC = () => {
         setShowActionsMenu(showActionsMenu === expenseId ? null : expenseId);
     };
 
+    // a backwards range used to show an empty list with no explanation (QA C30)
+    const dateRangeError = startDate && endDate && endDate < startDate ? 'End date is before the start date' : '';
+
     useEffect(() => {
-        if (academicYearId) fetchExpenses();
+        if (academicYearId && !dateRangeError) fetchExpenses();
     }, [academicYearId, filterCategory, startDate, endDate, academicYearVersion]);
 
     const fetchExpenses = async () => {
@@ -292,6 +295,7 @@ const ExpenseList: FC = () => {
                             type="date"
                             value={endDate}
                             onChange={(e) => setEndDate(e.target.value)}
+                            error={dateRangeError || undefined}
                         />
                     </div>
                     {(filterCategory || startDate || endDate) && (

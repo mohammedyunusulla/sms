@@ -227,6 +227,7 @@ export const authService = {
      */
     clearStoredUser() {
         localStorage.removeItem('loggedUser');
+        localStorage.removeItem('parentSelectedChild');
     },
 
     /**

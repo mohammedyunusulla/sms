@@ -201,6 +201,7 @@ const forceLogout = (): void => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('loggedUser');
+    localStorage.removeItem('parentSelectedChild');
     window.location.href = '/signin';
 };
 
@@ -234,6 +235,7 @@ export const clearAuthToken = (): void => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('loggedUser');
+    localStorage.removeItem('parentSelectedChild');
     getApiClient(); // ensure instance is initialized
     if (apiClient && apiClient.defaults.headers.common) {
         delete apiClient.defaults.headers.common.Authorization;

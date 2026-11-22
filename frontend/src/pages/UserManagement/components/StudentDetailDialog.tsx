@@ -177,7 +177,7 @@ const StudentDetailDialog: FC<IStudentDetailDialogProps> = ({
                                     Admission Number
                                 </label>
                                 <p className="text-gray-900 dark:text-white">
-                                    {studentData.admission_number || '-'}
+                                    {studentData.profile?.admission_number || '-'}
                                 </p>
                             </div>
                             <div>
