@@ -44,9 +44,19 @@ interface PhotoPickerProps {
   disabled?: boolean;
   /** a hint under the buttons, e.g. how to photograph a QR sticker */
   tip?: string;
+  /** keep original image bytes (useful when tiny QR details must survive) */
+  preserveOriginal?: boolean;
 }
 
-export default function PhotoPicker({ photos, onChange, max = 5, label = 'Photos', disabled = false, tip }: PhotoPickerProps) {
+export default function PhotoPicker({
+  photos,
+  onChange,
+  max = 5,
+  label = 'Photos',
+  disabled = false,
+  tip,
+  preserveOriginal = false,
+}: PhotoPickerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
@@ -57,7 +67,9 @@ export default function PhotoPicker({ photos, onChange, max = 5, label = 'Photos
 
   const addFiles = async (picked: File[]) => {
     const accepted: File[] = [];
-    const files = await Promise.all(picked.map((file) => (file.type.startsWith('image/') ? shrinkPhoto(file) : file)));
+    const files = preserveOriginal
+      ? picked
+      : await Promise.all(picked.map((file) => (file.type.startsWith('image/') ? shrinkPhoto(file) : file)));
     for (const file of files) {
       if (!file.type.startsWith('image/')) {
         toast.error(`"${file.name}" is not a photo`);
