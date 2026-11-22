@@ -10,7 +10,7 @@ from google import genai
 # (raw bytes, mime type) — e.g. (b"...", "image/png")
 Image = Tuple[bytes, str]
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
-GEMINI_FALLBACK_MODEL = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-2.5-pro")
+GEMINI_FALLBACK_MODEL = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-3.1-pro-preview")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.2-90b-vision-preview")
 GROQ_API_URL = os.getenv("GROQ_API_URL", "https://api.groq.com/openai/v1/chat/completions")
 CLOUDFLARE_MODEL = os.getenv("CLOUDFLARE_MODEL", "@cf/meta/llama-3.2-90b-vision-instruct")
