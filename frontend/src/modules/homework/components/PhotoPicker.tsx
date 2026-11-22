@@ -1,11 +1,40 @@
 /**
- * Photo picker: "Take photo" (in-page camera: back camera on phones, webcam on laptops) or
- * "Upload photo", with thumbnails and per-photo remove. Used for homework photos (e.g. the board).
+ * Photo picker: "Take photo" or "Upload photo", with thumbnails and per-photo remove. Used for homework
+ * photos (the board, the QR-stickered notebook page, finished pages).
+ *
+ * "Take photo" opens the phone's own camera app on phones (a focused, full-resolution photo; a frame grabbed
+ * from the in-page video was too soft to read a small QR sticker) and the in-page camera on laptops.
+ * Big photos are shrunk in the browser to 2560px on the long side so uploads stay small (the server's proxy
+ * may cap request size) while staying sharper than the old 1920px video frame.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 
 const MAX_BYTES = 8 * 1024 * 1024;
+const SHRINK_ABOVE_BYTES = 1.5 * 1024 * 1024;
+const MAX_SIDE = 2560;
+
+// phones / tablets (touch is the main input): the native camera app is the better camera
+const prefersNativeCamera = () => typeof window !== 'undefined' && !!window.matchMedia?.('(pointer: coarse)').matches;
+
+/** A smaller JPEG copy of a big photo (orientation kept); the original if it can't be decoded here. */
+async function shrinkPhoto(file: File): Promise<File> {
+  if (file.size <= SHRINK_ABOVE_BYTES || typeof createImageBitmap !== 'function') return file;
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.88));
+    if (!blob || blob.size >= file.size) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+  } catch {
+    return file; // e.g. a HEIC photo this browser can't decode: send it as it is
+  }
+}
 
 interface PhotoPickerProps {
   photos: File[];
@@ -13,18 +42,22 @@ interface PhotoPickerProps {
   max?: number;
   label?: string;
   disabled?: boolean;
+  /** a hint under the buttons, e.g. how to photograph a QR sticker */
+  tip?: string;
 }
 
-export default function PhotoPicker({ photos, onChange, max = 5, label = 'Photos', disabled = false }: PhotoPickerProps) {
+export default function PhotoPicker({ photos, onChange, max = 5, label = 'Photos', disabled = false, tip }: PhotoPickerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const previews = useMemo(() => photos.map((file) => URL.createObjectURL(file)), [photos]);
   useEffect(() => () => previews.forEach((url) => URL.revokeObjectURL(url)), [previews]);
 
   const remaining = max - photos.length;
 
-  const addFiles = (files: File[]) => {
+  const addFiles = async (picked: File[]) => {
     const accepted: File[] = [];
+    const files = await Promise.all(picked.map((file) => (file.type.startsWith('image/') ? shrinkPhoto(file) : file)));
     for (const file of files) {
       if (!file.type.startsWith('image/')) {
         toast.error(`"${file.name}" is not a photo`);
@@ -51,7 +84,7 @@ export default function PhotoPicker({ photos, onChange, max = 5, label = 'Photos
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => setCameraOpen(true)}
+          onClick={() => (prefersNativeCamera() ? cameraInputRef.current?.click() : setCameraOpen(true))}
           disabled={disabled || remaining <= 0}
           className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
         >
@@ -73,11 +106,25 @@ export default function PhotoPicker({ photos, onChange, max = 5, label = 'Photos
           className="hidden"
           data-testid="photo-upload-input"
           onChange={(event) => {
-            addFiles(Array.from(event.target.files || []));
+            void addFiles(Array.from(event.target.files || []));
+            event.target.value = '';
+          }}
+        />
+        {/* phones: the camera app's own photo */}
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          data-testid="photo-camera-input"
+          onChange={(event) => {
+            void addFiles(Array.from(event.target.files || []));
             event.target.value = '';
           }}
         />
       </div>
+      {tip && <p className="text-xs text-gray-500 dark:text-gray-400">{tip}</p>}
 
       {photos.length > 0 && (
         <div className="flex flex-wrap gap-2" data-testid="photo-thumbnails">
@@ -100,8 +147,9 @@ export default function PhotoPicker({ photos, onChange, max = 5, label = 'Photos
 
       {cameraOpen && (
         <CameraCapture
+          tip={tip}
           onCapture={(file) => {
-            addFiles([file]);
+            void addFiles([file]);
             setCameraOpen(false);
           }}
           onClose={() => setCameraOpen(false)}
@@ -111,7 +159,7 @@ export default function PhotoPicker({ photos, onChange, max = 5, label = 'Photos
   );
 }
 
-function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) => void; onClose: () => void }) {
+function CameraCapture({ onCapture, onClose, tip }: { onCapture: (file: File) => void; onClose: () => void; tip?: string }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [error, setError] = useState('');
@@ -126,7 +174,7 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) => void
       }
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 3840 }, height: { ideal: 2160 } },
           audio: false,
         });
         if (cancelled) {
@@ -186,6 +234,7 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (file: File) => void
         ) : (
           <video ref={videoRef} playsInline muted className="max-h-[60vh] w-full rounded-lg bg-black object-contain" />
         )}
+        {!error && tip && <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{tip}</p>}
         <div className="mt-3 flex justify-end gap-2">
           <button type="button" onClick={onClose} className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-600 dark:text-gray-200">
             Cancel
