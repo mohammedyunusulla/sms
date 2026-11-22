@@ -16,11 +16,11 @@ GROQ_API_URL = os.getenv("GROQ_API_URL", "https://api.groq.com/openai/v1/chat/co
 CLOUDFLARE_MODEL = os.getenv("CLOUDFLARE_MODEL", "@cf/meta/llama-3.2-90b-vision-instruct")
 CLOUDFLARE_ACCOUNT_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID", "")
 CLOUDFLARE_API_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN", "")
-CLOUDFLARE_API_URL = os.getenv(
-    "CLOUDFLARE_API_URL",
+_cloudflare_api_url = os.getenv("CLOUDFLARE_API_URL")
+CLOUDFLARE_API_URL = _cloudflare_api_url or (
     f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1/chat/completions"
     if CLOUDFLARE_ACCOUNT_ID
-    else "",
+    else ""
 )
 AI_PROVIDER_ORDER = os.getenv("AI_PROVIDER_ORDER", "groq,gemini,cloudflare")
 
