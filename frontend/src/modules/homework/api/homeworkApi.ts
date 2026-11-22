@@ -13,6 +13,8 @@ interface ResourceListEnvelope<T> {
   data: T[];
 }
 
+const AI_GRADING_TIMEOUT_MS = Number(import.meta.env.VITE_AI_GRADING_TIMEOUT_MS || 180000);
+
 export const homeworkApi = {
   async createAssignment(payload: {
     class_id: number;
@@ -118,7 +120,10 @@ export const homeworkApi = {
     const response = await client.post<ApiEnvelope<{ session: HomeworkSession; grading: Record<string, unknown> }>>(
       API_ENDPOINTS.HOMEWORK.SUBMIT(sessionId),
       form,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: AI_GRADING_TIMEOUT_MS,
+      }
     );
     return response.data;
   },
