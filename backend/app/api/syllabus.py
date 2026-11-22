@@ -75,23 +75,31 @@ def get_syllabus_by_id(skid, syllabus_id):
         if user_role == 'TEACHER':
             teacher_id = user.school_user_id
             include_hierarchy = request.args.get('include_hierarchy', 'false').lower() == 'true'
+            # their section's progress; section_id picks one when they teach it in several (QA B33)
             result = SyllabusService.get_syllabus_by_id(
-                skid, syllabus_id, teacher_id, include_hierarchy, merge_section_progress=True
+                skid, syllabus_id, teacher_id, include_hierarchy, merge_section_progress=True,
+                section_id=request.args.get('section_id', type=int)
             )
         else:
             # Admin/Principal can pass teacher_id (int) or 'combined'
             teacher_id_param = request.args.get('teacher_id', type=str)
             include_hierarchy = request.args.get('include_hierarchy', 'false').lower() == 'true'
 
-            if teacher_id_param == 'combined':
+            section_param = request.args.get('section_id', type=int)
+            if section_param:
+                # one section's progress (QA B33)
+                result = SyllabusService.get_syllabus_by_id(
+                    skid, syllabus_id, None, include_hierarchy, section_id=section_param)
+            elif teacher_id_param == 'combined':
                 teacher_ids_param = request.args.get('teacher_ids', type=str)
                 teacher_ids = [int(x) for x in teacher_ids_param.split(',') if x.strip()] if teacher_ids_param else None
                 result = SyllabusService.get_syllabus_combined_progress(skid, syllabus_id, teacher_ids)
             elif teacher_id_param:
-                # Admin per-teacher view: individual progress only (no section-mate merging)
+                # Admin per-teacher view: that teacher's (first) section, read-only
                 result = SyllabusService.get_syllabus_by_id(
                     skid, syllabus_id, int(teacher_id_param), include_hierarchy, merge_section_progress=False
                 )
+                result['is_read_only'] = True
             else:
                 result = SyllabusService.get_syllabus_by_id(skid, syllabus_id, None, include_hierarchy)
 
@@ -462,7 +470,8 @@ def get_syllabus_analytics(skid, syllabus_id):
         user_role = user.role.value if hasattr(user.role, 'value') else user.role
         teacher_id = user.school_user_id if user_role == 'TEACHER' else None
 
-        result = SyllabusService.get_syllabus_analytics(skid, syllabus_id, teacher_id)
+        result = SyllabusService.get_syllabus_analytics(skid, syllabus_id, teacher_id,
+                                                        section_id=request.args.get('section_id', type=int))
         return jsonify({'status': 'success', 'data': result, 'code': 200}), 200
     except ValueError as e:
         return jsonify({'status': 'error', 'message': str(e), 'code': 404}), 404
@@ -515,7 +524,8 @@ def configure_timeline(skid):
         if not data.get('planned_start_date') or not data.get('planned_end_date'):
             return jsonify({'status': 'error', 'message': 'planned_start_date and planned_end_date are required', 'code': 400}), 400
 
-        result = SyllabusService.configure_timeline(skid, teacher_id, item_type, item_id, data)
+        result = SyllabusService.configure_timeline(skid, teacher_id, item_type, item_id, data,
+                                                    section_id=data.get('section_id'))
         return jsonify({'status': 'success', 'data': result, 'code': 200}), 200
     except ValueError as e:
         return jsonify({'status': 'error', 'message': str(e), 'code': 400}), 400
@@ -547,7 +557,7 @@ def start_item(skid):
         if item_type not in ('lesson', 'topic', 'subtopic'):
             return jsonify({'status': 'error', 'message': 'item_type must be lesson, topic, or subtopic', 'code': 400}), 400
 
-        result = SyllabusService.start_item(skid, teacher_id, item_type, item_id)
+        result = SyllabusService.start_item(skid, teacher_id, item_type, item_id, section_id=data.get('section_id'))
         return jsonify({'status': 'success', 'data': result, 'code': 200}), 200
     except ValueError as e:
         return jsonify({'status': 'error', 'message': str(e), 'code': 400}), 400
@@ -583,7 +593,8 @@ def mark_progress(skid):
         if item_type not in ('lesson', 'topic', 'subtopic'):
             return jsonify({'status': 'error', 'message': 'item_type must be lesson, topic, or subtopic', 'code': 400}), 400
 
-        result = SyllabusService.mark_progress(skid, teacher_id, item_type, item_id, is_completed)
+        result = SyllabusService.mark_progress(skid, teacher_id, item_type, item_id, is_completed,
+                                               section_id=data.get('section_id'))
         return jsonify({'status': 'success', 'data': result, 'code': 200}), 200
     except ValueError as e:
         return jsonify({'status': 'error', 'message': str(e), 'code': 400}), 400
@@ -637,10 +648,20 @@ def get_student_syllabus_detail(skid, syllabus_id):
     """Get full syllabus hierarchy with teacher's progress overlay"""
     try:
         teacher_id = request.args.get('teacher_id', type=int)
-        if not teacher_id:
-            return jsonify({'status': 'error', 'message': 'teacher_id query parameter is required', 'code': 400}), 400
+        section_id = request.args.get('section_id', type=int)
+        # a student always sees their own section's progress (QA B33)
+        user = getattr(request, 'current_user', None)
+        role = getattr(getattr(user, 'role', None), 'value', getattr(user, 'role', None))
+        if role == 'STUDENT':
+            from app.utils.db_manager import switch_to_school_db
+            from app.models.tenant import Student
+            with switch_to_school_db(skid) as session:
+                me = session.query(Student).filter_by(user_id=user.school_user_id).first()
+                section_id = me.section_id if me else None
+        if not teacher_id and not section_id:
+            return jsonify({'status': 'error', 'message': 'teacher_id or section_id query parameter is required', 'code': 400}), 400
 
-        result = SyllabusService.get_student_syllabus_detail(skid, syllabus_id, teacher_id)
+        result = SyllabusService.get_student_syllabus_detail(skid, syllabus_id, teacher_id, section_id)
         return jsonify({'status': 'success', 'data': result, 'code': 200}), 200
     except ValueError as e:
         return jsonify({'status': 'error', 'message': str(e), 'code': 404}), 404

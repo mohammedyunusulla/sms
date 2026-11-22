@@ -5,14 +5,15 @@ from datetime import datetime
 
 class SyllabusProgressTracking(BaseModelTenant, BaseModelTenantMixin):
     """
-    Teacher-specific progress tracking for syllabus components.
-    This allows different teachers to have different timelines and
-    completion statuses for the same syllabus content.
+    Progress on syllabus components, kept per SECTION (QA B33): a teacher with sections A and B ticks them
+    separately, and a replacement teacher carries on where the section was. teacher_id is who last recorded it.
+    section_id NULL = a teacher with no section assignment for that syllabus (their own progress, as before).
     """
     __tablename__ = 'syllabus_progress_tracking'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     teacher_id = Column(Integer, ForeignKey('teachers.user_id', ondelete='CASCADE'), nullable=False)
+    section_id = Column(Integer, ForeignKey('sections.id', ondelete='CASCADE'), nullable=True, index=True)
 
     # Links to the hierarchical levels
     item_type = Column(String(50), nullable=False)  # 'syllabus', 'lesson', 'topic', 'subtopic'
@@ -43,6 +44,7 @@ class SyllabusProgressTracking(BaseModelTenant, BaseModelTenantMixin):
         return {
             'id': self.id,
             'teacher_id': self.teacher_id,
+            'section_id': self.section_id,
             'item_type': self.item_type,
             'item_id': self.item_id,
             'planned_start_date': self.planned_start_date.isoformat() if self.planned_start_date else None,

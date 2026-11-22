@@ -76,7 +76,8 @@ class SyllabusService {
         syllabusId: string,
         includeHierarchy: boolean = true,
         teacherId?: number | 'combined',
-        teacherIds?: number[]
+        teacherIds?: number[],
+        sectionId?: number | null
     ): Promise<ISyllabus> {
         const api = getApiClient();
         const schoolId = getSchoolId();
@@ -91,6 +92,9 @@ class SyllabusService {
         }
         if (teacherId === 'combined' && teacherIds && teacherIds.length > 0) {
             url += `&teacher_ids=${teacherIds.join(',')}`;
+        }
+        if (sectionId) {
+            url += `&section_id=${sectionId}`;
         }
 
         const response = await api.get(url);
@@ -327,7 +331,7 @@ class SyllabusService {
     // ============== ANALYTICS OPERATIONS ==============
 
     // Get analytics for a specific syllabus
-    async fetchSyllabusAnalytics(syllabusId: string): Promise<ISyllabusAnalytics> {
+    async fetchSyllabusAnalytics(syllabusId: string, sectionId?: number | null): Promise<ISyllabusAnalytics> {
         const api = getApiClient();
         const schoolId = getSchoolId();
 
@@ -335,7 +339,7 @@ class SyllabusService {
             throw new Error('School ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/analytics/${schoolId}/${syllabusId}`);
+        const response = await api.get(`${this.baseUrl}/analytics/${schoolId}/${syllabusId}${sectionId ? `?section_id=${sectionId}` : ''}`);
         return response.data || response;
     }
 
@@ -360,7 +364,8 @@ class SyllabusService {
     async configureTimeline(
         itemType: string,
         itemId: string,
-        data: { planned_start_date: string; planned_end_date: string; teacher_notes?: string }
+        data: { planned_start_date: string; planned_end_date: string; teacher_notes?: string },
+        sectionId?: number | null
     ): Promise<any> {
         const api = getApiClient();
         const schoolId = getSchoolId();
@@ -373,6 +378,7 @@ class SyllabusService {
             item_type: itemType,
             item_id: itemId,
             ...data,
+            ...(sectionId ? { section_id: sectionId } : {}),
         }) as ApiResponse;
         if (response.code === 200 || response.status === 'success') {
             return response.data;
@@ -381,7 +387,7 @@ class SyllabusService {
     }
 
     // Start teaching a syllabus item (must be configured first)
-    async startItem(itemType: string, itemId: string): Promise<any> {
+    async startItem(itemType: string, itemId: string, sectionId?: number | null): Promise<any> {
         const api = getApiClient();
         const schoolId = getSchoolId();
 
@@ -392,6 +398,7 @@ class SyllabusService {
         const response = await api.post(`${this.baseUrl}/progress/start/${schoolId}`, {
             item_type: itemType,
             item_id: itemId,
+            ...(sectionId ? { section_id: sectionId } : {}),
         }) as ApiResponse;
         if (response.code === 200 || response.status === 'success') {
             return response.data;
@@ -402,7 +409,7 @@ class SyllabusService {
     // ============== PROGRESS MARKING ==============
 
     // Mark a syllabus item as complete/incomplete (teacher only)
-    async markProgress(itemType: string, itemId: string, isCompleted: boolean): Promise<any> {
+    async markProgress(itemType: string, itemId: string, isCompleted: boolean, sectionId?: number | null): Promise<any> {
         const api = getApiClient();
         const schoolId = getSchoolId();
 
@@ -414,6 +421,7 @@ class SyllabusService {
             item_type: itemType,
             item_id: itemId,
             is_completed: isCompleted,
+            ...(sectionId ? { section_id: sectionId } : {}),
         }) as ApiResponse;
         if (response.code === 200 || response.status === 'success') {
             return response.data;
@@ -442,7 +450,7 @@ class SyllabusService {
     }
 
     // Get full syllabus detail with teacher progress (student read-only view)
-    async fetchStudentSyllabusDetail(syllabusId: string, teacherId: string): Promise<ISyllabus> {
+    async fetchStudentSyllabusDetail(syllabusId: string, teacherId: string, sectionId?: string | null): Promise<ISyllabus> {
         const api = getApiClient();
         const schoolId = getSchoolId();
 
@@ -451,7 +459,7 @@ class SyllabusService {
         }
 
         const response = await api.get(
-            `${this.baseUrl}/student-view/${schoolId}/${syllabusId}?teacher_id=${teacherId}`
+            `${this.baseUrl}/student-view/${schoolId}/${syllabusId}?teacher_id=${teacherId}${sectionId ? `&section_id=${sectionId}` : ''}`
         );
         return response.data || response;
     }

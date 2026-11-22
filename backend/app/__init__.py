@@ -167,6 +167,37 @@ def _bootstrap_main_schema(app):
 
 # Columns added to existing school databases after they were created (create_all only builds new tables).
 # Each statement must be safe to run on every start.
+_OLD_PROGRESS = """
+    SELECT p.*, a.section_id AS target_section
+    FROM syllabus_progress_tracking p
+    JOIN teacher_syllabus_assignments a ON a.teacher_id = p.teacher_id AND a.syllabus_id = (CASE p.item_type
+              WHEN 'syllabus' THEN p.item_id
+              WHEN 'lesson' THEN (SELECT l.syllabus_id FROM lessons l WHERE l.id = p.item_id)
+              WHEN 'topic' THEN (SELECT l.syllabus_id FROM topics t JOIN lessons l ON l.id = t.lesson_id WHERE t.id = p.item_id)
+              WHEN 'subtopic' THEN (SELECT l.syllabus_id FROM subtopics s JOIN topics t ON t.id = s.topic_id JOIN lessons l ON l.id = t.lesson_id WHERE s.id = p.item_id)
+            END)
+    WHERE p.section_id IS NULL AND p.is_active
+"""
+SYLLABUS_PROGRESS_CARRY_OVER = f"""
+INSERT INTO syllabus_progress_tracking (teacher_id, section_id, item_type, item_id, planned_start_date, planned_end_date,
+    actual_start_date, actual_end_date, planned_completion_date, actual_completion_date, status, completion_percentage,
+    is_completed, teacher_notes, created_at, updated_at, is_active)
+SELECT DISTINCT ON (o.target_section, o.item_type, o.item_id)
+    o.teacher_id, o.target_section, o.item_type, o.item_id, o.planned_start_date, o.planned_end_date,
+    o.actual_start_date, o.actual_end_date, o.planned_completion_date, o.actual_completion_date, o.status,
+    o.completion_percentage, o.is_completed, o.teacher_notes, o.created_at, o.updated_at, TRUE
+FROM ({_OLD_PROGRESS}) o
+WHERE NOT EXISTS (SELECT 1 FROM syllabus_progress_tracking x WHERE x.section_id = o.target_section
+                  AND x.item_type = o.item_type AND x.item_id = o.item_id AND x.is_active)
+ORDER BY o.target_section, o.item_type, o.item_id,
+    (o.is_completed OR o.status = 'completed') DESC, (o.status = 'in_progress') DESC,
+    o.completion_percentage DESC, o.updated_at DESC
+"""
+SYLLABUS_PROGRESS_RETIRE_COPIED = f"""
+UPDATE syllabus_progress_tracking SET is_active = FALSE
+WHERE id IN (SELECT o.id FROM ({_OLD_PROGRESS}) o)
+"""
+
 TENANT_SCHEMA_UPDATES = (
     "ALTER TABLE IF EXISTS attendance ADD COLUMN IF NOT EXISTS marked_by INTEGER",
     "ALTER TABLE IF EXISTS attendance ADD COLUMN IF NOT EXISTS updated_by INTEGER",
@@ -177,6 +208,15 @@ TENANT_SCHEMA_UPDATES = (
     # built-in roles are marked as such (some schools had Clerk / Bus Staff unmarked, so they could be deleted)
     "UPDATE roles SET is_system_role = TRUE WHERE is_system_role IS DISTINCT FROM TRUE AND role_code IN "
     "('SCHOOL_ADMIN','PRINCIPAL','TEACHER','STUDENT','PARENT','BUS_STAFF','CLERK')",
+    # syllabus progress is kept per section (QA B33)
+    "ALTER TABLE IF EXISTS syllabus_progress_tracking ADD COLUMN IF NOT EXISTS section_id INTEGER "
+    "REFERENCES sections(id) ON DELETE CASCADE",
+    "CREATE INDEX IF NOT EXISTS ix_syllabus_progress_tracking_section_id ON syllabus_progress_tracking (section_id)",
+    # carry-over: old progress (no section) is copied to every section its teacher was assigned to for that
+    # syllabus, so each section starts out showing what it showed before; then the old row is retired.
+    # Runs once in effect: it only touches active rows without a section whose teacher has an assignment.
+    SYLLABUS_PROGRESS_CARRY_OVER,
+    SYLLABUS_PROGRESS_RETIRE_COPIED,
 )
 
 

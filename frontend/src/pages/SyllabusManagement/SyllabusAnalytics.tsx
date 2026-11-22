@@ -1,5 +1,5 @@
 import React, { FC, useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, useSearchParams } from 'react-router';
 import toast from 'react-hot-toast';
 import { PageHeader, Button, LoadingSpinner, Badge } from '../../components';
 import { syllabusService } from '../../services/modules/syllabusService';
@@ -102,6 +102,9 @@ const StatCard: FC<StatCardProps> = ({ title, value, subValue, icon, color }) =>
 
 const SyllabusAnalytics: FC = () => {
     const { id: syllabusId } = useParams<{ id: string }>();
+    // the section whose progress is analysed (QA B33); a teacher's defaults to their first section
+    const [searchParams] = useSearchParams();
+    const sectionId = Number(searchParams.get('section')) || null;
     const navigate = useNavigate();
 
     const [analytics, setAnalytics] = useState<ISyllabusAnalytics | null>(null);
@@ -121,7 +124,7 @@ const SyllabusAnalytics: FC = () => {
                 setError(null);
 
                 const [analyticsData, syllabusData] = await Promise.all([
-                    syllabusService.fetchSyllabusAnalytics(syllabusId),
+                    syllabusService.fetchSyllabusAnalytics(syllabusId, sectionId),
                     syllabusService.fetchSyllabusDetail(syllabusId, false),
                 ]);
 
@@ -136,7 +139,7 @@ const SyllabusAnalytics: FC = () => {
         };
 
         fetchData();
-    }, [syllabusId]);
+    }, [syllabusId, sectionId]);
 
     const breadcrumbs = [
         { label: 'Dashboard', href: '/dashboard' },

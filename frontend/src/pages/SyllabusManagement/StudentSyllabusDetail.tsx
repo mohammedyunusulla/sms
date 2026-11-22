@@ -123,6 +123,7 @@ const StudentSyllabusDetail: FC = () => {
     const { id: syllabusId } = useParams<{ id: string }>();
     const [searchParams] = useSearchParams();
     const teacherId = searchParams.get('teacherId');
+    const sectionId = searchParams.get('sectionId');  // the child's section (QA B33)
     const navigate = useNavigate();
 
     const [syllabus, setSyllabus] = useState<ISyllabus | null>(null);
@@ -143,7 +144,7 @@ const StudentSyllabusDetail: FC = () => {
         try {
             setLoading(true);
             setError(null);
-            const data = await syllabusService.fetchStudentSyllabusDetail(syllabusId, teacherId);
+            const data = await syllabusService.fetchStudentSyllabusDetail(syllabusId, teacherId, sectionId);
             setSyllabus(data);
         } catch (err: any) {
             setError(err.message || 'Failed to fetch syllabus details');
@@ -155,7 +156,7 @@ const StudentSyllabusDetail: FC = () => {
 
     useEffect(() => {
         fetchDetail();
-    }, [syllabusId, teacherId]);
+    }, [syllabusId, teacherId, sectionId]);
 
     const toggleLesson = (lessonId: string) => {
         setExpandedLessons((prev) => {

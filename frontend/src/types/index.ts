@@ -406,6 +406,10 @@ export interface ISyllabus {
     lessons: ILesson[];
     created_at?: string;
     updated_at?: string;
+    /** progress is per section (QA B33): the section shown, and a teacher's sections for the picker */
+    section_id?: number | null;
+    sections?: { section_id: number; label: string }[];
+    is_read_only?: boolean;
 }
 
 export interface ISyllabusFormData {
@@ -486,6 +490,9 @@ export interface ITeacherSectionInfo {
     section_name: string;
     class_id: number;
     class_name: string;
+    /** that section's own progress (QA B33) */
+    completion_percentage?: number;
+    status?: string;
 }
 
 export interface ISyllabusTeacherProgress {
@@ -519,6 +526,9 @@ export interface IStudentSyllabusEntry {
     subject_name: string;
     completion_percentage: number;
     status: string;
+    /** the section this progress is for (QA B33); a teacher gets one row per section */
+    section_id?: number | null;
+    section_label?: string | null;
 }
 
 // ============================================
