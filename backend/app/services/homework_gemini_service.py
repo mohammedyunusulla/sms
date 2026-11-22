@@ -7,6 +7,7 @@ from google import genai
 
 # (raw bytes, mime type) — e.g. (b"...", "image/png")
 Image = Tuple[bytes, str]
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 
 
 class HomeworkGeminiService:
@@ -52,7 +53,7 @@ class HomeworkGeminiService:
             parts.extend(cls._image_parts(student_images))
 
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=GEMINI_MODEL,
             contents=parts,
         )
         return (response.text or "Try solving one step at a time and verify each intermediate value.").strip()
@@ -70,7 +71,7 @@ class HomeworkGeminiService:
             f"Subject: {subject or 'not given'}"
         )
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=GEMINI_MODEL,
             contents=[prompt, *cls._image_parts(images)],
         )
         return (response.text or "").strip()
@@ -145,7 +146,7 @@ class HomeworkGeminiService:
         parts.extend(cls._image_parts(images))
 
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=GEMINI_MODEL,
             contents=parts,
             config={
                 "response_mime_type": "application/json",
