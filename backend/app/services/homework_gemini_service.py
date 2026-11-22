@@ -13,6 +13,16 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 GEMINI_FALLBACK_MODEL = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-2.5-pro")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.2-90b-vision-preview")
 GROQ_API_URL = os.getenv("GROQ_API_URL", "https://api.groq.com/openai/v1/chat/completions")
+CLOUDFLARE_MODEL = os.getenv("CLOUDFLARE_MODEL", "@cf/meta/llama-3.2-90b-vision-instruct")
+CLOUDFLARE_ACCOUNT_ID = os.getenv("CLOUDFLARE_ACCOUNT_ID", "")
+CLOUDFLARE_API_TOKEN = os.getenv("CLOUDFLARE_API_TOKEN", "")
+CLOUDFLARE_API_URL = os.getenv(
+    "CLOUDFLARE_API_URL",
+    f"https://api.cloudflare.com/client/v4/accounts/{CLOUDFLARE_ACCOUNT_ID}/ai/v1/chat/completions"
+    if CLOUDFLARE_ACCOUNT_ID
+    else "",
+)
+AI_PROVIDER_ORDER = os.getenv("AI_PROVIDER_ORDER", "groq,gemini,cloudflare")
 
 
 class HomeworkGeminiService:
@@ -76,13 +86,25 @@ class HomeworkGeminiService:
         return content
 
     @classmethod
-    def _groq_generate_text(cls, parts: List[Any], json_mode: bool = False) -> str:
-        api_key = os.getenv("GROQ_API_KEY")
+    def _openai_compatible_generate_text(
+        cls,
+        *,
+        api_url: str,
+        api_key: str,
+        model: str,
+        provider_name: str,
+        parts: List[Any],
+        json_mode: bool = False,
+    ) -> str:
+        if not api_url:
+            raise ValueError(f"{provider_name}_API_URL is not configured")
         if not api_key:
-            raise ValueError("GROQ_API_KEY is not configured")
+            raise ValueError(f"{provider_name}_API_KEY is not configured")
+        if not model:
+            raise ValueError(f"{provider_name}_MODEL is not configured")
 
         payload: Dict[str, Any] = {
-            "model": GROQ_MODEL,
+            "model": model,
             "messages": [
                 {"role": "user", "content": cls._parts_to_groq_content(parts)}
             ],
@@ -92,7 +114,7 @@ class HomeworkGeminiService:
             payload["response_format"] = {"type": "json_object"}
 
         req = urllib.request.Request(
-            GROQ_API_URL,
+            api_url,
             data=json.dumps(payload).encode("utf-8"),
             headers={
                 "Authorization": f"Bearer {api_key}",
@@ -105,7 +127,7 @@ class HomeworkGeminiService:
                 body = resp.read().decode("utf-8")
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="ignore") if exc.fp else str(exc)
-            raise RuntimeError(f"Groq API error: {detail}") from exc
+            raise RuntimeError(f"{provider_name} API error: {detail}") from exc
 
         parsed = json.loads(body or "{}")
         return (
@@ -116,14 +138,50 @@ class HomeworkGeminiService:
         )
 
     @classmethod
+    def _groq_generate_text(cls, parts: List[Any], json_mode: bool = False) -> str:
+        api_key = os.getenv("GROQ_API_KEY")
+        return cls._openai_compatible_generate_text(
+            api_url=GROQ_API_URL,
+            api_key=api_key or "",
+            model=GROQ_MODEL,
+            provider_name="GROQ",
+            parts=parts,
+            json_mode=json_mode,
+        )
+
+    @classmethod
+    def _cloudflare_generate_text(cls, parts: List[Any], json_mode: bool = False) -> str:
+        return cls._openai_compatible_generate_text(
+            api_url=CLOUDFLARE_API_URL,
+            api_key=CLOUDFLARE_API_TOKEN,
+            model=CLOUDFLARE_MODEL,
+            provider_name="CLOUDFLARE",
+            parts=parts,
+            json_mode=json_mode,
+        )
+
+    @classmethod
     def _generate_text(cls, parts: List[Any], config: Optional[Dict[str, Any]] = None, json_mode: bool = False) -> str:
-        """Primary Gemini path with Groq fallback when configured."""
-        try:
-            return cls._gemini_generate_text(parts, config=config)
-        except Exception as gemini_error:
-            if not os.getenv("GROQ_API_KEY"):
-                raise gemini_error
-            return cls._groq_generate_text(parts, json_mode=json_mode)
+        """Provider chain: groq -> gemini -> cloudflare (configurable via AI_PROVIDER_ORDER)."""
+        errors: List[str] = []
+        providers = [p.strip().lower() for p in AI_PROVIDER_ORDER.split(",") if p.strip()]
+        if not providers:
+            providers = ["groq", "gemini", "cloudflare"]
+
+        for provider in providers:
+            try:
+                if provider == "groq":
+                    return cls._groq_generate_text(parts, json_mode=json_mode)
+                if provider == "gemini":
+                    return cls._gemini_generate_text(parts, config=config)
+                if provider == "cloudflare":
+                    return cls._cloudflare_generate_text(parts, json_mode=json_mode)
+                errors.append(f"unknown provider '{provider}'")
+            except Exception as exc:
+                errors.append(f"{provider}: {exc}")
+                continue
+
+        raise RuntimeError("All AI providers failed: " + " | ".join(errors))
 
     @classmethod
     def generate_socratic_hint(
