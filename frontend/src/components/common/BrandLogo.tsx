@@ -11,14 +11,14 @@ export default function Logo({ className = LOGO_HEIGHT }: { className?: string }
       <img
         src="/images/logo/eduspyre/eduspyre-logo-light.png"
         alt="EduSpyre"
-        width={734}
+        width={931}
         height={256}
         className={`${className} w-auto dark:hidden`}
       />
       <img
         src="/images/logo/eduspyre/eduspyre-logo-dark.png"
         alt="EduSpyre"
-        width={734}
+        width={931}
         height={256}
         className={`${className} hidden w-auto dark:block`}
       />

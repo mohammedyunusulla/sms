@@ -40,9 +40,9 @@ export default function AuthShowcase() {
           className="self-start rounded-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/30"
         >
           <img
-            src="/images/logo/eduspyre/eduspyre-logo-dark.png"
+            src="/images/logo/eduspyre/eduspyre-logo-white.png"  /* all white: the coloured mark blends into this blue panel */
             alt="EduSpyre home"
-            width={734}
+            width={931}
             height={256}
             className="h-[37px] w-auto"
           />
