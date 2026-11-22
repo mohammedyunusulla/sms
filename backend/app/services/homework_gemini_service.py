@@ -1,6 +1,8 @@
 import base64
 import json
 import os
+import urllib.error
+import urllib.request
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from google import genai
@@ -8,6 +10,9 @@ from google import genai
 # (raw bytes, mime type) — e.g. (b"...", "image/png")
 Image = Tuple[bytes, str]
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+GEMINI_FALLBACK_MODEL = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-2.5-pro")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.2-90b-vision-preview")
+GROQ_API_URL = os.getenv("GROQ_API_URL", "https://api.groq.com/openai/v1/chat/completions")
 
 
 class HomeworkGeminiService:
@@ -27,6 +32,100 @@ class HomeworkGeminiService:
         ]
 
     @classmethod
+    def _gemini_generate_text(cls, parts: List[Any], config: Optional[Dict[str, Any]] = None) -> str:
+        """Try Gemini primary model, then optional Gemini fallback model."""
+        client = cls._get_client()
+        last_error: Optional[Exception] = None
+        seen_models = set()
+        for model in [GEMINI_MODEL, GEMINI_FALLBACK_MODEL]:
+            if not model:
+                continue
+            if model in seen_models:
+                continue
+            seen_models.add(model)
+            try:
+                response = client.models.generate_content(
+                    model=model,
+                    contents=parts,
+                    config=config,
+                )
+                return (response.text or "").strip()
+            except Exception as exc:
+                last_error = exc
+                continue
+        if last_error:
+            raise last_error
+        raise RuntimeError("No Gemini model is configured")
+
+    @staticmethod
+    def _parts_to_groq_content(parts: List[Any]) -> List[Dict[str, Any]]:
+        content: List[Dict[str, Any]] = []
+        for part in parts:
+            if isinstance(part, str):
+                content.append({"type": "text", "text": part})
+                continue
+            if isinstance(part, dict) and "inline_data" in part:
+                inline = part.get("inline_data") or {}
+                mime = inline.get("mime_type") or "image/jpeg"
+                data = inline.get("data") or ""
+                if data:
+                    content.append({
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{mime};base64,{data}"},
+                    })
+        return content
+
+    @classmethod
+    def _groq_generate_text(cls, parts: List[Any], json_mode: bool = False) -> str:
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            raise ValueError("GROQ_API_KEY is not configured")
+
+        payload: Dict[str, Any] = {
+            "model": GROQ_MODEL,
+            "messages": [
+                {"role": "user", "content": cls._parts_to_groq_content(parts)}
+            ],
+            "temperature": 0.2,
+        }
+        if json_mode:
+            payload["response_format"] = {"type": "json_object"}
+
+        req = urllib.request.Request(
+            GROQ_API_URL,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=90) as resp:
+                body = resp.read().decode("utf-8")
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="ignore") if exc.fp else str(exc)
+            raise RuntimeError(f"Groq API error: {detail}") from exc
+
+        parsed = json.loads(body or "{}")
+        return (
+            parsed.get("choices", [{}])[0]
+            .get("message", {})
+            .get("content", "")
+            .strip()
+        )
+
+    @classmethod
+    def _generate_text(cls, parts: List[Any], config: Optional[Dict[str, Any]] = None, json_mode: bool = False) -> str:
+        """Primary Gemini path with Groq fallback when configured."""
+        try:
+            return cls._gemini_generate_text(parts, config=config)
+        except Exception as gemini_error:
+            if not os.getenv("GROQ_API_KEY"):
+                raise gemini_error
+            return cls._groq_generate_text(parts, json_mode=json_mode)
+
+    @classmethod
     def generate_socratic_hint(
         cls,
         assignment_title: str,
@@ -35,7 +134,6 @@ class HomeworkGeminiService:
         student_images: Optional[Sequence[Image]] = None,
         instruction_images: Optional[Sequence[Image]] = None,
     ) -> str:
-        client = cls._get_client()
         prompt = (
             "You are a strict Socratic tutor for school homework.\n"
             "Never provide the final direct answer.\n"
@@ -52,16 +150,12 @@ class HomeworkGeminiService:
             parts.append("Student's work so far:")
             parts.extend(cls._image_parts(student_images))
 
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=parts,
-        )
-        return (response.text or "Try solving one step at a time and verify each intermediate value.").strip()
+        text = cls._generate_text(parts)
+        return text or "Try solving one step at a time and verify each intermediate value."
 
     @classmethod
     def extract_instructions(cls, images: Sequence[Image], subject: str = "") -> str:
         """Draft homework instructions from photos (e.g. of the board) for the teacher to edit."""
-        client = cls._get_client()
         prompt = (
             "These photos show school homework written on a board or a page.\n"
             "Write out the homework exactly as given, as clear plain-text instructions for students:\n"
@@ -70,11 +164,7 @@ class HomeworkGeminiService:
             "- if part of the photo is unreadable, write [unclear] there\n"
             f"Subject: {subject or 'not given'}"
         )
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=[prompt, *cls._image_parts(images)],
-        )
-        return (response.text or "").strip()
+        return cls._generate_text([prompt, *cls._image_parts(images)])
 
     @classmethod
     def grade_submission(
@@ -86,7 +176,6 @@ class HomeworkGeminiService:
         instruction_images: Optional[Sequence[Image]] = None,
         start_image: Optional[Image] = None,
     ) -> Dict[str, Any]:
-        client = cls._get_client()
         grading_schema = {
             "type": "object",
             "properties": {
@@ -145,15 +234,15 @@ class HomeworkGeminiService:
         parts.append("Student's notebook pages:")
         parts.extend(cls._image_parts(images))
 
-        response = client.models.generate_content(
-            model=GEMINI_MODEL,
-            contents=parts,
+        response_text = cls._generate_text(
+            parts,
             config={
                 "response_mime_type": "application/json",
                 "response_schema": grading_schema,
             },
+            json_mode=True,
         )
-        parsed = json.loads(response.text or "{}")
+        parsed = json.loads(response_text or "{}")
         parsed["accuracy_score"] = float(parsed.get("accuracy_score", 0))
         if "overall_summary" not in parsed and "overall_feedback" in parsed:
             parsed["overall_summary"] = parsed["overall_feedback"]
