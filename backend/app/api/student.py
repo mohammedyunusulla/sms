@@ -64,12 +64,21 @@ def create_student(skid):
         from app.utils.form_input import clean_payload, missing_fields_message, error
         from app.utils.helpers import validate_password
         data = clean_payload(data, STUDENT_OPTIONAL_FIELDS)
-        missing = missing_fields_message(data, STUDENT_REQUIRED_FIELDS)
+        # On the Basic plan students get no login, so no password is asked for (it was required and then
+        # silently thrown away - QA A40); Standard / Premium create the login and need one.
+        from app.models.main.School import School, SchoolPlan
+        school = School.query.filter_by(skid=skid).first()
+        creates_login = bool(school and school.plan in (SchoolPlan.STANDARD, SchoolPlan.PREMIUM))
+        required = STUDENT_REQUIRED_FIELDS if creates_login else tuple(f for f in STUDENT_REQUIRED_FIELDS if f[0] != 'password')
+        missing = missing_fields_message(data, required)
         if missing:
             return error(missing, 400)
-        ok, password_error = validate_password(data['password'])
-        if not ok:
-            return error(password_error, 400)
+        if creates_login:
+            ok, password_error = validate_password(data['password'])
+            if not ok:
+                return error(password_error, 400)
+        else:
+            data.pop('password', None)
 
         duplicate_check = StudentService.check_duplicate_user(data, skid)
         if duplicate_check:

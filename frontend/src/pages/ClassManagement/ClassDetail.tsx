@@ -113,8 +113,7 @@ const ClassDetail: FC = () => {
         }
         setShowSectionModal(true);
         try {
-            const response = await teacherService.list();
-            setTeachers(response.data);
+            setTeachers(await teacherService.listAll());
         } catch (error) {
             toast.error('Failed to fetch teachers');
         }

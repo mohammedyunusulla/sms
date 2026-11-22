@@ -53,6 +53,20 @@ class TeacherService {
     }
 
     /**
+     * Every active teacher, for dropdowns. list() with no params returned only the first 10 (the server's
+     * default page size), so bigger schools saw part of their staff in timetable / section / seating forms.
+     */
+    async listAll(): Promise<ITeacherListResponse['data']> {
+        const all: ITeacherListResponse['data'] = [];
+        for (let page = 1; page <= 50; page++) {
+            const res = await this.list({ page, limit: 100, status: 'active' });
+            all.push(...res.data);
+            if (!res.meta || page >= (res.meta.totalPages || 1)) break;
+        }
+        return all;
+    }
+
+    /**
      * Get single teacher by ID
      */
     async getById(id: string): Promise<any> {

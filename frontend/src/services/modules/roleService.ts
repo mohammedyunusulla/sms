@@ -140,6 +140,20 @@ class RoleService {
     }
 
     /**
+     * Switch a custom role on / off (QA A36). Backend: PATCH /roles/toggleRole/<skid>/<role_id>
+     * The server refuses built-in roles.
+     */
+    async toggleStatus(id: string | number): Promise<unknown> {
+        const api = getApiClient();
+        const schoolId = this.getSchoolIdOrThrow();
+        const response = (await api.patch(`${this.baseUrl}/toggleRole/${schoolId}/${id}`)) as ApiResponse;
+        if (response.code === 200 && response.status === 'success') {
+            return response.data;
+        }
+        throw new Error(response.message || 'Failed to change the role');
+    }
+
+    /**
      * Assign permissions to role
      * Backend: PUT /roles/addPermissionsToRole/<skid>/<role_id>
      * Permissions are stored as a flat string array on the Role model

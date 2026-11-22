@@ -97,8 +97,7 @@ const TimetableCreate: FC = () => {
                 const classesResponse = await classService.list();
                 setClasses(classesResponse);
 
-                const teachersResponse = await teacherService.list();
-                setTeachers(teachersResponse.data);
+                setTeachers(await teacherService.listAll());
 
                 const roomsResponse = await roomService.list({ is_active: true });
                 setRooms(Array.isArray(roomsResponse) ? roomsResponse : roomsResponse?.data || []);

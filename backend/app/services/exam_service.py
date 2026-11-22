@@ -74,6 +74,8 @@ class ExamService:
                 tenant_session.refresh(new_exam)
                 
                 return new_exam.to_dict()
+        except ValueError:
+            raise  # "Exam code 'X' already exists" came back as a 500 with the message doubled (QA B17)
         except Exception as e:
             raise Exception(f"Failed to create exam type: {str(e)}")
     
@@ -132,6 +134,8 @@ class ExamService:
                 tenant_session.refresh(exam)
                 
                 return exam.to_dict()
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to update exam type: {str(e)}")
     

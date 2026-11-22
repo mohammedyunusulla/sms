@@ -85,7 +85,11 @@ const ExamSubjectConfigForm: FC<ExamSubjectConfigFormProps> = ({
     }
 
     // Min passing marks validation
-    if (!formData.min_passing_marks || formData.min_passing_marks < 0) {
+    // 0 is a valid pass mark (it was refused as "cannot be negative" - QA B17)
+    const passing = formData.min_passing_marks as unknown;
+    if (passing === '' || passing === null || passing === undefined || Number.isNaN(Number(passing))) {
+      newErrors.min_passing_marks = 'Enter the passing marks';
+    } else if (Number(passing) < 0) {
       newErrors.min_passing_marks = 'Minimum passing marks cannot be negative';
     }
 
