@@ -1,3 +1,4 @@
+from app.utils.validators import to_date
 from flask import Blueprint, request, jsonify
 from app.services.expense_service import ExpenseService
 from app.decorators import login_required, log_actions
@@ -164,6 +165,11 @@ def get_expenses(skid):
             'start_date': request.args.get('start_date'),
             'end_date': request.args.get('end_date')
         }
+        # a bad date reached the database and came back as a psycopg2 error (QA D25)
+        if filters['start_date']:
+            to_date(filters['start_date'], "From date")
+        if filters['end_date']:
+            to_date(filters['end_date'], "To date")
         expenses = ExpenseService.get_expenses(skid, filters)
         return jsonify({
             'expenses': expenses,

@@ -1083,6 +1083,10 @@ export interface IConfirmDialogProps {
     type?: 'info' | 'warning' | 'danger' | 'success';
     isDangerous?: boolean; // Alias for type="danger"
     isLoading?: boolean;
+    /** extra content under the message (e.g. a "type the code to confirm" box) */
+    children?: React.ReactNode;
+    /** keeps the confirm button off (e.g. until the code is typed) */
+    confirmDisabled?: boolean;
 }
 
 // ============================================

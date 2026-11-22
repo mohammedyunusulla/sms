@@ -36,7 +36,6 @@ class DatabaseManager:
                 user=Config.POSTGRES_USER,
                 password=Config.POSTGRES_PASSWORD,
             )
-            print("conn----------", conn)
             conn.set_isolation_level(ISOLATION_LEVEL_AUTOCOMMIT)
             # Create database
             cursor = conn.cursor()
@@ -51,7 +50,7 @@ class DatabaseManager:
                 logger.warning(f"Database already exists: {db_name}")
                 return db_name
             else:
-                print("error in db creation", str(e))
+                _log.error("error in db creation", str(e))
                 raise Exception(f"Failed to create database: {str(e)}")
     
     @staticmethod
@@ -59,7 +58,6 @@ class DatabaseManager:
         """Initialize tables and schema for school database"""
         try:
             engine = get_tenant_engine(db_name)
-            print("engine----------", engine)
             BaseModelTenant.metadata.create_all(engine)
             # Student.__table__.create(bind=engine, checkfirst=True)
             # Teacher.__table__.create(bind=engine, checkfirst=True)
@@ -79,7 +77,7 @@ class DatabaseManager:
             logger.info(f"Schema initialized successfully for database: {db_name}")
             
         except psycopg2.Error as e:
-            print("error in schema initialization", str(e))
+            _log.error("error in schema initialization", str(e))
             raise Exception(f"Failed to initialize schema: {str(e)}")
     
 
@@ -135,6 +133,8 @@ class DatabaseManager:
 
 
 from contextlib import contextmanager
+import logging
+_log = logging.getLogger(__name__)
 @contextmanager
 def switch_to_school_db(skid):
     # Dynamically build DB URI

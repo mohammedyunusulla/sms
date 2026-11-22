@@ -9,6 +9,8 @@ from flask import jsonify
 from app.utils.db_manager import switch_to_school_db
 from app.services.userRole_service import UserRolesService
 from datetime import datetime, date, timedelta
+import logging
+_log = logging.getLogger(__name__)
 
 class StudentService:
 
@@ -136,7 +138,7 @@ class StudentService:
                 try:
                     remove_school_user(skid, school_user_id)
                 except Exception as cleanup_err:
-                    print(f"[Cleanup failed] Could not remove school user {school_user_id}: {cleanup_err}")
+                    _log.error(f"[Cleanup failed] Could not remove school user {school_user_id}: {cleanup_err}")
 
             raise Exception(f"Failed to create school user: {str(e)}")
 
@@ -617,7 +619,7 @@ class StudentService:
                             'mother_qualification': parent_obj.mother_qualification
                         }
                     except (ValueError, TypeError, AttributeError) as e:
-                        print(f"Error unpacking parent data: {e}")
+                        _log.error(f"Error unpacking parent data: {e}")
                         parent_data = None
                 
                 # ✅ Set parent data outside the if block
@@ -897,7 +899,7 @@ class StudentService:
                         try:
                             remove_school_user(skid, school_user_id)
                         except Exception as cleanup_err:
-                            print(f"[Cleanup failed] Could not remove school user {school_user_id}: {cleanup_err}")
+                            _log.error(f"[Cleanup failed] Could not remove school user {school_user_id}: {cleanup_err}")
 
                     # Translate noisy DB errors into a friendly message.
                     if isinstance(e, IntegrityError):

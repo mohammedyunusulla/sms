@@ -6,6 +6,8 @@ from app.models.tenant.Class import Class
 from app.utils.db_manager import switch_to_school_db
 from sqlalchemy import func, or_
 from datetime import date
+import logging
+_log = logging.getLogger(__name__)
 
 
 def _progress_card_attendance(tenant_session, student, exam_id):
@@ -105,6 +107,8 @@ class ProgressCardService:
                     'class_name': class_info.class_name,
                     'section_name': section.section_name
                 }
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to fetch class info: {str(e)}")
 
@@ -432,6 +436,8 @@ class ProgressCardService:
                     # Real attendance (None = nothing marked yet; the card then hides the box)
                     'attendance': _progress_card_attendance(tenant_session, student, exam_id),
                 }
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to calculate progress card: {str(e)}")
 
@@ -553,6 +559,8 @@ class ProgressCardService:
                     },
                     'exam_results': exam_results
                 }
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Failed to fetch annual report: {str(e)}")
 
@@ -604,5 +612,5 @@ class ProgressCardService:
             
             return len(students)
         except Exception as e:
-            print(f"Error calculating rank: {str(e)}")
+            _log.error(f"Error calculating rank: {str(e)}")
             return 0

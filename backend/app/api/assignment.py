@@ -1,3 +1,4 @@
+from app.utils.validators import to_date
 from flask import Blueprint, request, jsonify
 from app.services.assignment_service import AssignmentService
 from app.decorators import log_actions, login_required
@@ -146,6 +147,7 @@ def list_assignments(skid):
                 'code': 400
             }), 400
 
+        to_date(date, "Date")  # a bad date was a 500 with Python's parser message (QA D25)
         data = AssignmentService.get_assignments_by_date(skid, int(teacher_id), date, int(academic_year_id))
         return jsonify({
             'message': 'Assignments fetched successfully',
@@ -155,6 +157,8 @@ def list_assignments(skid):
             'code': 200
         }), 200
 
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
     except Exception as e:
         return jsonify({'message': f'Failed to fetch assignments: {str(e)}', 'status': 'error', 'code': 500}), 500
 
@@ -228,6 +232,8 @@ def get_student_assignments(skid):
                 'code': 400
             }), 400
 
+        if date:
+            to_date(date, "Date")
         data = AssignmentService.get_student_assignments(skid, int(student_id), int(academic_year_id), date)
         return jsonify({
             'message': 'Student assignments fetched successfully',

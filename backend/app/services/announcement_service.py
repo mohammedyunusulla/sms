@@ -6,6 +6,8 @@ from app.models.tenant.Announcement import Announcement
 from sqlalchemy import and_, or_, cast, case, func
 from sqlalchemy.dialects.postgresql import JSONB
 from datetime import datetime
+import logging
+_log = logging.getLogger(__name__)
 
 
 def _day_value(value, label):
@@ -167,7 +169,7 @@ class AnnouncementService:
                 
         except Exception as e:
             import traceback
-            print(traceback.format_exc())
+            _log.error(traceback.format_exc())
             raise Exception(f"Failed to get announcements: {str(e)}")
     
     
@@ -179,7 +181,6 @@ class AnnouncementService:
         user_role = user_info.get('role')
         school_user_id = user_info.get('school_user_id')
         
-        print(f"Filtering - Role: {user_role}, User ID: {school_user_id}")
         
         # Admin/Principal can see all
         if user_role in ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL']:

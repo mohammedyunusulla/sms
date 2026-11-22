@@ -37,7 +37,6 @@ def create_syllabus(skid):
 
         # Use school_user_id which links to the ID in the tenant's teachers table
         teacher_id = user.school_user_id
-        print("tenant_teacher_id--------", teacher_id)
         # Validate required fields
         if not data.get('subject_id'):
             raise ValueError("Subject ID is required")

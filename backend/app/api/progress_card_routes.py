@@ -25,6 +25,8 @@ def get_my_class(skid, teacher_id):
             'status': 'success',
             'code': 200
         }), 200
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 404}), 404
     except Exception as e:
         return jsonify({'message': str(e), 'status': 'error', 'code': 500}), 500
 
@@ -106,6 +108,8 @@ def view_progress_card(skid, student_id, exam_id):
             'status': 'success',
             'code': 200
         }), 200
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 404}), 404
     except Exception as e:
         return jsonify({'message': str(e), 'status': 'error', 'code': 500}), 500
 
@@ -142,5 +146,7 @@ def view_annual_report(skid, student_id):
             'status': 'success',
             'code': 200
         }), 200
+    except ValueError as e:
+        return jsonify({'message': str(e), 'status': 'error', 'code': 404}), 404
     except Exception as e:
         return jsonify({'message': str(e), 'status': 'error', 'code': 500}), 500

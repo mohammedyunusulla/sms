@@ -44,7 +44,7 @@ def get_dashboard_stats(skid):
         }), 500
 
 
-@school_admin_dashboard_bp.route('/announcements', methods=['GET'])
+@school_admin_dashboard_bp.route('/announcements/<skid>', methods=['GET'])
 @login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], self_service=True)
 def get_announcements(skid):
     """Get announcements for school admin dashboard"""
@@ -59,9 +59,10 @@ def get_announcements(skid):
             }), 400
         
         # Get user info from request context (set by decorator)
+        user = request.current_user
         user_info = {
-            'role': request.user_role,
-            'school_user_id': request.school_user_id
+            'role': user.role.value if hasattr(user.role, 'value') else user.role,
+            'school_user_id': user.school_user_id
         }
         
         announcements = AnnouncementService.get_announcements(
@@ -91,7 +92,9 @@ def get_monthly_expense_breakdown(skid):
     try:
         academic_year_id = request.args.get('academic_year_id')
         month = request.args.get('month', type=int)
-        
+        if month is not None and not 1 <= month <= 12:
+            return jsonify({'message': 'Choose a month from 1 to 12', 'status': 'error', 'code': 400}), 400
+
         breakdown = SchoolAdminDashboardService.get_monthly_expenses_by_category(
             skid, 
             academic_year_id, 

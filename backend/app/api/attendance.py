@@ -1,3 +1,4 @@
+from app.utils.validators import to_date
 from flask import Blueprint, request, jsonify
 from app.services.attendance_service import AttendanceService
 from app.decorators import log_actions, login_required
@@ -113,7 +114,8 @@ def get_attendance(skid, section_id, date):
     try:
         if not skid or not section_id or not date:
             raise ValueError("School ID, Section ID, and Date are required")
-            
+        to_date(date, "Date")  # plain message instead of Python's parser text (QA D25)
+
         attendance = AttendanceService.get_attendance(skid, section_id, date)
         
         return jsonify({

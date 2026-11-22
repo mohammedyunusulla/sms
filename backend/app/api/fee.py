@@ -54,7 +54,6 @@ def get_fee_structures(skid):
     try:
         academic_year_id = request.args.get('academic_year_id')
         class_id = request.args.get('class_id')
-        print("Academic year id-------", academic_year_id)
         result = FeeService.get_fee_structures(skid, academic_year_id, class_id)
         
         return jsonify({

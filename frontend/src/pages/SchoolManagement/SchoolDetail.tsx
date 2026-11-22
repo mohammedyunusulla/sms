@@ -12,6 +12,7 @@ import {
     Badge,
     LoadingSpinner,
     EmptyState,
+    ConfirmDialog,
 } from '../../components';
 import { schoolService } from '../../services/modules/schoolService';
 import { usePermissions } from '../../hooks/usePermissions';
@@ -51,21 +52,27 @@ const SchoolDetail: FC = () => {
     }, [id]);
 
     // Handle delete
-    const handleDelete = async () => {
+    // Deleting needs the school's code typed back (QA S14: it was one confirm click)
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const [deleteCode, setDeleteCode] = useState('');
+    const [deleting, setDeleting] = useState(false);
+    const handleDelete = () => {
         if (!selectedSchool) return;
-
-        const confirmed = window.confirm(
-            'Are you sure you want to delete this school? This action cannot be undone.'
-        );
-
-        if (confirmed) {
-            try {
-                await schoolService.delete(selectedSchool.id);
-                toast.success('School deleted successfully');
-                setTimeout(() => navigate('/schools'), 1500);
-            } catch (err: any) {
-                toast.error(err.message || 'Failed to delete school');
-            }
+        setDeleteCode('');
+        setDeleteOpen(true);
+    };
+    const confirmDelete = async () => {
+        if (!selectedSchool) return;
+        try {
+            setDeleting(true);
+            await schoolService.deleteSchool(selectedSchool.id, deleteCode.trim());
+            toast.success('School deleted successfully');
+            setDeleteOpen(false);
+            setTimeout(() => navigate('/schools'), 1500);
+        } catch (err: any) {
+            toast.error(err.message || 'Failed to delete school');
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -323,6 +330,33 @@ const SchoolDetail: FC = () => {
                     </div>
                 </div>
             </div>
+
+            <ConfirmDialog
+                isOpen={deleteOpen}
+                title="Delete School - CRITICAL ACTION"
+                message={`This will permanently delete the school "${selectedSchool?.name}" including all users, dedicated database, and academic data. This action cannot be undone.`}
+                type="danger"
+                confirmText="Yes, Permanently Delete"
+                cancelText="Cancel"
+                isLoading={deleting}
+                onConfirm={confirmDelete}
+                onCancel={() => setDeleteOpen(false)}
+                confirmDisabled={deleteCode.trim().toLowerCase() !== String(selectedSchool?.code || '').toLowerCase()}
+            >
+                <div className="mt-4">
+                    <label htmlFor="delete-school-code" className="block text-sm text-gray-700 dark:text-gray-300">
+                        Type <strong className="font-mono">{selectedSchool?.code}</strong> to confirm
+                    </label>
+                    <input
+                        id="delete-school-code"
+                        name="delete_school_code"
+                        value={deleteCode}
+                        onChange={(e) => setDeleteCode(e.target.value)}
+                        autoComplete="off"
+                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-mono text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+                    />
+                </div>
+            </ConfirmDialog>
         </div>
     );
 };

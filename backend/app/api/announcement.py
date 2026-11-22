@@ -4,6 +4,8 @@ from app.decorators import login_required
 from app.utils.db_manager import switch_to_school_db
 from app.utils.teaching_scope import current_teacher_id, forbidden
 from app.models.tenant.Announcement import Announcement as AnnouncementModel
+import logging
+_log = logging.getLogger(__name__)
 
 announcement_bp = Blueprint('announcements', __name__)
 
@@ -130,7 +132,7 @@ def get_announcements(skid):
         
     except Exception as e:
         import traceback
-        print(traceback.format_exc())
+        _log.error(traceback.format_exc())
         return jsonify({
             'code': 500,
             'status': 'error',

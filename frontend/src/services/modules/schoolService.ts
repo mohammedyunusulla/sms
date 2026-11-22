@@ -85,19 +85,13 @@ class SchoolService {
     /**
      * Delete school
      */
-    async deleteSchool(id: string): Promise<void> {
+    async deleteSchool(id: string, confirmCode: string): Promise<void> {
         const api = getApiClient();
-        const response = await api.delete(`${this.baseUrl}/delete/${id}`);
+        // the server deletes only with the school's code typed back (QA S14)
+        const response = await api.delete(`${this.baseUrl}/delete/${id}`, { data: { confirm_code: confirmCode } });
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.data?.message || 'Failed to delete school');
         }
-    }
-
-    /**
-     * Legacy delete method (alias for deleteSchool)
-     */
-    async delete(id: string): Promise<void> {
-        return this.deleteSchool(id);
     }
 
     /**

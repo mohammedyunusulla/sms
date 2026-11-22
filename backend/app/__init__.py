@@ -122,8 +122,55 @@ def create_app(config_name=None):
     @jwt.unauthorized_loader
     def missing_token_callback(error):
         return {'message': 'Authorization token is required'}, 401
-    
+
+    _register_error_safety_net(app)
     return app
+
+
+# ---------- error safety net (QA D25) ----------
+# Many routes return f"Failed to X: {error}" with status 500, which put database / Python internals in front of
+# users (e.g. a psycopg2 message for a bad date). Readable messages ("Section already exists") are left alone;
+# replies whose text looks internal are replaced, and the original goes to the server log.
+import re as _re
+GENERIC_SERVER_ERROR = "Something went wrong on the server. Please try again."
+_INTERNAL_ERROR_TEXT = _re.compile(
+    r"psycopg2|sqlalchemy|\(Background on this error|Traceback|time data .* does not match|unconverted data remains"
+    r"|invalid literal for|object has no attribute|NoneType|\[Errno \d+\]|KeyError|IndexError|list index out of range"
+    r"|could not convert|unsupported operand|unexpected keyword argument|required positional argument"
+    r"|is not JSON serializable|SyntaxError|NameError|AttributeError|TypeError|ZeroDivisionError",
+    _re.IGNORECASE,
+)
+
+
+def _register_error_safety_net(app):
+    from flask import request, jsonify, json
+    from werkzeug.exceptions import HTTPException
+
+    @app.after_request
+    def _hide_internal_error_text(response):
+        if response.status_code < 500 or not response.is_json:
+            return response
+        data = response.get_json(silent=True)
+        if not isinstance(data, dict):
+            return response
+        changed = False
+        for key in ('message', 'error', 'detail'):
+            value = data.get(key)
+            if isinstance(value, str) and _INTERNAL_ERROR_TEXT.search(value):
+                app.logger.error(f"{request.method} {request.path} -> {response.status_code}: {value}")
+                data[key] = GENERIC_SERVER_ERROR
+                changed = True
+        if changed:
+            response.set_data(json.dumps(data))
+        return response
+
+    @app.errorhandler(Exception)
+    def _unhandled_error(error):
+        # an error no route caught: a plain JSON reply instead of a stack trace / debugger page
+        if isinstance(error, HTTPException):
+            return error
+        app.logger.exception(f"Unhandled error on {request.method} {request.path}")
+        return jsonify({'status': 'error', 'code': 500, 'message': GENERIC_SERVER_ERROR}), 500
 
 
 def _bootstrap_main_schema(app):

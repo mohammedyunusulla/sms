@@ -12,7 +12,6 @@ def create_class(skid):
     try:
         data = request.get_json()
         new_class = ClassService.create_class(data, skid)
-        print(new_class)
         return jsonify({
             'message': 'Class created successfully',
             'class': new_class,
@@ -86,7 +85,6 @@ def get_classes(skid):
     """
     try:
         classes = ClassService.get_classes_by_school(skid)
-        print("classses---", classes)
         
         return jsonify({
             'message': 'Classes retrieved successfully',

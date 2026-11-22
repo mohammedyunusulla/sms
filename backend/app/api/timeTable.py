@@ -5,6 +5,8 @@ from app.decorators.auth import student_access_required
 from app.models.main.User import UserRole
 from app.services.timeTable_service import TimetableService
 from datetime import datetime
+import logging
+_log = logging.getLogger(__name__)
 
 timeTable_bp = Blueprint('timeTable', __name__)
 
@@ -36,7 +38,7 @@ def generate_time_slots():
     except ValueError as ve:
         return jsonify({'message': str(ve), 'status': 'error', 'code': 400}), 400
     except Exception as e:
-        print(f"Error generating time slots: {str(e)}")
+        _log.error(f"Error generating time slots: {str(e)}")
         return jsonify({
             'code': 500,
             'status': 'error',
@@ -162,7 +164,7 @@ def create_timetable():
             }), 400
         
     except Exception as e:
-        print(f"Error in create_timetable: {str(e)}")
+        _log.error(f"Error in create_timetable: {str(e)}")
         return jsonify({
             'code': 500,
             'status': 'error',
@@ -230,7 +232,7 @@ def save_draft():
             }), 400
         
     except Exception as e:
-        print(f"Error saving draft: {str(e)}")
+        _log.error(f"Error saving draft: {str(e)}")
         return jsonify({
             'code': 500,
             'status': 'error',
@@ -276,7 +278,7 @@ def publish_draft():
             }), 400
         
     except Exception as e:
-        print(f"Error publishing draft: {str(e)}")
+        _log.error(f"Error publishing draft: {str(e)}")
         return jsonify({
             'code': 500,
             'status': 'error',
@@ -308,7 +310,7 @@ def get_timetable_by_id(skid, timetable_id):
             }), 404
             
     except Exception as e:
-        print(f"Error fetching timetable: {str(e)}")
+        _log.error(f"Error fetching timetable: {str(e)}")
         return jsonify({
             'code': 500,
             'status': 'error',
@@ -323,7 +325,6 @@ def get_timetable_by_id(skid, timetable_id):
 def list_timetables(skid, academic_year_id):
     """Get all timetables for a school"""
     try:
-        print("coming here")
         semester = request.args.get('semester')
         
         timetables = TimetableService.get_all_timetables_by_school(
@@ -338,7 +339,7 @@ def list_timetables(skid, academic_year_id):
         }), 200
         
     except Exception as e:
-        print(f"Error in list_timetables: {str(e)}")
+        _log.error(f"Error in list_timetables: {str(e)}")
         return jsonify({
             'code': 500,
             'status': 'error',
@@ -364,7 +365,7 @@ def list_draft_timetables(skid):
         }), 200
         
     except Exception as e:
-        print(f"Error in list_draft_timetables: {str(e)}")
+        _log.error(f"Error in list_draft_timetables: {str(e)}")
         return jsonify({
             'code': 500,
             'status': 'error',
@@ -399,7 +400,7 @@ def get_teacher_schedule(teacher_id):
         }), 200
         
     except Exception as e:
-        print(f"Error in get_teacher_schedule: {str(e)}")
+        _log.error(f"Error in get_teacher_schedule: {str(e)}")
         return jsonify({
             'code': 500,
             'status': 'error',
@@ -440,7 +441,7 @@ def delete_timetable(timetable_id):
             }), 404
         
     except Exception as e:
-        print(f"Error in delete_timetable: {str(e)}")
+        _log.error(f"Error in delete_timetable: {str(e)}")
         return jsonify({
             'code': 500,
             'status': 'error',
@@ -524,7 +525,7 @@ def validate_conflicts():
         }), 200
         
     except Exception as e:
-        print(f"Error in validate_conflicts: {str(e)}")
+        _log.error(f"Error in validate_conflicts: {str(e)}")
         return jsonify({
             'code': 500,
             'status': 'error',

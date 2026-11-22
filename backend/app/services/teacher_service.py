@@ -6,6 +6,8 @@ from app.utils.db_manager import switch_to_school_db
 from app.utils.helpers import generate_student_id
 from app.services.userRole_service import UserRolesService
 from sqlalchemy.orm import joinedload
+import logging
+_log = logging.getLogger(__name__)
 
 class TeacherService:
     @staticmethod
@@ -88,7 +90,7 @@ class TeacherService:
                 try:
                     remove_school_user(skid, school_user_id)
                 except Exception as cleanup_err:
-                    print(f"[Cleanup failed] Could not remove school user {school_user_id}: {cleanup_err}")
+                    _log.error(f"[Cleanup failed] Could not remove school user {school_user_id}: {cleanup_err}")
 
             raise Exception(f"Failed to create school user: {str(e)}")
             
@@ -281,7 +283,6 @@ class TeacherService:
                     .filter(SchoolUsers.id == school_user_id)
                     .first()
                 )
-                print(school_user)
                 if not school_user:
                     return None                
                 return school_user.to_dict()

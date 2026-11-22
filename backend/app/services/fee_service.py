@@ -334,7 +334,6 @@ class FeeService:
                     ).all()
                     
                     # ✅ Debug: Check if fee structures exist
-                    print(f"Found {len(fee_structures)} fee structures for class_id={student.class_id}, year={academic_year_id}")
                     
                     for fee_struct in fee_structures:
                         # Check if already assigned
@@ -345,7 +344,6 @@ class FeeService:
                         ).first()
                         
                         if existing:
-                            print(f"Fee {fee_struct.fee_name} already assigned to student {student_id}")
                             continue
                         
                         # ✅ Create new student fee
@@ -359,7 +357,6 @@ class FeeService:
                         )
                         tenant_session.add(student_fee)
                         assigned_fees.append(student_fee)
-                        print(f"Assigned fee {fee_struct.fee_name} to student {student_id}")
                 
                 tenant_session.commit()
                 
