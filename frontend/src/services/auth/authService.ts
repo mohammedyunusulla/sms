@@ -14,8 +14,6 @@ import {
     ForgotPasswordResponse,
     ResetPasswordRequest,
     ResetPasswordResponse,
-    SignupRequest,
-    SignupResponse,
 } from '../../types/auth';
 
 const client = getApiClient();
@@ -144,22 +142,6 @@ export const authService = {
                 API_ENDPOINTS.AUTH.RESET_PASSWORD,
                 request
             )) as unknown as ResetPasswordResponse;
-            return response;
-        } catch (error) {
-            throw error;
-        }
-    },
-
-    /**
-     * Sign up new user
-     */
-    async signup(request: SignupRequest): Promise<SignupResponse> {
-        try {
-            // Note: Response interceptor returns response.data directly, so we need type assertion
-            const response = (await client.post<SignupResponse>(
-                '/auth/signup',
-                request
-            )) as unknown as SignupResponse;
             return response;
         } catch (error) {
             throw error;
