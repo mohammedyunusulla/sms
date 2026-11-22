@@ -1,6 +1,7 @@
 import os
 import shutil
 import uuid
+import tempfile
 from collections import Counter
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -43,7 +44,11 @@ def image_type(raw: bytes) -> Optional[str]:
 
 
 def _upload_root() -> Path:
-    return Path(os.getenv("HOMEWORK_UPLOAD_DIR", "uploads/homework")).resolve()
+    configured = os.getenv("HOMEWORK_UPLOAD_DIR", "").strip()
+    if configured:
+        return Path(configured).resolve()
+    # Container-safe default (writable by non-root app user)
+    return (Path(tempfile.gettempdir()) / "sms-homework").resolve()
 
 
 _MIME_BY_EXT = {ext: mime for mime, ext in _EXTENSIONS.items()}
