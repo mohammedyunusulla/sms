@@ -190,6 +190,7 @@ export default function StudentHomeworkPage() {
                 disabled={isBusy}
                 tip="Hold the phone close so the QR sticker is large, in focus and fully in the photo."
                 preserveOriginal
+                liveQrScan
               />
             </div>
           )}

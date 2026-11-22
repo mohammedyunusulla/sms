@@ -46,6 +46,8 @@ interface PhotoPickerProps {
   tip?: string;
   /** keep original image bytes (useful when tiny QR details must survive) */
   preserveOriginal?: boolean;
+  /** enable live QR detection in the in-page camera */
+  liveQrScan?: boolean;
 }
 
 export default function PhotoPicker({
@@ -56,6 +58,7 @@ export default function PhotoPicker({
   disabled = false,
   tip,
   preserveOriginal = false,
+  liveQrScan = false,
 }: PhotoPickerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -96,7 +99,13 @@ export default function PhotoPicker({
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={() => (prefersNativeCamera() ? cameraInputRef.current?.click() : setCameraOpen(true))}
+          onClick={() => {
+            if (liveQrScan) {
+              setCameraOpen(true);
+              return;
+            }
+            prefersNativeCamera() ? cameraInputRef.current?.click() : setCameraOpen(true);
+          }}
           disabled={disabled || remaining <= 0}
           className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
         >
@@ -159,6 +168,7 @@ export default function PhotoPicker({
 
       {cameraOpen && (
         <CameraCapture
+          liveQrScan={liveQrScan}
           tip={tip}
           onCapture={(file) => {
             void addFiles([file]);
@@ -171,11 +181,24 @@ export default function PhotoPicker({
   );
 }
 
-function CameraCapture({ onCapture, onClose, tip }: { onCapture: (file: File) => void; onClose: () => void; tip?: string }) {
+function CameraCapture({
+  onCapture,
+  onClose,
+  tip,
+  liveQrScan = false,
+}: {
+  onCapture: (file: File) => void;
+  onClose: () => void;
+  tip?: string;
+  liveQrScan?: boolean;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const scanCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
+  const [qrText, setQrText] = useState('');
+  const [qrScanSupported, setQrScanSupported] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -216,6 +239,50 @@ function CameraCapture({ onCapture, onClose, tip }: { onCapture: (file: File) =>
     };
   }, []);
 
+  useEffect(() => {
+    if (!liveQrScan || !ready) return;
+    const video = videoRef.current;
+    if (!video) return;
+
+    const BarcodeDetectorCtor = (window as any).BarcodeDetector;
+    if (!BarcodeDetectorCtor) {
+      setQrScanSupported(false);
+      return;
+    }
+
+    let stopped = false;
+    const detector = new BarcodeDetectorCtor({ formats: ['qr_code'] });
+    setQrScanSupported(true);
+    const canvas = scanCanvasRef.current || document.createElement('canvas');
+    scanCanvasRef.current = canvas;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const tick = async () => {
+      if (stopped) return;
+      if (video.videoWidth > 0 && video.videoHeight > 0) {
+        const targetW = 960;
+        const scale = Math.min(1, targetW / video.videoWidth);
+        canvas.width = Math.max(1, Math.round(video.videoWidth * scale));
+        canvas.height = Math.max(1, Math.round(video.videoHeight * scale));
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        try {
+          const codes = await detector.detect(canvas);
+          const first = codes?.find((c: any) => !!c?.rawValue)?.rawValue || '';
+          setQrText(first);
+        } catch {
+          // keep camera usable even if detect fails on a frame
+        }
+      }
+      window.setTimeout(tick, 350);
+    };
+    void tick();
+
+    return () => {
+      stopped = true;
+    };
+  }, [liveQrScan, ready]);
+
   const capture = () => {
     const video = videoRef.current;
     if (!video || !video.videoWidth) return;
@@ -246,6 +313,13 @@ function CameraCapture({ onCapture, onClose, tip }: { onCapture: (file: File) =>
         ) : (
           <video ref={videoRef} playsInline muted className="max-h-[60vh] w-full rounded-lg bg-black object-contain" />
         )}
+        {!error && liveQrScan && (
+          <p className={`mt-2 text-xs ${qrText ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+            {qrScanSupported
+              ? (qrText ? 'QR detected. You can capture now.' : 'Scanning for QR... move closer until the sticker is clear.')
+              : 'Live QR scan is not supported in this browser; capture a clear photo with the full sticker visible.'}
+          </p>
+        )}
         {!error && tip && <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{tip}</p>}
         <div className="mt-3 flex justify-end gap-2">
           <button type="button" onClick={onClose} className="rounded-lg border border-gray-300 px-4 py-2 text-sm dark:border-gray-600 dark:text-gray-200">
@@ -255,7 +329,7 @@ function CameraCapture({ onCapture, onClose, tip }: { onCapture: (file: File) =>
             <button
               type="button"
               onClick={capture}
-              disabled={!ready}
+              disabled={!ready || (liveQrScan && qrScanSupported && !qrText)}
               className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
             >
               Capture
