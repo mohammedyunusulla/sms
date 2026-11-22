@@ -176,9 +176,9 @@ const StudentExamTimetableModal: FC<StudentExamTimetableModalProps> = ({ isOpen,
         {
             key: 'seat_label',
             label: 'Seat',
-            render: (value: any) => value
+            render: (value: any, row: { room?: string | null }) => value
                 ? <span className="text-purple-600 dark:text-purple-400 font-medium">{value}</span>
-                : notAssigned,
+                : row?.room ? <span className="text-yellow-600 dark:text-yellow-400 text-xs">Not assigned yet</span> : notAssigned,
         },
         {
             key: 'invigilator_name',
@@ -216,7 +216,7 @@ const StudentExamTimetableModal: FC<StudentExamTimetableModalProps> = ({ isOpen,
                             <span className="text-gray-500 dark:text-gray-400 block text-xs">Seat</span>
                             {entry.seat_label
                                 ? <span className="text-purple-600 dark:text-purple-400 font-medium">{entry.seat_label}</span>
-                                : notAssigned
+                                : entry.room ? <span className="text-yellow-600 dark:text-yellow-400 text-xs">Not assigned yet</span> : notAssigned
                             }
                         </div>
                         <div className="col-span-2">

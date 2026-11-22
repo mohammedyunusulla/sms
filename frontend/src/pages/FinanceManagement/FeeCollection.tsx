@@ -18,6 +18,7 @@ import PaymentHistoryDialog from './PaymentHistoryDialog';
 import DiscountDialog from './DiscountDialog';
 import { generateFeeReceiptPdf, generateFeeSummaryReceiptPdf } from '../../prints';
 import type { SchoolData, PdfAction, FeeReceiptData } from '../../prints';
+import { formatAmount } from '../../utils/money';
 
 const PAYMENT_MODES = [
     { label: 'Cash', value: 'CASH' },
@@ -210,7 +211,7 @@ const FeeCollection: FC = () => {
             const data = result.data || result;
             toast.success(data.message || 'Converted to full payment');
             if (data.remaining_balance !== undefined) {
-                toast.success(`Remaining balance: \u20B9${parseFloat(data.remaining_balance).toLocaleString('en-IN')}`);
+                toast.success(`Remaining balance: \u20B9${formatAmount(data.remaining_balance)}`);
             }
             if (selectedStudent) fetchFeeSummary(selectedStudent.user_id);
         } catch (error: any) {
@@ -383,7 +384,7 @@ const FeeCollection: FC = () => {
             key: 'total_amount',
             label: 'Total',
             className: 'text-right',
-            render: (v: number) => <span>{'\u20B9'}{parseFloat(String(v)).toLocaleString('en-IN')}</span>,
+            render: (v: number) => <span>{'\u20B9'}{formatAmount(v)}</span>,
         },
         {
             key: 'paid_amount',
@@ -391,7 +392,7 @@ const FeeCollection: FC = () => {
             className: 'text-right',
             render: (v: number) => (
                 <span className="font-semibold text-green-600 dark:text-green-400">
-                    {'\u20B9'}{parseFloat(String(v || 0)).toLocaleString('en-IN')}
+                    {'\u20B9'}{formatAmount(v || 0)}
                 </span>
             ),
         },
@@ -401,7 +402,7 @@ const FeeCollection: FC = () => {
             className: 'text-right',
             render: (v: number) => (
                 <span className="text-gray-700 dark:text-gray-300">
-                    {Number(v) > 0 ? `₹${parseFloat(String(v)).toLocaleString('en-IN')}` : '-'}
+                    {Number(v) > 0 ? `₹${formatAmount(v)}` : '-'}
                 </span>
             ),
         },
@@ -411,7 +412,7 @@ const FeeCollection: FC = () => {
             className: 'text-right',
             render: (v: number) => (
                 <span className="font-semibold text-red-600 dark:text-red-400">
-                    {'\u20B9'}{parseFloat(String(v || 0)).toLocaleString('en-IN')}
+                    {'\u20B9'}{formatAmount(v || 0)}
                 </span>
             ),
         },
@@ -436,7 +437,7 @@ const FeeCollection: FC = () => {
             key: 'amount',
             label: 'Amount',
             className: 'text-right',
-            render: (v: number) => <span>{'\u20B9'}{parseFloat(String(v)).toLocaleString('en-IN')}</span>,
+            render: (v: number) => <span>{'\u20B9'}{formatAmount(v)}</span>,
         },
         {
             key: 'paid_amount',
@@ -444,7 +445,7 @@ const FeeCollection: FC = () => {
             className: 'text-right',
             render: (v: number) => (
                 <span className="font-semibold text-green-600 dark:text-green-400">
-                    {'\u20B9'}{parseFloat(String(v || 0)).toLocaleString('en-IN')}
+                    {'\u20B9'}{formatAmount(v || 0)}
                 </span>
             ),
         },
@@ -454,7 +455,7 @@ const FeeCollection: FC = () => {
             className: 'text-right',
             render: (v: number) => (
                 <span className="font-semibold text-red-600 dark:text-red-400">
-                    {'\u20B9'}{parseFloat(String(v || 0)).toLocaleString('en-IN')}
+                    {'\u20B9'}{formatAmount(v || 0)}
                 </span>
             ),
         },
@@ -562,10 +563,10 @@ const FeeCollection: FC = () => {
             {/* Fee Summary Cards */}
             {feeSummary && (
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <StatCard title="Total Amount" value={`\u20B9${parseFloat(String(feeSummary.total_amount || 0)).toLocaleString('en-IN')}`} icon="📋" />
-                    <StatCard title="Total Paid" value={`\u20B9${parseFloat(String(feeSummary.total_paid || 0)).toLocaleString('en-IN')}`} icon="✅" />
-                    <StatCard title="Total Discount" value={`\u20B9${parseFloat(String(feeSummary.total_discount || 0)).toLocaleString('en-IN')}`} icon="🏷️" />
-                    <StatCard title="Balance Due" value={`\u20B9${parseFloat(String(feeSummary.balance || 0)).toLocaleString('en-IN')}`} icon="⏳" />
+                    <StatCard title="Total Amount" value={`\u20B9${formatAmount(feeSummary.total_amount || 0)}`} icon="📋" />
+                    <StatCard title="Total Paid" value={`\u20B9${formatAmount(feeSummary.total_paid || 0)}`} icon="✅" />
+                    <StatCard title="Total Discount" value={`\u20B9${formatAmount(feeSummary.total_discount || 0)}`} icon="🏷️" />
+                    <StatCard title="Balance Due" value={`\u20B9${formatAmount(feeSummary.balance || 0)}`} icon="⏳" />
                 </div>
             )}
 
@@ -696,7 +697,7 @@ const FeeCollection: FC = () => {
                                 {selectedFee.fee_structure?.fee_name || selectedFee.fee_name}
                             </p>
                             <p className="text-sm text-gray-600 dark:text-gray-400">
-                                Balance: {'\u20B9'}{parseFloat(String(selectedInstallment ? selectedInstallment.balance_amount : selectedFee.balance_amount)).toLocaleString('en-IN')}
+                                Balance: {'\u20B9'}{formatAmount(selectedInstallment ? selectedInstallment.balance_amount : selectedFee.balance_amount)}
                             </p>
                         </div>
 

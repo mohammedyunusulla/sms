@@ -623,13 +623,20 @@ def search_student_for_fees(skid):
     Query params:
     - q: Search query (name/phone/roll_no)
     - class_id: Filter by class (optional)
-    - academic_year_id: For fee filtering (default: 2024-25)
+    - academic_year_id: For fee filtering (default: the school's current academic year)
     """
     
     try:
         search_query = request.args.get('q', '').strip()
         class_id = request.args.get('class_id')
-        academic_year_id = request.args.get('academic_year_id', '2024-25')
+        academic_year_id = request.args.get('academic_year_id')
+        if not academic_year_id:
+            # it fell back to the text '2024-25' (QA C29): use the school's current academic year
+            from app.utils.db_manager import switch_to_school_db
+            from app.models.tenant import AcademicYear
+            with switch_to_school_db(skid) as session:
+                current = session.query(AcademicYear).filter_by(is_current=True).first()
+                academic_year_id = current.id if current else None
         
         if not search_query:
             raise ValueError("Search query is required")

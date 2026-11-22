@@ -59,6 +59,7 @@ class Announcement(BaseModelTenant, BaseModelTenantMixin):
             'expiry_date': self.expiry_date.isoformat() if self.expiry_date else None,
             'created_by': self.created_by,
             'is_active': self.is_active,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None
+            # stored in UTC: marked as such so browsers show local time ("Posted on" showed UTC - QA C18)
+            'created_at': self.created_at.isoformat() + 'Z' if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() + 'Z' if self.updated_at else None
         }

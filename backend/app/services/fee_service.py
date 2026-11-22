@@ -782,8 +782,8 @@ class FeeService:
                 ).filter(
                     StudentFee.student_id == student_id,
                     StudentFee.academic_year_id == academic_year_id
-                ).all()
-                
+                ).order_by(StudentFee.due_date, StudentFee.id).all()  # rows kept jumping after a payment (QA C29)
+
                 total_amount = 0
                 total_paid = 0
                 total_discount = 0

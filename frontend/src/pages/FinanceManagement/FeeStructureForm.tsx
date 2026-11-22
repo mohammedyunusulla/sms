@@ -11,6 +11,7 @@ import { PageHeader, Button, FormSelect, LoadingSpinner, ConfirmDialog } from '.
 import { financeService } from '../../services/modules/financeService';
 import { useAuthStore } from '../../stores/authStore';
 import { IFeeRow } from '../../types/index';
+import { formatAmount } from '../../utils/money';
 
 const FEE_NAMES = [
     'TUITION', 'ADMISSION', 'EXAM', 'LIBRARY', 'SPORTS',
@@ -353,7 +354,7 @@ const FeeStructureForm: FC = () => {
                                     {/* Calculated Total */}
                                     <td className="px-3 py-2 text-right">
                                         <span className={`font-bold ${calculateTotalAmount(row) > 0 ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`}>
-                                            {'\u20B9'}{calculateTotalAmount(row).toLocaleString('en-IN')}
+                                            {'\u20B9'}{formatAmount(calculateTotalAmount(row))}
                                         </span>
                                     </td>
                                     {/* Installments Checkbox */}
@@ -399,7 +400,7 @@ const FeeStructureForm: FC = () => {
                     <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg px-6 py-3">
                         <p className="text-sm text-gray-500 dark:text-gray-400">Total Amount</p>
                         <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                            {'\u20B9'}{totalAmount.toLocaleString('en-IN')}
+                            {'\u20B9'}{formatAmount(totalAmount)}
                         </p>
                     </div>
                 </div>

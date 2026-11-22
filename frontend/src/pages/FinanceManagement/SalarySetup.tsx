@@ -9,6 +9,7 @@ import { PageHeader, DataTable, Badge, Button, Modal, ConfirmDialog, FormInput, 
 import { financeService } from '../../services/modules/financeService';
 import { useAuthStore } from '../../stores/authStore';
 import { ISalarySetup } from '../../types/index';
+import { formatAmount } from '../../utils/money';
 
 const SalarySetup: FC = () => {
     const { user, academicYearVersion } = useAuthStore();
@@ -198,13 +199,13 @@ const SalarySetup: FC = () => {
             key: 'basic_salary',
             label: 'Basic Salary',
             className: 'text-right',
-            render: (value: number) => <span>{'\u20B9'}{parseFloat(String(value)).toLocaleString('en-IN')}</span>,
+            render: (value: number) => <span>{'\u20B9'}{formatAmount(value)}</span>,
         },
         {
             key: 'gross_salary',
             label: 'Gross Salary',
             className: 'text-right',
-            render: (value: number) => <span>{'\u20B9'}{parseFloat(String(value)).toLocaleString('en-IN')}</span>,
+            render: (value: number) => <span>{'\u20B9'}{formatAmount(value)}</span>,
         },
         {
             key: 'net_salary',
@@ -212,7 +213,7 @@ const SalarySetup: FC = () => {
             className: 'text-right',
             render: (value: number) => (
                 <span className="font-bold text-blue-600 dark:text-blue-400">
-                    {'\u20B9'}{parseFloat(String(value)).toLocaleString('en-IN')}
+                    {'\u20B9'}{formatAmount(value)}
                 </span>
             ),
         },
@@ -424,13 +425,13 @@ const SalarySetup: FC = () => {
                             <div className="flex items-center gap-3">
                                 <span className="text-sm text-gray-600 dark:text-gray-400">Gross Salary:</span>
                                 <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                                    {'\u20B9'}{totals.gross.toLocaleString('en-IN')}
+                                    {'\u20B9'}{formatAmount(totals.gross)}
                                 </span>
                             </div>
                             <div className="flex items-center gap-3">
                                 <span className="text-sm text-gray-600 dark:text-gray-400">Net Salary:</span>
                                 <span className="text-lg font-bold text-green-600 dark:text-green-400">
-                                    {'\u20B9'}{totals.net.toLocaleString('en-IN')}
+                                    {'\u20B9'}{formatAmount(totals.net)}
                                 </span>
                             </div>
                         </div>

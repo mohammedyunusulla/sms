@@ -72,7 +72,8 @@ const TimetableGrid: FC<ITimetableGridProps> = ({
 
                 {/* Teacher Name */}
                 <p className="text-xs font-medium text-gray-700 dark:text-gray-300 text-center truncate">
-                    {entry.teacher.full_name || entry.teacher.name}
+                    {/* the server sends first / last name (the cell was blank - QA B9) */}
+                    {entry.teacher.full_name || entry.teacher.name || [entry.teacher.first_name, entry.teacher.last_name].filter(Boolean).join(' ')}
                 </p>
 
                 {/* Room Number */}

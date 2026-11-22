@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { Modal, Button, Badge, FormTextarea } from '../../components';
 import { financeService } from '../../services/modules/financeService';
 import { IStudentFee, IInstallment, IFeePayment } from '../../types/index';
+import { formatAmount } from '../../utils/money';
 
 interface PaymentHistoryDialogProps {
     isOpen: boolean;
@@ -22,7 +23,7 @@ interface PaymentHistoryDialogProps {
     onPrint?: (payment: IFeePayment) => void;
 }
 
-const money = (v: number | string | undefined) => `₹${parseFloat(String(v || 0)).toLocaleString('en-IN')}`;
+const money = (v: number | string | undefined) => `₹${formatAmount(v || 0)}`;
 
 const formatDate = (d?: string) =>
     d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';

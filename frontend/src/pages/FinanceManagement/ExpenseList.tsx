@@ -12,6 +12,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { IExpenseRecord, IExpenseFormData } from '../../types/index';
 import { usePermissions } from '../../hooks/usePermissions';
 import { Permission } from '../../config/permissions';
+import { formatAmount } from '../../utils/money';
 
 const EXPENSE_CATEGORIES = [
     'Staff Salaries', 'Electricity Bill', 'Water Bill', 'Functions/Events',
@@ -217,7 +218,7 @@ const ExpenseList: FC = () => {
             className: 'text-right',
             render: (value: number) => (
                 <span className="font-semibold text-red-600 dark:text-red-400">
-                    {'\u20B9'}{parseFloat(String(value)).toLocaleString('en-IN')}
+                    {'\u20B9'}{formatAmount(value)}
                 </span>
             ),
         },
@@ -260,9 +261,9 @@ const ExpenseList: FC = () => {
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <StatCard title="Total Expenses" value={`\u20B9${totalExpense.toLocaleString('en-IN')}`} icon="💰" />
-                <StatCard title="Salary Expenses" value={`\u20B9${salaryExpense.toLocaleString('en-IN')}`} icon="👤" />
-                <StatCard title="Other Expenses" value={`\u20B9${otherExpense.toLocaleString('en-IN')}`} icon="📦" />
+                <StatCard title="Total Expenses" value={`\u20B9${formatAmount(totalExpense)}`} icon="💰" />
+                <StatCard title="Salary Expenses" value={`\u20B9${formatAmount(salaryExpense)}`} icon="👤" />
+                <StatCard title="Other Expenses" value={`\u20B9${formatAmount(otherExpense)}`} icon="📦" />
             </div>
 
             {/* Filters */}
@@ -478,7 +479,7 @@ const ExpenseList: FC = () => {
                         </div>
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400">Amount</p>
-                            <p className="text-lg font-bold text-red-600">{'\u20B9'}{parseFloat(String(selectedExpense.amount)).toLocaleString('en-IN')}</p>
+                            <p className="text-lg font-bold text-red-600">{'\u20B9'}{formatAmount(selectedExpense.amount)}</p>
                         </div>
                         <div>
                             <p className="text-xs text-gray-500 dark:text-gray-400">Payment Method</p>
@@ -514,7 +515,7 @@ const ExpenseList: FC = () => {
             <ConfirmDialog
                 isOpen={showDeleteDialog}
                 title="Delete Expense"
-                message={selectedExpense ? `Are you sure you want to delete this ${selectedExpense.expense_category} expense of \u20B9${parseFloat(String(selectedExpense.amount)).toLocaleString('en-IN')}? This action cannot be undone.` : ''}
+                message={selectedExpense ? `Are you sure you want to delete this ${selectedExpense.expense_category} expense of \u20B9${formatAmount(selectedExpense.amount)}? This action cannot be undone.` : ''}
                 onConfirm={confirmDelete}
                 onCancel={() => { setShowDeleteDialog(false); setSelectedExpense(null); }}
                 confirmText="Delete"
