@@ -42,9 +42,9 @@ export default function AuthShowcase() {
           <img
             src="/images/logo/eduspyre/eduspyre-logo-dark.png"
             alt="EduSpyre home"
-            width={765}
+            width={734}
             height={256}
-            className="h-11 w-auto"
+            className="h-[37px] w-auto"
           />
         </Link>
 

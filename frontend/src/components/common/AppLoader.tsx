@@ -20,16 +20,16 @@ const AppLoader: FC<AppLoaderProps> = ({ message = "Loading…" }) => (
       <img
         src="/images/logo/eduspyre/eduspyre-logo-light.png"
         alt=""
-        width={765}
+        width={734}
         height={256}
-        className="h-14 w-auto dark:hidden"
+        className="h-[37px] w-auto dark:hidden"
       />
       <img
         src="/images/logo/eduspyre/eduspyre-logo-dark.png"
         alt=""
-        width={765}
+        width={734}
         height={256}
-        className="hidden h-14 w-auto dark:block"
+        className="hidden h-[37px] w-auto dark:block"
       />
     </div>
 

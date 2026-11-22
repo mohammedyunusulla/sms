@@ -16,7 +16,7 @@ export default function LandingFooter() {
       <div className="mx-auto max-w-7xl px-5 py-14 sm:px-8">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_1fr_1.3fr]">
           <div>
-            <Logo className="h-10" />
+            <Logo />
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-gray-600 dark:text-gray-400">
               Smart Education Management System, connecting administrators, teachers, parents and students on one
               platform.
