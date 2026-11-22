@@ -100,7 +100,9 @@ export default function PhotoPicker({
         <button
           type="button"
           onClick={() => {
-            if (liveQrScan) {
+            // On phones/tablets, keep using the native camera app for better autofocus/QR clarity.
+            // Use in-page live scanner only where it is generally more reliable.
+            if (liveQrScan && !prefersNativeCamera()) {
               setCameraOpen(true);
               return;
             }
