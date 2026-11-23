@@ -11,6 +11,8 @@ from google import genai
 Image = Tuple[bytes, str]
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 GEMINI_FALLBACK_MODEL = os.getenv("GEMINI_FALLBACK_MODEL", "gemini-3.1-pro-preview")
+AZURE_OPENAI_MODEL = os.getenv("AZURE_OPENAI_MODEL", "gpt-4.1-mini")
+AZURE_OPENAI_API_URL = os.getenv("AZURE_OPENAI_API_URL", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.2-90b-vision-preview")
 GROQ_API_URL = os.getenv("GROQ_API_URL", "https://api.groq.com/openai/v1/chat/completions")
 CLOUDFLARE_MODEL = os.getenv("CLOUDFLARE_MODEL", "@cf/meta/llama-3.2-90b-vision-instruct")
@@ -22,7 +24,7 @@ CLOUDFLARE_API_URL = _cloudflare_api_url or (
     if CLOUDFLARE_ACCOUNT_ID
     else ""
 )
-AI_PROVIDER_ORDER = os.getenv("AI_PROVIDER_ORDER", "groq,gemini,cloudflare")
+AI_PROVIDER_ORDER = os.getenv("AI_PROVIDER_ORDER", "azure,groq,gemini,cloudflare")
 
 
 class HomeworkGeminiService:
@@ -86,6 +88,21 @@ class HomeworkGeminiService:
         return content
 
     @classmethod
+    def _parts_to_responses_input_content(cls, parts: List[Any]) -> List[Dict[str, Any]]:
+        content: List[Dict[str, Any]] = []
+        for part in parts:
+            if isinstance(part, str):
+                content.append({"type": "input_text", "text": part})
+                continue
+            if isinstance(part, dict) and "inline_data" in part:
+                inline = part.get("inline_data") or {}
+                mime = inline.get("mime_type") or "image/jpeg"
+                data = inline.get("data") or ""
+                if data:
+                    content.append({"type": "input_image", "image_url": f"data:{mime};base64,{data}"})
+        return content
+
+    @classmethod
     def _openai_compatible_generate_text(
         cls,
         *,
@@ -138,6 +155,59 @@ class HomeworkGeminiService:
         )
 
     @classmethod
+    def _azure_openai_generate_text(cls, parts: List[Any], json_mode: bool = False) -> str:
+        api_key = os.getenv("AZURE_OPENAI_API_KEY") or ""
+        if not AZURE_OPENAI_API_URL:
+            raise ValueError("AZURE_OPENAI_API_URL is not configured")
+        if not api_key:
+            raise ValueError("AZURE_OPENAI_API_KEY is not configured")
+        if not AZURE_OPENAI_MODEL:
+            raise ValueError("AZURE_OPENAI_MODEL is not configured")
+
+        payload: Dict[str, Any] = {
+            "model": AZURE_OPENAI_MODEL,
+            "input": [
+                {
+                    "role": "user",
+                    "content": cls._parts_to_responses_input_content(parts),
+                }
+            ],
+            "temperature": 0.2,
+        }
+        if json_mode:
+            payload["text"] = {"format": {"type": "json_object"}}
+
+        req = urllib.request.Request(
+            AZURE_OPENAI_API_URL,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}",
+                "api-key": api_key,
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=90) as resp:
+                body = resp.read().decode("utf-8")
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="ignore") if exc.fp else str(exc)
+            raise RuntimeError(f"AZURE_OPENAI API error: {detail}") from exc
+
+        parsed = json.loads(body or "{}")
+        output_text = (parsed.get("output_text") or "").strip()
+        if output_text:
+            return output_text
+
+        for item in parsed.get("output", []):
+            for content_item in item.get("content", []):
+                if content_item.get("type") == "output_text":
+                    text = (content_item.get("text") or "").strip()
+                    if text:
+                        return text
+        return ""
+
+    @classmethod
     def _groq_generate_text(cls, parts: List[Any], json_mode: bool = False) -> str:
         api_key = os.getenv("GROQ_API_KEY")
         return cls._openai_compatible_generate_text(
@@ -162,14 +232,16 @@ class HomeworkGeminiService:
 
     @classmethod
     def _generate_text(cls, parts: List[Any], config: Optional[Dict[str, Any]] = None, json_mode: bool = False) -> str:
-        """Provider chain: groq -> gemini -> cloudflare (configurable via AI_PROVIDER_ORDER)."""
+        """Provider chain: azure -> groq -> gemini -> cloudflare (configurable via AI_PROVIDER_ORDER)."""
         errors: List[str] = []
         providers = [p.strip().lower() for p in AI_PROVIDER_ORDER.split(",") if p.strip()]
         if not providers:
-            providers = ["groq", "gemini", "cloudflare"]
+            providers = ["azure", "groq", "gemini", "cloudflare"]
 
         for provider in providers:
             try:
+                if provider == "azure":
+                    return cls._azure_openai_generate_text(parts, json_mode=json_mode)
                 if provider == "groq":
                     return cls._groq_generate_text(parts, json_mode=json_mode)
                 if provider == "gemini":
