@@ -180,8 +180,9 @@ export default function TeacherHomeworkPage() {
     if (!integrity || integrity.qr_matched === undefined || integrity.qr_matched === null) return { text: '-', tone: 'text-gray-500' };
     const problems = [
       integrity.page_blank_at_start === false && 'page not blank at start',
-      integrity.same_page_as_start === false && 'looks like a different page',
     ].filter(Boolean);
+    const reviewNote = integrity.same_page_as_start === false ? 'review suggested (visual mismatch)' : null;
+    if (reviewNote) problems.push(reviewNote);
     return problems.length
       ? { text: `⚠ ${problems.join('; ')}`, tone: 'text-amber-700 dark:text-amber-400' }
       : { text: '✓ Same QR page', tone: 'text-emerald-700 dark:text-emerald-400' };
