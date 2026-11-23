@@ -138,6 +138,21 @@ def start_session():
     return jsonify(body), status
 
 
+@homework_bp.route("/sessions/latest", methods=["GET"])
+@login_required(STUDENT_ROLES, self_service=True)
+@json_errors
+def latest_session():
+    assignment_id = request.args.get("assignment_id", type=int)
+    if not assignment_id:
+        return _error("assignment_id is required", 422)
+    body, status = HomeworkService.latest_session(
+        request.current_user.skid,
+        request.current_user.school_user_id,
+        assignment_id,
+    )
+    return jsonify(body), status
+
+
 @homework_bp.route("/sessions/<int:session_id>/toggle-pause", methods=["POST"])
 @login_required(STUDENT_ROLES, self_service=True)
 @json_errors

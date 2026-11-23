@@ -55,7 +55,8 @@ class StudentHomeworkSession(BaseModelTenant, BaseModelTenantMixin):
     efficiency_score = Column(Float, nullable=True)
     ai_feedback_json = Column(JSON, default=dict, nullable=False)
     # The notebook page: the QR sticker read from the start photo, and that photo (page blank + QR).
-    # At submit the same QR must be on the uploaded pages. A QR (page) is used for one homework only.
+    # At submit the same QR must be on the uploaded pages. The same QR can be reused after the
+    # previous session is completed; only active sessions lock the QR.
     page_qr_code = Column(String(255), nullable=True, index=True)
     start_image_path = Column(String(500), nullable=True)
     # Page checks: qr_matched, page_blank_at_start, same_page_as_start, notes, flagged

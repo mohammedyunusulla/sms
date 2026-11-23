@@ -93,6 +93,14 @@ export const homeworkApi = {
     return response.data;
   },
 
+  async latestSession(assignmentId: number): Promise<HomeworkSession | null> {
+    const client = getApiClient();
+    const response = await client.get<ApiEnvelope<HomeworkSession | null>>('/homework/sessions/latest', {
+      params: { assignment_id: assignmentId },
+    });
+    return response.data ?? null;
+  },
+
   async togglePause(sessionId: number): Promise<HomeworkSession> {
     const client = getApiClient();
     const response = await client.post<ApiEnvelope<HomeworkSession>>(API_ENDPOINTS.HOMEWORK.TOGGLE_PAUSE(sessionId));
