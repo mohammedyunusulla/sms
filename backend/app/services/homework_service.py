@@ -341,8 +341,15 @@ class HomeworkService:
             assignments = query.all()
             student_sessions: Dict[int, StudentHomeworkSession] = {}
             if is_student:
-                rows = tenant_session.query(StudentHomeworkSession).filter_by(student_id=current_user.school_user_id).all()
-                student_sessions = {row.assignment_id: row for row in rows}
+                rows = (
+                    tenant_session.query(StudentHomeworkSession)
+                    .filter_by(student_id=current_user.school_user_id)
+                    .order_by(StudentHomeworkSession.id.desc())
+                    .all()
+                )
+                for row in rows:
+                    if row.assignment_id not in student_sessions:
+                        student_sessions[row.assignment_id] = row
 
             data = []
             for assignment in assignments:
@@ -379,6 +386,11 @@ class HomeworkService:
                 tenant_session.commit()
                 tenant_session.refresh(session)
                 return cls._response("Session resumed successfully", cls._session_to_dict(session))
+            if session and session.status in ("submitted", "graded"):
+                return cls._response(
+                    "Homework already submitted. You can view your result but cannot edit this session.",
+                    cls._session_to_dict(session),
+                )
 
             # New start: read the QR from the photo of the blank page
             if not start_image:
@@ -395,9 +407,13 @@ class HomeworkService:
             used = tenant_session.query(StudentHomeworkSession).filter(
                 StudentHomeworkSession.page_qr_code == page_qr,
                 StudentHomeworkSession.is_active.is_(True),
+                StudentHomeworkSession.status.in_(("in_progress", "paused")),
             ).first()
             if used:
-                return cls._error("This QR page has already been used for a homework. Use a new page with an unused QR sticker.", 409)
+                return cls._error(
+                    "This QR page is currently in use in another active homework session. Finish that session first, then reuse the same QR page.",
+                    409,
+                )
 
             session = StudentHomeworkSession(
                 student_id=student_user_id,
@@ -634,6 +650,25 @@ class HomeworkService:
                 "Homework submitted and graded successfully",
                 {"session": cls._session_to_dict(session), "grading": grading},
             )
+
+    @classmethod
+    def latest_session(cls, skid: str, student_user_id: int, assignment_id: int):
+        with switch_to_school_db(skid) as tenant_session:
+            cls._ensure_tables(tenant_session)
+            assignment = tenant_session.query(HomeworkAssignment).filter_by(id=assignment_id, is_active=True).first()
+            if not assignment:
+                return cls._error("Homework not found", 404)
+            if assignment.section_id != student_section_id(tenant_session, student_user_id):
+                return cls._error("This homework isn't for your class", 403)
+            session = (
+                tenant_session.query(StudentHomeworkSession)
+                .filter_by(student_id=student_user_id, assignment_id=assignment_id, is_active=True)
+                .order_by(StudentHomeworkSession.id.desc())
+                .first()
+            )
+            if not session:
+                return cls._response("No homework session found", None)
+            return cls._response("Latest session fetched successfully", cls._session_to_dict(session))
 
     @classmethod
     def session_photo(cls, skid: str, session_id: int, kind: str, index: int, current_user):
