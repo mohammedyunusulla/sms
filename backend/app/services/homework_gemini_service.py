@@ -306,6 +306,14 @@ class HomeworkGeminiService:
         instruction_images: Optional[Sequence[Image]] = None,
         start_image: Optional[Image] = None,
     ) -> Dict[str, Any]:
+        required_keys = [
+            "accuracy_score",
+            "line_by_line_review",
+            "strengths",
+            "areas_to_improve",
+            "common_mistakes",
+            "overall_feedback",
+        ]
         grading_schema = {
             "type": "object",
             "properties": {
@@ -323,12 +331,7 @@ class HomeworkGeminiService:
             },
             "required": [
                 *(["page_blank_at_start", "same_page_as_start", "page_check_notes"] if start_image else []),
-                "accuracy_score",
-                "line_by_line_review",
-                "strengths",
-                "areas_to_improve",
-                "common_mistakes",
-                "overall_feedback",
+                *required_keys,
             ],
         }
 
@@ -337,6 +340,14 @@ class HomeworkGeminiService:
             "Use the homework description and optional reference answer key/rubric.\n"
             "Score strictness: 0-100 accuracy.\n"
             "Return only JSON matching schema.\n\n"
+            "JSON requirements:\n"
+            "- accuracy_score: number (0 to 100)\n"
+            "- line_by_line_review: array of strings\n"
+            "- strengths: array of strings\n"
+            "- areas_to_improve: array of strings\n"
+            "- common_mistakes: array of strings\n"
+            "- overall_feedback: string\n"
+            f"{'- page_blank_at_start: boolean\\n- same_page_as_start: boolean\\n- page_check_notes: string\\n' if start_image else ''}\n"
             f"Title: {assignment['title']}\n"
             f"Subject: {assignment['subject']}\n"
             f"Description: {assignment['description'] or '(see the homework photos)'}\n"
@@ -373,6 +384,15 @@ class HomeworkGeminiService:
             json_mode=True,
         )
         parsed = json.loads(response_text or "{}")
+        missing = [key for key in required_keys if key not in parsed]
+        if missing:
+            raise ValueError(f"Incomplete grading response; missing fields: {', '.join(missing)}")
+        for key in ("line_by_line_review", "strengths", "areas_to_improve", "common_mistakes"):
+            value = parsed.get(key)
+            if not isinstance(value, list):
+                parsed[key] = []
+            else:
+                parsed[key] = [str(item) for item in value if str(item).strip()]
         parsed["accuracy_score"] = float(parsed.get("accuracy_score", 0))
         if "overall_summary" not in parsed and "overall_feedback" in parsed:
             parsed["overall_summary"] = parsed["overall_feedback"]
