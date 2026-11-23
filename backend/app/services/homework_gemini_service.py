@@ -335,6 +335,14 @@ class HomeworkGeminiService:
             ],
         }
 
+        page_check_requirements = (
+            "- page_blank_at_start: boolean\n"
+            "- same_page_as_start: boolean\n"
+            "- page_check_notes: string\n"
+            if start_image
+            else ""
+        )
+
         prompt = (
             "Evaluate this student homework from notebook images.\n"
             "Use the homework description and optional reference answer key/rubric.\n"
@@ -347,7 +355,7 @@ class HomeworkGeminiService:
             "- areas_to_improve: array of strings\n"
             "- common_mistakes: array of strings\n"
             "- overall_feedback: string\n"
-            f"{'- page_blank_at_start: boolean\\n- same_page_as_start: boolean\\n- page_check_notes: string\\n' if start_image else ''}\n"
+            f"{page_check_requirements}\n"
             f"Title: {assignment['title']}\n"
             f"Subject: {assignment['subject']}\n"
             f"Description: {assignment['description'] or '(see the homework photos)'}\n"
