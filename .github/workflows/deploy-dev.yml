@@ -81,11 +81,14 @@ jobs:
             exit 1
           fi
 
-          # Build first: if the build fails (set -e stops here) the running site is left untouched.
-          # Only a successful build swaps the containers.
+          # Build first: if build fails, running containers stay untouched.
           \$COMPOSE_CMD build backend frontend
-          \$COMPOSE_CMD down || true
-          \$COMPOSE_CMD up -d
+
+          # Tear down old stack, then recreate backend first to avoid podman dependency race
+          # with frontend depends_on when container names are reused.
+          \$COMPOSE_CMD down --remove-orphans || true
+          \$COMPOSE_CMD up -d backend
+          \$COMPOSE_CMD up -d --no-deps frontend
 
           if command -v podman >/dev/null 2>&1; then
             podman image prune -f
