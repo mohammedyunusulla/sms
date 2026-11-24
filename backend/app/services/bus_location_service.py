@@ -2,8 +2,8 @@ from datetime import datetime, date, timezone, timedelta
 from sqlalchemy import cast, Date
 from app.models.tenant.BusLocation import BusLocation
 from app.models.tenant.BusScan import BusScan
-from app.models.tenant.SchoolUsers import SchoolUsers
-from app.utils.db_manager import switch_to_school_db
+from app.models.tenant.InstitutionUsers import InstitutionUsers
+from app.utils.db_manager import switch_to_institution_db
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
@@ -17,7 +17,7 @@ class BusLocationService:
     @staticmethod
     def upsert_location(skid, bus_staff_user_id, lat, lng, heading=None, speed=None):
         """Insert or update the single location row for a bus staff member."""
-        with switch_to_school_db(skid) as session:
+        with switch_to_institution_db(skid) as session:
             row = session.query(BusLocation).filter_by(
                 bus_staff_user_id=bus_staff_user_id
             ).first()
@@ -55,7 +55,7 @@ class BusLocationService:
     @staticmethod
     def stop_tracking(skid, bus_staff_user_id):
         """Mark a bus staff as no longer broadcasting."""
-        with switch_to_school_db(skid) as session:
+        with switch_to_institution_db(skid) as session:
             row = session.query(BusLocation).filter_by(
                 bus_staff_user_id=bus_staff_user_id
             ).first()
@@ -67,14 +67,14 @@ class BusLocationService:
     @staticmethod
     def get_live_location(skid, bus_staff_user_id):
         """Get the last known location for a bus staff member."""
-        with switch_to_school_db(skid) as session:
+        with switch_to_institution_db(skid) as session:
             row = session.query(BusLocation).filter_by(
                 bus_staff_user_id=bus_staff_user_id
             ).first()
             if not row:
                 return None
 
-            staff = session.query(SchoolUsers).filter_by(id=bus_staff_user_id).first()
+            staff = session.query(InstitutionUsers).filter_by(id=bus_staff_user_id).first()
             return {
                 'bus_staff_user_id': row.bus_staff_user_id,
                 'staff_name': staff.full_name if staff else None,
@@ -93,7 +93,7 @@ class BusLocationService:
         then return that staff's live location.
         """
         today = date.today()
-        with switch_to_school_db(skid) as session:
+        with switch_to_institution_db(skid) as session:
             # Find today's most recent scan for this student
             scan = (
                 session.query(BusScan)
@@ -115,7 +115,7 @@ class BusLocationService:
                 is_active=True,
             ).first()
 
-            staff = session.query(SchoolUsers).filter_by(id=bus_staff_id).first()
+            staff = session.query(InstitutionUsers).filter_by(id=bus_staff_id).first()
 
             if not row:
                 return {

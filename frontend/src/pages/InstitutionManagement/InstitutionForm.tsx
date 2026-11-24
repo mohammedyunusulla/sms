@@ -1,6 +1,6 @@
 /**
- * School Form Page
- * Create and edit schools with comprehensive form validation
+ * Institution Form Page
+ * Create and edit institutions with comprehensive form validation
  */
 
 import { FC, useEffect, useRef, useState } from 'react';
@@ -16,9 +16,9 @@ import {
     LoadingSpinner,
     Modal,
 } from '../../components';
-import { schoolService } from '../../services/modules/schoolService';
+import { institutionService } from '../../services/modules/institutionService';
 import { userService } from '../../services/modules/userService';
-import { ISchool } from '../../types/index';
+import { IInstitution } from '../../types/index';
 
 interface IFormData {
     name: string;
@@ -37,13 +37,13 @@ interface IFormErrors {
     [key: string]: string;
 }
 
-const SchoolForm: FC = () => {
+const InstitutionForm: FC = () => {
     const navigate = useNavigate();
     const { id } = useParams();
     const isEditMode = Boolean(id);
 
     // State
-    const [selectedSchool, setSelectedSchool] = useState<ISchool | null>(null);
+    const [selectedInstitution, setSelectedInstitution] = useState<IInstitution | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -75,34 +75,34 @@ const SchoolForm: FC = () => {
     const [provisionLoading, setProvisionLoading] = useState(false);
     const [provisionResult, setProvisionResult] = useState<any>(null);
 
-    // Fetch school data if editing
+    // Fetch institution data if editing
     useEffect(() => {
         if (isEditMode && id) {
-            const fetchSchool = async () => {
+            const fetchInstitution = async () => {
                 setLoading(true);
                 try {
-                    const school = await schoolService.getById(id);
-                    setSelectedSchool(school);
-                    originalPlan.current = (school.plan as string) || 'BASIC';
+                    const institution = await institutionService.getById(id);
+                    setSelectedInstitution(institution);
+                    originalPlan.current = (institution.plan as string) || 'BASIC';
                     setFormData({
-                        name: school.name,
-                        code: school.code,
-                        email: school.email,
-                        phone: school.phone,
-                        address: school.address,
-                        city: school.city || '',
-                        state: school.state || '',
-                        country: school.country || '',
-                        website: school.website || '',
-                        plan: (school.plan as 'BASIC' | 'STANDARD' | 'PREMIUM') || 'BASIC',
+                        name: institution.name,
+                        code: institution.code,
+                        email: institution.email,
+                        phone: institution.phone,
+                        address: institution.address,
+                        city: institution.city || '',
+                        state: institution.state || '',
+                        country: institution.country || '',
+                        website: institution.website || '',
+                        plan: (institution.plan as 'BASIC' | 'STANDARD' | 'PREMIUM') || 'BASIC',
                     });
                 } catch (err: any) {
-                    setError(err.message || 'Failed to load school');
+                    setError(err.message || 'Failed to load institution');
                 } finally {
                     setLoading(false);
                 }
             };
-            fetchSchool();
+            fetchInstitution();
         }
     }, [id, isEditMode]);
 
@@ -112,16 +112,16 @@ const SchoolForm: FC = () => {
 
         // Name validation
         if (!formData.name.trim()) {
-            newErrors.name = 'School name is required';
+            newErrors.name = 'Institution name is required';
         } else if (formData.name.length < 3) {
-            newErrors.name = 'School name must be at least 3 characters';
+            newErrors.name = 'Institution name must be at least 3 characters';
         }
 
         // Code validation
         if (!formData.code.trim()) {
-            newErrors.code = 'School code is required';
+            newErrors.code = 'Institution code is required';
         } else if (formData.code.length < 2) {
-            newErrors.code = 'School code must be at least 2 characters';
+            newErrors.code = 'Institution code must be at least 2 characters';
         }
 
         // Email validation (optional)
@@ -197,8 +197,8 @@ const SchoolForm: FC = () => {
 
         try {
             if (isEditMode && id) {
-                await schoolService.update(id, formData);
-                toast.success('School updated successfully');
+                await institutionService.update(id, formData);
+                toast.success('Institution updated successfully');
 
                 // Check if plan was upgraded from BASIC to STANDARD/PREMIUM
                 const wasBasic = originalPlan.current === 'BASIC';
@@ -211,12 +211,12 @@ const SchoolForm: FC = () => {
                     return; // Don't navigate — show provisioning modal
                 }
             } else {
-                await schoolService.create(formData as Omit<ISchool, 'id' | 'created_at' | 'updated_at'>);
-                toast.success('School created successfully');
+                await institutionService.create(formData as Omit<IInstitution, 'id' | 'created_at' | 'updated_at'>);
+                toast.success('Institution created successfully');
             }
-            setTimeout(() => navigate('/schools'), 1500);
+            setTimeout(() => navigate('/institutions'), 1500);
         } catch (err: any) {
-            toast.error(err.message || 'Failed to save school');
+            toast.error(err.message || 'Failed to save institution');
         } finally {
             setIsSubmitting(false);
         }
@@ -229,13 +229,13 @@ const SchoolForm: FC = () => {
             toast.error(problem);
             return;
         }
-        if (!selectedSchool) return;
+        if (!selectedInstitution) return;
 
         try {
             setProvisionLoading(true);
             const result = await userService.provisionBulkLogins({
-                skid: selectedSchool.skid,
-                school_id: Number(selectedSchool.id),
+                skid: selectedInstitution.skid,
+                institution_id: Number(selectedInstitution.id),
                 default_password: provisionPassword,
                 role_filter: provisionRoleFilter || undefined,
             });
@@ -255,15 +255,15 @@ const SchoolForm: FC = () => {
 
     // Export provisioning report
     const handleExportReport = async () => {
-        if (!selectedSchool) return;
+        if (!selectedInstitution) return;
         try {
-            const report = await userService.getProvisioningReport(selectedSchool.skid, Number(selectedSchool.id));
+            const report = await userService.getProvisioningReport(selectedInstitution.skid, Number(selectedInstitution.id));
 
-            // Build a map of failure reasons from provisioning result (school_user_id -> reason)
+            // Build a map of failure reasons from provisioning result (institution_user_id -> reason)
             const failureReasons: Record<number, string> = {};
             if (provisionResult?.failures) {
                 for (const f of provisionResult.failures) {
-                    failureReasons[f.school_user_id] = f.reason;
+                    failureReasons[f.institution_user_id] = f.reason;
                 }
             }
 
@@ -271,7 +271,7 @@ const SchoolForm: FC = () => {
             const provisionedIds = new Set<number>();
             if (provisionResult?.successes) {
                 for (const s of provisionResult.successes) {
-                    provisionedIds.add(s.school_user_id);
+                    provisionedIds.add(s.institution_user_id);
                 }
             }
 
@@ -283,14 +283,14 @@ const SchoolForm: FC = () => {
                 let loginStatus = '';
                 let remarks = '';
                 if (u.has_login) {
-                    if (provisionedIds.has(u.school_user_id)) {
+                    if (provisionedIds.has(u.institution_user_id)) {
                         loginStatus = 'Login Created';
                     } else {
                         loginStatus = 'Has Login';
                     }
-                } else if (failureReasons[u.school_user_id]) {
+                } else if (failureReasons[u.institution_user_id]) {
                     loginStatus = 'Failed';
-                    remarks = failureReasons[u.school_user_id];
+                    remarks = failureReasons[u.institution_user_id];
                 } else {
                     loginStatus = 'No Login';
                 }
@@ -312,7 +312,7 @@ const SchoolForm: FC = () => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${report.school_name}_users_login_report.csv`;
+            a.download = `${report.institution_name}_users_login_report.csv`;
             a.click();
             URL.revokeObjectURL(url);
             toast.success('Report exported successfully');
@@ -322,8 +322,8 @@ const SchoolForm: FC = () => {
     };
 
     // Show loading spinner while fetching data in edit mode
-    if (isEditMode && loading && !selectedSchool) {
-        return <LoadingSpinner fullHeight message="Loading school details..." />;
+    if (isEditMode && loading && !selectedInstitution) {
+        return <LoadingSpinner fullHeight message="Loading institution details..." />;
     }
 
     // Show error message
@@ -331,8 +331,8 @@ const SchoolForm: FC = () => {
         return (
             <div className="p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                 <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
-                <Button variant="secondary" onClick={() => navigate('/schools')}>
-                    Back to Schools
+                <Button variant="secondary" onClick={() => navigate('/institutions')}>
+                    Back to Institutions
                 </Button>
             </div>
         );
@@ -342,15 +342,15 @@ const SchoolForm: FC = () => {
         <div className="space-y-6">
             {/* Page Header */}
             <PageHeader
-                title={isEditMode ? 'Edit School' : 'Add New School'}
+                title={isEditMode ? 'Edit Institution' : 'Add New Institution'}
                 subtitle={
                     isEditMode
-                        ? `Update details for ${selectedSchool?.name}`
-                        : 'Register a new school in the system'
+                        ? `Update details for ${selectedInstitution?.name}`
+                        : 'Register a new institution in the system'
                 }
                 breadcrumbs={[
                     { label: 'Dashboard', href: '/dashboard' },
-                    { label: 'Schools', href: '/schools' },
+                    { label: 'Institutions', href: '/institutions' },
                     { label: isEditMode ? 'Edit' : 'New', href: '#' },
                 ]}
             />
@@ -364,9 +364,9 @@ const SchoolForm: FC = () => {
                             Basic Information
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* School Name */}
+                            {/* Institution Name */}
                             <FormField
-                                label="School Name"
+                                label="Institution Name"
                                 required
                                 error={errors.name}
                             >
@@ -375,15 +375,15 @@ const SchoolForm: FC = () => {
                                     type="text"
                                     value={formData.name}
                                     onChange={handleInputChange}
-                                    placeholder="Enter school name"
+                                    placeholder="Enter institution name"
                                     error={Boolean(errors.name)}
                                     required
                                 />
                             </FormField>
 
-                            {/* School Code */}
+                            {/* Institution Code */}
                             <FormField
-                                label="School Code"
+                                label="Institution Code"
                                 required
                                 error={errors.code}
                             >
@@ -392,7 +392,7 @@ const SchoolForm: FC = () => {
                                     type="text"
                                     value={formData.code}
                                     onChange={handleInputChange}
-                                    placeholder="Enter unique school code"
+                                    placeholder="Enter unique institution code"
                                     error={Boolean(errors.code)}
                                     required
                                     disabled={isEditMode}
@@ -441,7 +441,7 @@ const SchoolForm: FC = () => {
                                     type="url"
                                     value={formData.website}
                                     onChange={handleInputChange}
-                                    placeholder="https://www.school.com"
+                                    placeholder="https://www.institution.com"
                                     error={Boolean(errors.website)}
                                 />
                             </FormField>
@@ -550,7 +550,7 @@ const SchoolForm: FC = () => {
                     <div className="flex items-center justify-between pt-6 border-t border-gray-200 dark:border-gray-700">
                         <Button
                             variant="secondary"
-                            onClick={() => navigate('/schools')}
+                            onClick={() => navigate('/institutions')}
                             disabled={isSubmitting}
                         >
                             Cancel
@@ -561,7 +561,7 @@ const SchoolForm: FC = () => {
                             isLoading={isSubmitting}
                             loadingText={isEditMode ? 'Updating...' : 'Creating...'}
                         >
-                            {isEditMode ? 'Update School' : 'Create School'}
+                            {isEditMode ? 'Update Institution' : 'Create Institution'}
                         </Button>
                     </div>
                 </form>
@@ -571,14 +571,14 @@ const SchoolForm: FC = () => {
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-4 rounded-lg">
                 <p className="text-sm text-blue-700 dark:text-blue-300">
                     <strong>Note:</strong> All fields are required. Please ensure the information is accurate before submitting.
-                    Once a school is created, you can manage users, classes, and other settings from the school dashboard.
+                    Once an institution is created, you can manage users, classes, and other settings from the institution dashboard.
                 </p>
             </div>
 
             {/* Bulk Provisioning Modal */}
             <Modal
                 isOpen={provisionModalOpen}
-                onClose={() => { setProvisionModalOpen(false); navigate('/schools'); }}
+                onClose={() => { setProvisionModalOpen(false); navigate('/institutions'); }}
                 title="Plan Upgraded! Provision Login Access"
                 size="lg"
                 closeButton={!!provisionResult}
@@ -587,7 +587,7 @@ const SchoolForm: FC = () => {
                         <div className="flex justify-between">
                             <Button
                                 variant="secondary"
-                                onClick={() => { setProvisionModalOpen(false); navigate('/schools'); }}
+                                onClick={() => { setProvisionModalOpen(false); navigate('/institutions'); }}
                             >
                                 Skip
                             </Button>
@@ -611,7 +611,7 @@ const SchoolForm: FC = () => {
                             </Button>
                             <Button
                                 variant="primary"
-                                onClick={() => { setProvisionModalOpen(false); navigate('/schools'); }}
+                                onClick={() => { setProvisionModalOpen(false); navigate('/institutions'); }}
                             >
                                 Done
                             </Button>
@@ -622,7 +622,7 @@ const SchoolForm: FC = () => {
                 {!provisionResult ? (
                     <>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                            School plan has been upgraded from BASIC to {formData.plan}.
+                            Institution plan has been upgraded from BASIC to {formData.plan}.
                             Would you like to create login access for students and parents?
                         </p>
                         <div className="space-y-4">
@@ -719,4 +719,4 @@ const SchoolForm: FC = () => {
     );
 };
 
-export default SchoolForm;
+export default InstitutionForm;

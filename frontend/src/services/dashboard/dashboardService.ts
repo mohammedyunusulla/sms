@@ -19,7 +19,7 @@ export const dashboardService = {
      */
     async getSuperAdminStats(): Promise<any> {
         try {
-            const response = await client.get('/school/dashboard/stats') as any;
+            const response = await client.get('/institution/dashboard/stats') as any;
             if (response.code === 200 && response.status === 'success') {
                 return response.data;
             }

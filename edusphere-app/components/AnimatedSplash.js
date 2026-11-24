@@ -93,7 +93,7 @@ export default function AnimatedSplash({ onFinish }) {
         />
       </Animated.View>
       <Animated.Text style={[styles.tagline, taglineStyle]}>
-        School Management, Simplified
+        Institution Management, Simplified
       </Animated.Text>
       <View style={styles.dots}>
         <Animated.View style={[styles.dot, dot1Style]} />

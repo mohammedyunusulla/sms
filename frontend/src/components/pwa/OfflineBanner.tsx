@@ -1,6 +1,6 @@
 /**
  * Thin bar shown while the device has no connection. The app shell opens from
- * the service-worker cache, but all school data comes live from the API, so we
+ * the service-worker cache, but all institution data comes live from the API, so we
  * say so plainly instead of letting requests fail silently.
  */
 import { useEffect, useState } from "react";

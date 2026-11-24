@@ -162,7 +162,7 @@ export default function SalaryPaymentsScreen() {
         payment_date: dateStr,
         payment_method: paymentMethod,
         transaction_reference: transactionRef || undefined,
-        paid_by: user?.school_user_id || user?.id,
+        paid_by: user?.institution_user_id || user?.id,
       });
       setPayVisible(false);
       fetchPayments();

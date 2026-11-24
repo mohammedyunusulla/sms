@@ -3,7 +3,7 @@
  * Handles API calls for section management operations
  */
 
-import { getApiClient, getSchoolId } from '../api/client';
+import { getApiClient, getInstitutionId } from '../api/client';
 import { ISection } from '../../types/index';
 
 class SectionService {
@@ -14,13 +14,13 @@ class SectionService {
      */
     async getByClass(classId: string): Promise<ISection[]> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/sections/${schoolId}/${classId}`);
+        const response = await api.get(`${this.baseUrl}/sections/${institutionId}/${classId}`);
         return response?.data || [];
     }
 
@@ -29,13 +29,13 @@ class SectionService {
      */
     async getById(sectionId: string): Promise<ISection> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/section/${sectionId}/${schoolId}`);
+        const response = await api.get(`${this.baseUrl}/section/${sectionId}/${institutionId}`);
         return response.data?.data || response.data;
     }
 
@@ -44,13 +44,13 @@ class SectionService {
      */
     async create(classId: string, sectionName: string, teacherId: string): Promise<ISection> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/create/section/${schoolId}`, {
+        const response = await api.post(`${this.baseUrl}/create/section/${institutionId}`, {
             class_id: classId,
             section_name: sectionName,
             teacher_id: teacherId,
@@ -68,13 +68,13 @@ class SectionService {
      */
     async update(sectionId: string, classId: string, sectionName: string, teacherId: string): Promise<ISection> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.put(`${this.baseUrl}/update/section/${schoolId}/${sectionId}`, {
+        const response = await api.put(`${this.baseUrl}/update/section/${institutionId}/${sectionId}`, {
             class_id: classId,
             section_name: sectionName,
             teacher_id: teacherId,
@@ -92,13 +92,13 @@ class SectionService {
      */
     async delete(sectionId: string): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.delete(`${this.baseUrl}/delete/section/${schoolId}/${sectionId}`);
+        const response = await api.delete(`${this.baseUrl}/delete/section/${institutionId}/${sectionId}`);
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.data?.message || 'Failed to delete section');
         }

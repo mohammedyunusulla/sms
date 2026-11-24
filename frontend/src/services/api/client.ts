@@ -262,10 +262,10 @@ export const getAuthToken = (): string | null => {
 };
 
 /**
- * Get School ID from logged user
+ * Get Institution ID from logged user
  * Used for multi-tenant API calls
  */
-export const getSchoolId = (): string => {
+export const getInstitutionId = (): string => {
     try {
         const userString = localStorage.getItem('loggedUser');
         if (userString) {

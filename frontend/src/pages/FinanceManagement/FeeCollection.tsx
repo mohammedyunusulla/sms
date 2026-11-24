@@ -17,7 +17,7 @@ import { Permission } from '../../config/permissions';
 import PaymentHistoryDialog from './PaymentHistoryDialog';
 import DiscountDialog from './DiscountDialog';
 import { generateFeeReceiptPdf, generateFeeSummaryReceiptPdf } from '../../prints';
-import type { SchoolData, PdfAction, FeeReceiptData } from '../../prints';
+import type { InstitutionData, PdfAction, FeeReceiptData } from '../../prints';
 import { formatAmount } from '../../utils/money';
 
 const PAYMENT_MODES = [
@@ -240,14 +240,14 @@ const FeeCollection: FC = () => {
         return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
     };
 
-    // Build school data for PDF header
-    const getSchoolData = useCallback((): SchoolData => {
+    // Build institution data for PDF header
+    const getInstitutionData = useCallback((): InstitutionData => {
         const authUser = useAuthStore.getState().user;
         return {
-            schoolName: authUser?.school_name || 'School Name',
-            schoolAddress: '',
-            schoolPhone: '',
-            schoolEmail: authUser?.email || '',
+            institutionName: authUser?.institution_name || 'Institution Name',
+            institutionAddress: '',
+            institutionPhone: '',
+            institutionEmail: authUser?.email || '',
             logo: null,
             generatedBy: authUser?.full_name || authUser?.name || 'System',
         };
@@ -296,13 +296,13 @@ const FeeCollection: FC = () => {
                 paidAmount: fee.paid_amount,
                 balanceAmount: fee.balance_amount,
             };
-            await generateFeeReceiptPdf(receiptData, getSchoolData(), action);
+            await generateFeeReceiptPdf(receiptData, getInstitutionData(), action);
             toast.success(`Receipt ${action === 'download' ? 'downloaded' : action === 'print' ? 'sent to printer' : 'opened'} successfully`);
         } catch (err: any) {
             console.error('Error generating receipt:', err);
             toast.error('Failed to generate receipt');
         }
-    }, [selectedStudent, getSchoolData, feeInstallments]);
+    }, [selectedStudent, getInstitutionData, feeInstallments]);
 
     // Handle full summary receipt for all installments
     const handlePrintFullSummary = useCallback(async (fee: IStudentFee, action: PdfAction = 'print') => {
@@ -336,13 +336,13 @@ const FeeCollection: FC = () => {
                         };
                     }),
             };
-            await generateFeeSummaryReceiptPdf(summaryData, getSchoolData(), action);
+            await generateFeeSummaryReceiptPdf(summaryData, getInstitutionData(), action);
             toast.success(`Summary receipt ${action === 'download' ? 'downloaded' : action === 'print' ? 'sent to printer' : 'opened'} successfully`);
         } catch (err: any) {
             console.error('Error generating summary receipt:', err);
             toast.error('Failed to generate summary receipt');
         }
-    }, [selectedStudent, feeInstallments, getSchoolData]);
+    }, [selectedStudent, feeInstallments, getInstitutionData]);
 
     const showTransactionFields = ['ONLINE', 'UPI', 'CARD'].includes(paymentData.payment_mode);
     const showChequeFields = paymentData.payment_mode === 'CHEQUE';

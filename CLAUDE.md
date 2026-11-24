@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository layout
 
-Monorepo for the multi-tenant School Management System (SMS):
+Monorepo for the multi-tenant Institution Management System (SMS):
 
 - `backend/` — Flask 2.3 + SQLAlchemy 2 REST API with Flask-SocketIO. See `backend/CLAUDE.md` for its details: the service-layer pattern, auth decorators, roles and `skid` scoping.
 - `frontend/` — "Edusphere" React 19 + TypeScript + Vite 6 + Tailwind v4 + Zustand SPA. See `frontend/CLAUDE.md` for its details: routing, the permission system and the axios client.
@@ -42,8 +42,10 @@ There is no automated test suite in either project. Use `npm run build` (type ch
 
 ## Architecture essentials
 
-- **Database per tenant.** The main DB (`SUPER_ADMIN_DATABASE_URL`, e.g. `sms_dev`) holds `users`, `schools` and `user_sessions` (`app/models/main/`). Each school gets its own Postgres DB (`app/models/tenant/`), and requests are routed to it through `app/utils/tenant_db.py` / `db_manager.switch_to_school_db(skid)`.
-- **Schema creation is mostly automatic.** On startup, `create_app()` runs `_bootstrap_main_schema`, which does `db.create_all()` plus ad-hoc `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` backfills. Registering a new school creates its DB through `BaseModelTenant.metadata.create_all`. The Alembic scripts (`run-*dbupgrade.*`, `tenant_migration.py`) point to `migrations_main/` and `migrations_tenant/`, but those directories are **not in the repo**. So for a new column on an existing table, you probably need a manual/bootstrap `ALTER`. `create_all` alone won't add it.
+- **Naming: "institution", never "school".** EduSpyre serves schools, colleges and universities, so code, API, database and UI all say institution (`institutions` table, `institution_users`, `institution_id`, role code `INSTITUTION_ADMIN`, `/api/institution`, `/institutions` pages). Databases from before the rename are converted at start-up by `app/utils/institution_rename.py` (runs before `create_all`; a no-op once done). `skid` is intentionally unchanged. Institution databases are named `eduspyre_<skid>` (renamed from the old `skool_<skid>` at start-up by the same module). Use "school" only where it means actual schools, e.g. "schools, colleges and universities".
+
+- **Database per tenant.** The main DB (`SUPER_ADMIN_DATABASE_URL`, e.g. `sms_dev`) holds `users`, `institutions` and `user_sessions` (`app/models/main/`). Each institution gets its own Postgres DB (`app/models/tenant/`), and requests are routed to it through `app/utils/tenant_db.py` / `db_manager.switch_to_institution_db(skid)`.
+- **Schema creation is mostly automatic.** On startup, `create_app()` runs `_bootstrap_main_schema`, which does `db.create_all()` plus ad-hoc `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` backfills. Registering a new institution creates its DB through `BaseModelTenant.metadata.create_all`. The Alembic scripts (`run-*dbupgrade.*`, `tenant_migration.py`) point to `migrations_main/` and `migrations_tenant/`, but those directories are **not in the repo**. So for a new column on an existing table, you probably need a manual/bootstrap `ALTER`. `create_all` alone won't add it.
 - **Auth.** JWTs carry a `session_token`. The `token_in_blocklist_loader` in `app/__init__.py` rejects any token whose `UserSession` is no longer active, so logging out invalidates tokens on the server side.
 - **New API module.** Add the blueprint to `app/api/__init__.py` and register it with a `/api/...` prefix in `create_app()`. Add the matching frontend endpoint in `frontend/src/services/api/config.ts` (`API_ENDPOINTS`) and create a domain service in `frontend/src/services/modules/`.
 - **Frontend routing.** `/` is the public landing page (`frontend/src/pages/Landing/`, self-contained components + `landing.css`); the login page is `/signin`, and all "send to login" redirects (ProtectedRoute, logout, forced logout in `services/api/client.ts`) target `/signin`. Contact/demo links (landing page + sign-in page) live in `frontend/src/config/contact.ts`.

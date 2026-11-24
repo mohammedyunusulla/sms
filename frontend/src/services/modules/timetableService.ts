@@ -4,7 +4,7 @@
  * Uses centralized API client from services/api/client.ts
  */
 
-import { getApiClient, getSchoolId } from '../api/client';
+import { getApiClient, getInstitutionId } from '../api/client';
 import { ITimetable } from '../../types/index';
 
 interface ICreateTimetableRequest {
@@ -49,13 +49,13 @@ class TimetableService {
      */
     async list(academicyearId: number): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/list/${schoolId}/${academicyearId}`);
+        const response = await api.get(`${this.baseUrl}/list/${institutionId}/${academicyearId}`);
         return response.data;
     }
 
@@ -64,13 +64,13 @@ class TimetableService {
      */
     async getById(id: string): Promise<ITimetable> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/view/${schoolId}/${id}`);
+        const response = await api.get(`${this.baseUrl}/view/${institutionId}/${id}`);
         return response.data?.data || response.data;
     }
 
@@ -79,16 +79,16 @@ class TimetableService {
      */
     async getByClassId(classId: string, academicYear?: string): Promise<ITimetable> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const params: any = {};
         if (academicYear) params.academicYear = academicYear;
 
-        const response = await api.get(`${this.baseUrl}/class/${classId}/${schoolId}`, { params });
+        const response = await api.get(`${this.baseUrl}/class/${classId}/${institutionId}`, { params });
         return response.data;
     }
 
@@ -97,13 +97,13 @@ class TimetableService {
      */
     async create(data: ICreateTimetableRequest): Promise<ITimetable> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/create/${schoolId}`, data);
+        const response = await api.post(`${this.baseUrl}/create/${institutionId}`, data);
         if (response.code === 200 && response.status === 'success') {
             return response?.data;
         }
@@ -115,13 +115,13 @@ class TimetableService {
      */
     async update(id: string, data: IUpdateTimetableRequest): Promise<ITimetable> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.put(`${this.baseUrl}/update/${id}/${schoolId}`, data);
+        const response = await api.put(`${this.baseUrl}/update/${id}/${institutionId}`, data);
         if (response.code === 200 && response.status === 'success') {
             return response?.data;
         }
@@ -133,13 +133,13 @@ class TimetableService {
      */
     async delete(id: string): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.delete(`${this.baseUrl}/delete/${id}`, { params: { skid: schoolId } });
+        const response = await api.delete(`${this.baseUrl}/delete/${id}`, { params: { skid: institutionId } });
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.data?.message || 'Failed to delete timetable');
         }
@@ -150,13 +150,13 @@ class TimetableService {
      */
     async addTimeSlot(timetableId: string, slot: ITimeSlotRequest): Promise<ITimetable> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/${timetableId}/slots/${schoolId}`, slot);
+        const response = await api.post(`${this.baseUrl}/${timetableId}/slots/${institutionId}`, slot);
         if (response.code === 200 && response.status === 'success') {
             return response?.data;
         }
@@ -172,13 +172,13 @@ class TimetableService {
         slot: ITimeSlotRequest
     ): Promise<ITimetable> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.put(`${this.baseUrl}/${timetableId}/slots/${slotId}/${schoolId}`, slot);
+        const response = await api.put(`${this.baseUrl}/${timetableId}/slots/${slotId}/${institutionId}`, slot);
         if (response.code === 200 && response.status === 'success') {
             return response?.data;
         }
@@ -188,17 +188,17 @@ class TimetableService {
 
     /**
      * Get a student's timetable for a specific day.
-     * Endpoint: GET /timeTable/student/{schoolId}/{studentId}/{date}
+     * Endpoint: GET /timeTable/student/{institutionId}/{studentId}/{date}
      */
     async getStudentDailyTimetable(studentId: number, date: string): Promise<any[]> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response: any = await api.get(`${this.baseUrl}/student/${schoolId}/${studentId}/${date}`);
+        const response: any = await api.get(`${this.baseUrl}/student/${institutionId}/${studentId}/${date}`);
         if (Array.isArray(response)) return response;
         if (Array.isArray(response?.data)) return response.data;
         return [];
@@ -209,16 +209,16 @@ class TimetableService {
      */
     async getTeacherTimetable(teacherId: string, academicYear?: string): Promise<ITimetable[]> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const params: any = {};
         if (academicYear) params.academicYear = academicYear;
 
-        const response = await api.get(`/users/${teacherId}/timetable/${schoolId}`, { params });
+        const response = await api.get(`/users/${teacherId}/timetable/${institutionId}`, { params });
         return response.data?.data || [];
     }
 
@@ -231,13 +231,13 @@ class TimetableService {
         academicYear: string
     ): Promise<ITimetable> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/${sourceId}/duplicate/${schoolId}`, {
+        const response = await api.post(`${this.baseUrl}/${sourceId}/duplicate/${institutionId}`, {
             targetClassId,
             academicYear,
         });
@@ -252,13 +252,13 @@ class TimetableService {
      */
     async exportToPDF(timetableId: string): Promise<Blob> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/${timetableId}/export/pdf/${schoolId}`, {
+        const response = await api.get(`${this.baseUrl}/${timetableId}/export/pdf/${institutionId}`, {
             responseType: 'blob',
         });
         return response.data;
@@ -269,13 +269,13 @@ class TimetableService {
      */
     async exportToCSV(timetableId: string): Promise<Blob> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/${timetableId}/export/csv/${schoolId}`, {
+        const response = await api.get(`${this.baseUrl}/${timetableId}/export/csv/${institutionId}`, {
             responseType: 'blob',
         });
         return response.data;
@@ -285,7 +285,7 @@ class TimetableService {
      * Generate time slots based on period configuration
      */
     async generateTimeSlots(config: {
-        school_start_time: string;
+        institution_start_time: string;
         lunch_start_time: string;
         lunch_duration: number;
         period_duration: number;
@@ -348,15 +348,15 @@ class TimetableService {
      */
     async saveDraft(data: any): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const response = await api.post(`${this.baseUrl}/save-draft`, {
             ...data,
-            skid: schoolId,
+            skid: institutionId,
             is_draft: true,
         });
 
@@ -371,15 +371,15 @@ class TimetableService {
      */
     async createFinal(data: any): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const response = await api.post(`${this.baseUrl}/create`, {
             ...data,
-            skid: schoolId,
+            skid: institutionId,
             is_draft: false,
         });
 

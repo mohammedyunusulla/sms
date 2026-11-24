@@ -6,7 +6,7 @@ class PromotionHistory(BaseModelTenant, BaseModelTenantMixin):
     __tablename__ = 'promotion_history'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    student_user_id = Column(Integer, ForeignKey('school_users.id'), nullable=False)
+    student_user_id = Column(Integer, ForeignKey('institution_users.id'), nullable=False)
     from_academic_year_id = Column(Integer, ForeignKey('academic_years.id'), nullable=False)
     to_academic_year_id = Column(Integer, ForeignKey('academic_years.id'), nullable=False)
     from_class_id = Column(Integer, ForeignKey('classes.id'), nullable=False)
@@ -20,7 +20,7 @@ class PromotionHistory(BaseModelTenant, BaseModelTenantMixin):
     
     # Relationships
     # Change the student relationship to:
-    student = relationship("SchoolUsers", backref="promotion_history")
+    student = relationship("InstitutionUsers", backref="promotion_history")
     from_academic_year = relationship("AcademicYear", foreign_keys=[from_academic_year_id], back_populates="promotions_from")
     to_academic_year = relationship("AcademicYear", foreign_keys=[to_academic_year_id], back_populates="promotions_to")
     from_class = relationship("Class", foreign_keys=[from_class_id])

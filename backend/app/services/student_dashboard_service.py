@@ -1,4 +1,4 @@
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from sqlalchemy import and_
 from datetime import datetime
 

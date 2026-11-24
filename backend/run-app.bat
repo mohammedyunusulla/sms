@@ -2,7 +2,7 @@
 REM Script to start the Flask application on Windows
 
 echo ======================================
-echo    School Management System
+echo    Institution Management System
 echo    Starting Backend Server
 echo ======================================
 

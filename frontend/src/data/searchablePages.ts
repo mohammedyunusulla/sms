@@ -26,37 +26,37 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['home', 'overview', 'stats', 'analytics', 'main'],
         category: 'Dashboard',
         icon: '📊',
-        roles: [UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT],
+        roles: [UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT],
     },
 
-    // School Management
+    // Institution Management
     {
-        id: 'schools-list',
-        name: 'Schools List',
-        description: 'View and manage all schools',
-        route: '/schools',
-        keywords: ['schools', 'institutions', 'list', 'manage'],
-        category: 'School Management',
+        id: 'institutions-list',
+        name: 'Institutions List',
+        description: 'View and manage all institutions',
+        route: '/institutions',
+        keywords: ['institutions', 'institutions', 'list', 'manage'],
+        category: 'Institution Management',
         icon: '🏫',
         roles: [UserRole.SUPER_ADMIN],
     },
     {
-        id: 'schools-create',
-        name: 'Create School',
-        description: 'Register a new school',
-        route: '/schools/new',
-        keywords: ['school', 'create', 'add', 'register', 'new'],
-        category: 'School Management',
+        id: 'institutions-create',
+        name: 'Create Institution',
+        description: 'Register a new institution',
+        route: '/institutions/new',
+        keywords: ['institution', 'create', 'add', 'register', 'new'],
+        category: 'Institution Management',
         icon: '➕',
         roles: [UserRole.SUPER_ADMIN],
     },
     {
-        id: 'school-admins',
-        name: 'School Admins',
-        description: 'Manage school administrators',
-        route: '/school-admins',
+        id: 'institution-admins',
+        name: 'Institution Admins',
+        description: 'Manage institution administrators',
+        route: '/institution-admins',
         keywords: ['admin', 'administrators', 'manage'],
-        category: 'School Management',
+        category: 'Institution Management',
         icon: '👥',
         roles: [UserRole.SUPER_ADMIN],
     },
@@ -70,7 +70,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['users', 'list', 'manage', 'people'],
         category: 'User Management',
         icon: '👤',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL],
     },
     {
         id: 'users-create',
@@ -80,7 +80,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['user', 'create', 'add', 'new'],
         category: 'User Management',
         icon: '➕',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL],
     },
     {
         id: 'teachers-list',
@@ -90,7 +90,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['teachers', 'staff', 'faculty', 'educators'],
         category: 'User Management',
         icon: '👨‍🏫',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL],
     },
     {
         id: 'students-list',
@@ -100,7 +100,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['students', 'pupils', 'learners'],
         category: 'User Management',
         icon: '🎓',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL],
     },
     {
         id: 'students-create',
@@ -110,7 +110,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['student', 'add', 'create', 'register', 'enroll'],
         category: 'User Management',
         icon: '➕',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL],
     },
     {
         id: 'parents-list',
@@ -120,7 +120,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['parents', 'guardians', 'family'],
         category: 'User Management',
         icon: '👪',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL],
     },
     {
         id: 'roles-permissions',
@@ -130,7 +130,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['roles', 'permissions', 'access', 'rights'],
         category: 'User Management',
         icon: '🔐',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL],
     },
 
     // Class Management
@@ -142,7 +142,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['classes', 'sections', 'grades'],
         category: 'Class Management',
         icon: '🏛️',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL],
     },
     {
         id: 'classes-create',
@@ -152,7 +152,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['class', 'create', 'add', 'new', 'grade'],
         category: 'Class Management',
         icon: '➕',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL],
     },
 
     // Room Management
@@ -164,7 +164,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['rooms', 'halls', 'classroom', 'laboratory', 'auditorium', 'capacity'],
         category: 'Class Management',
         icon: '🏠',
-        roles: [UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL],
+        roles: [UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL],
     },
 
     // Attendance
@@ -176,7 +176,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['attendance', 'mark', 'record', 'present', 'absent'],
         category: 'Attendance',
         icon: '✅',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER],
     },
     {
         id: 'attendance-report',
@@ -186,7 +186,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['attendance', 'report', 'view', 'statistics'],
         category: 'Attendance',
         icon: '📋',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER],
     },
 
     // Announcements
@@ -198,7 +198,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['announcements', 'notices', 'news', 'updates'],
         category: 'Announcements',
         icon: '📢',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.STUDENT],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.STUDENT],
     },
     {
         id: 'announcements-create',
@@ -208,7 +208,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['announcement', 'create', 'post', 'notice'],
         category: 'Announcements',
         icon: '➕',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER],
     },
 
     // Timetable
@@ -220,7 +220,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['timetable', 'schedule', 'classes', 'timing'],
         category: 'Timetable',
         icon: '📅',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER],
     },
     {
         id: 'timetable-create',
@@ -230,7 +230,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['timetable', 'create', 'schedule', 'new'],
         category: 'Timetable',
         icon: '➕',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL],
     },
 
     // Exam Management
@@ -242,7 +242,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['exams', 'tests', 'assessments', 'types'],
         category: 'Exam Management',
         icon: '📝',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL],
     },
     {
         id: 'exams-create',
@@ -252,7 +252,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['exam', 'create', 'type', 'test'],
         category: 'Exam Management',
         icon: '➕',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL],
     },
     {
         id: 'exam-configs',
@@ -262,7 +262,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['exam', 'configuration', 'subjects', 'setup'],
         category: 'Exam Management',
         icon: '⚙️',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL],
     },
     {
         id: 'exam-timetable',
@@ -272,7 +272,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['exam', 'timetable', 'schedule', 'invigilator', 'exam date'],
         category: 'Exam Management',
         icon: '📅',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL],
     },
 
     // Academics
@@ -284,7 +284,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['subjects', 'courses', 'curriculum'],
         category: 'Academics',
         icon: '📚',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER],
     },
     {
         id: 'marks-entry',
@@ -294,7 +294,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['marks', 'grades', 'scores', 'entry', 'results'],
         category: 'Academics',
         icon: '✏️',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER],
     },
     {
         id: 'class-progress',
@@ -304,7 +304,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['progress', 'performance', 'class', 'results'],
         category: 'Academics',
         icon: '📈',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER],
     },
 
     // Syllabus Management
@@ -316,7 +316,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['syllabus', 'curriculum', 'lessons', 'topics'],
         category: 'Syllabus',
         icon: '📖',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER],
     },
     {
         id: 'syllabus-analytics',
@@ -326,7 +326,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['syllabus', 'analytics', 'progress', 'statistics'],
         category: 'Syllabus',
         icon: '📊',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER],
     },
 
     // Finance Management
@@ -338,7 +338,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['fee', 'structure', 'tuition', 'charges'],
         category: 'Finance',
         icon: '💰',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.CLERK],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.CLERK],
     },
     {
         id: 'fee-collection',
@@ -348,17 +348,17 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['fee', 'collection', 'payment', 'receipts'],
         category: 'Finance',
         icon: '💳',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.CLERK],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.CLERK],
     },
     {
         id: 'expenses',
         name: 'Expenses',
-        description: 'Manage school expenses',
+        description: 'Manage institution expenses',
         route: '/finance/expenses',
         keywords: ['expenses', 'costs', 'expenditure', 'spending'],
         category: 'Finance',
         icon: '💸',
-        roles: [UserRole.SCHOOL_ADMIN],
+        roles: [UserRole.INSTITUTION_ADMIN],
     },
     {
         id: 'salary-setup',
@@ -368,7 +368,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['salary', 'setup', 'staff', 'payroll'],
         category: 'Finance',
         icon: '💼',
-        roles: [UserRole.SCHOOL_ADMIN],
+        roles: [UserRole.INSTITUTION_ADMIN],
     },
     {
         id: 'salary-payments',
@@ -378,7 +378,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['salary', 'payments', 'payroll', 'wages'],
         category: 'Finance',
         icon: '💵',
-        roles: [UserRole.SCHOOL_ADMIN],
+        roles: [UserRole.INSTITUTION_ADMIN],
     },
     {
         id: 'fee-defaulters',
@@ -388,7 +388,7 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['defaulters', 'overdue', 'pending fees', 'dues', 'fee report'],
         category: 'Finance',
         icon: '⏰',
-        roles: [UserRole.SCHOOL_ADMIN, UserRole.CLERK],
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.CLERK],
     },
 
     // Profile & Settings
@@ -400,6 +400,6 @@ export const searchablePages: SearchablePage[] = [
         keywords: ['profile', 'account', 'settings', 'personal'],
         category: 'Settings',
         icon: '👤',
-        roles: [UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT],
+        roles: [UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT],
     },
 ];

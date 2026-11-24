@@ -111,7 +111,7 @@ const UserDetail: FC = () => {
   const getRoleBadgeVariant = (role: string) => {
     const variants: Record<string, 'primary' | 'success' | 'warning' | 'danger' | 'info'> = {
       SUPER_ADMIN: 'danger',
-      SCHOOL_ADMIN: 'warning',
+      INSTITUTION_ADMIN: 'warning',
       PRINCIPAL: 'info',
       TEACHER: 'primary',
       STUDENT: 'success',

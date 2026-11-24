@@ -1,7 +1,7 @@
 """
 Read QR codes from photographed notebook pages (Homework AI).
 
-The school sticks a pre-printed QR sticker on a notebook page; the student photographs that page blank
+The institution sticks a pre-printed QR sticker on a notebook page; the student photographs that page blank
 at the start and filled in at the end. The server reads the QR itself (it doesn't trust a value sent
 by the phone) so the two photos can be matched to the same physical page.
 """

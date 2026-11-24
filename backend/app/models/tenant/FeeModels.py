@@ -170,10 +170,10 @@ class FeePayment(BaseModelTenant, BaseModelTenantMixin):
     transaction_id = Column(String(100))
     cheque_number = Column(String(50))
     bank_name = Column(String(100))
-    collected_by = Column(Integer, ForeignKey('school_users.id'))
+    collected_by = Column(Integer, ForeignKey('institution_users.id'))
     remarks = Column(Text)
     is_cancelled = Column(Boolean, default=False)
-    cancelled_by = Column(Integer, ForeignKey('school_users.id'))
+    cancelled_by = Column(Integer, ForeignKey('institution_users.id'))
     cancelled_at = Column(DateTime)
     cancellation_reason = Column(Text)
     created_at = Column(DateTime, default=datetime.now)
@@ -181,7 +181,7 @@ class FeePayment(BaseModelTenant, BaseModelTenantMixin):
     
     # Relationships
     student_fee = relationship("StudentFee", back_populates="payments")
-    collector = relationship("SchoolUsers", foreign_keys=[collected_by])
+    collector = relationship("InstitutionUsers", foreign_keys=[collected_by])
     installment = relationship("FeeInstallment", back_populates="payments")
     
     def to_dict(self):
@@ -218,7 +218,7 @@ class FeeDiscount(BaseModelTenant, BaseModelTenantMixin):
     valid_from = Column(Date, nullable=False)
     valid_to = Column(Date)
     is_active = Column(Boolean, default=True)
-    approved_by = Column(Integer, ForeignKey('school_users.id'))
+    approved_by = Column(Integer, ForeignKey('institution_users.id'))
     reason = Column(Text)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)

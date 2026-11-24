@@ -44,7 +44,7 @@ def main():
         elif access['permissions']:
             kind = 'permission: ' + ' | '.join(access['permissions'])
         elif access.get('full_access_only'):
-            kind = 'school admin only'
+            kind = 'institution admin only'
         elif access['self_service']:
             kind = 'self-service: ' + ','.join(access['roles'] or ['any signed-in user'])
         elif access['roles'] and set(access['roles']) <= {'SUPER_ADMIN'}:

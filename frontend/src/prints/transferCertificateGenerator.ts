@@ -13,7 +13,7 @@ import {
     loadPdfFonts,
     formatDate,
 } from './HeaderAndFooterComponent';
-import type { SchoolData, PdfAction } from './printTypes';
+import type { InstitutionData, PdfAction } from './printTypes';
 
 export interface TransferCertificateData {
     // Student Information
@@ -44,7 +44,7 @@ export interface TransferCertificateData {
  */
 export const generateTransferCertificatePdf = async (
     data: TransferCertificateData,
-    schoolData: SchoolData,
+    institutionData: InstitutionData,
     action: PdfAction = 'print'
 ): Promise<void> => {
     await loadPdfFonts();
@@ -224,14 +224,14 @@ export const generateTransferCertificatePdf = async (
         pageMargins: [40, 140, 40, 60],
         header: () => {
             return getReportHeader(
-                schoolData,
+                institutionData,
                 'Transfer Certificate',
                 `Academic Year: ${academic_year}`,
                 'portrait'
             );
         },
         footer: (currentPage: number, pageCount: number) => {
-            return getReportFooter(currentPage, pageCount, schoolData?.generatedBy);
+            return getReportFooter(currentPage, pageCount, institutionData?.generatedBy);
         },
         content,
         styles: commonPdfStyles,

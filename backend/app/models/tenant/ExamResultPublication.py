@@ -13,7 +13,7 @@ class ExamResultPublication(BaseModelTenant, BaseModelTenantMixin):
     exam_type_id = Column(Integer, ForeignKey('exam_types.id', ondelete='CASCADE'), nullable=False)
     academic_year_id = Column(Integer, ForeignKey('academic_years.id', ondelete='CASCADE'), nullable=False)
     published_at = Column(DateTime, nullable=False)
-    published_by = Column(Integer, nullable=True)  # school_users.id
+    published_by = Column(Integer, nullable=True)  # institution_users.id
 
     __table_args__ = (
         UniqueConstraint('exam_type_id', 'academic_year_id', name='uq_exam_result_publication'),

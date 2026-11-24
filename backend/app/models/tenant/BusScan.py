@@ -12,9 +12,9 @@ class BusScan(BaseModelTenant, BaseModelTenantMixin):
     __tablename__ = "bus_scan"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    student_user_id = Column(Integer, ForeignKey('school_users.id'), nullable=False)
+    student_user_id = Column(Integer, ForeignKey('institution_users.id'), nullable=False)
     scan_type = Column(Enum(BusScanType), nullable=False)
     scanned_at = Column(DateTime, default=func.current_timestamp(), nullable=False)
-    scanned_by_user_id = Column(Integer, nullable=True)  # Bus staff school_users.id
+    scanned_by_user_id = Column(Integer, nullable=True)  # Bus staff institution_users.id
     academic_year_id = Column(Integer, nullable=True)
     location = Column(String(255), nullable=True)   # Optional bus stop / route label

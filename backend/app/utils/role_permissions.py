@@ -14,10 +14,10 @@ import time
 from flask import current_app, request
 
 # Roles with full access (they don't use tick boxes; the menu treats them the same way)
-FULL_ACCESS_ROLES = frozenset({'SUPER_ADMIN', 'SCHOOL_ADMIN'})
+FULL_ACCESS_ROLES = frozenset({'SUPER_ADMIN', 'INSTITUTION_ADMIN'})
 # Students and parents only ever reach their own / their child's data: the server keeps their role rules
 # (plus the own-record checks); their tick boxes only shape their menu. Otherwise a student's "View Exams"
-# tick (meant for My Exam Timetable) would open the school's exam settings, seating plans, syllabus analytics...
+# tick (meant for My Exam Timetable) would open the institution's exam settings, seating plans, syllabus analytics...
 FAMILY_ROLES = frozenset({'STUDENT', 'PARENT'})
 CACHE_SECONDS = 60
 
@@ -30,23 +30,23 @@ def enforcement_mode():
     return mode if mode in ('off', 'log', 'enforce') else 'off'
 
 
-def account_role(session, school_user_id):
+def account_role(session, institution_user_id):
     """
-    A person's one role: the role on their school record (school_users.role_id), falling back to their
+    A person's one role: the role on their institution record (institution_users.role_id), falling back to their
     user_roles row for records saved without it. Sign-in and the permission check both use this.
     """
     from app.models.tenant.Roles import Role
-    from app.models.tenant.SchoolUsers import SchoolUsers
+    from app.models.tenant.InstitutionUsers import InstitutionUsers
     from app.models.tenant.UserRoles import UserRoles
-    school_user = session.query(SchoolUsers).get(school_user_id)
-    if school_user and school_user.role_id:
-        role = session.query(Role).get(school_user.role_id)
+    institution_user = session.query(InstitutionUsers).get(institution_user_id)
+    if institution_user and institution_user.role_id:
+        role = session.query(Role).get(institution_user.role_id)
         if role:
             return role
     return (
         session.query(Role)
         .join(UserRoles, UserRoles.role_id == Role.id)
-        .filter(UserRoles.user_id == school_user_id)
+        .filter(UserRoles.user_id == institution_user_id)
         .order_by(Role.id)
         .first()
     )
@@ -54,20 +54,20 @@ def account_role(session, school_user_id):
 
 def user_permissions(user):
     """
-    The permission keys of the user's school role (the tick boxes), cached for CACHE_SECONDS per user.
-    Empty for users without a school role, or whose role is switched off.
+    The permission keys of the user's institution role (the tick boxes), cached for CACHE_SECONDS per user.
+    Empty for users without an institution role, or whose role is switched off.
     """
-    if not user.skid or not user.school_user_id:
+    if not user.skid or not user.institution_user_id:
         return frozenset()
-    key = (str(user.skid), int(user.school_user_id))
+    key = (str(user.skid), int(user.institution_user_id))
     now = time.monotonic()
     with _lock:
         hit = _cache.get(key)
         if hit and hit[0] > now:
             return hit[1]
-    from app.utils.db_manager import switch_to_school_db
-    with switch_to_school_db(user.skid) as session:
-        role = account_role(session, user.school_user_id)
+    from app.utils.db_manager import switch_to_institution_db
+    with switch_to_institution_db(user.skid) as session:
+        role = account_role(session, user.institution_user_id)
         perms = frozenset(role.permissions or []) if role and role.is_active is not False else frozenset()
     with _lock:
         _cache[key] = (now + CACHE_SECONDS, perms)
@@ -75,7 +75,7 @@ def user_permissions(user):
 
 
 def forget_cached_permissions(skid=None):
-    """Drop cached permissions (all, or one school's) - e.g. right after a role's tick boxes are saved."""
+    """Drop cached permissions (all, or one institution's) - e.g. right after a role's tick boxes are saved."""
     with _lock:
         if skid is None:
             _cache.clear()
@@ -94,7 +94,7 @@ def permission_allows(user, role, permissions):
 def decide(user, role, allowed_roles, permissions, own_roles=()):
     """
     Final access decision for a route. `permissions` is a tuple of keys (any one is enough), or empty when the
-    route is decided by role only (sign-in, a student's / parent's own pages, Super Admin's school management).
+    route is decided by role only (sign-in, a student's / parent's own pages, Super Admin's institution management).
     """
     old_ok = not allowed_roles or role in allowed_roles
     if not permissions or role in own_roles or role in FAMILY_ROLES:  # decided by role

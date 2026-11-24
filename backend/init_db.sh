@@ -2,7 +2,7 @@
 # Script to initialize database - first time setup on Ubuntu/Linux
 
 echo "======================================"
-echo "   School Management System"
+echo "   Institution Management System"
 echo "   Database Initialization"
 echo "======================================"
 
@@ -70,7 +70,7 @@ echo ""
 echo "Default Super Admin Credentials:"
 echo "  Username: admin"
 echo "  Password: admin123"
-echo "  Email: admin@school.com"
+echo "  Email: admin@institution.com"
 echo ""
 echo "⚠️  IMPORTANT: Change the default password after first login!"
 echo ""

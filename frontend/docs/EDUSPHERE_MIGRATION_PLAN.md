@@ -9,13 +9,13 @@
 
 ## EXECUTIVE SUMMARY
 
-This document tracks the migration of the legacy school management frontend (Redux + MUI) to the modern **Edusphere** platform built with:
+This document tracks the migration of the legacy institution management frontend (Redux + MUI) to the modern **Edusphere** platform built with:
 - **React 19** + **TypeScript**
 - **TailAdmin** theme
 - **Tailwind CSS**
 - **Zustand** state management (NO Redux)
 - **Feature-based architecture**
-- **Generic education terminology** (not school-specific)
+- **Generic education terminology** (not institution-specific)
 
 ---
 
@@ -25,17 +25,17 @@ This document tracks the migration of the legacy school management frontend (Red
 
 | Role | API Value | Description |
 |---|---|---|
-| SuperAdmin | `SUPER_ADMIN` | Creates schools, manages entire system |
-| School Admin | `SCHOOL_ADMIN` | Manages a specific school |
-| Principal | `PRINCIPAL` | Principal/Leadership role in school |
+| SuperAdmin | `SUPER_ADMIN` | Creates institutions, manages entire system |
+| Institution Admin | `INSTITUTION_ADMIN` | Manages a specific institution |
+| Principal | `PRINCIPAL` | Principal/Leadership role in institution |
 | Teacher | `TEACHER` | Teaches classes, manages students |
 | Student | `STUDENT` | Enrolled in courses, submits assignments |
 | Parent | `PARENT` | Monitors child's progress |
 
 **Dashboard Routing:**
 - `SUPER_ADMIN` → SuperAdminDashboard (system-wide stats)
-- `SCHOOL_ADMIN` → AdministratorDashboard (school management)
-- `PRINCIPAL` → AdministratorDashboard (school management)
+- `INSTITUTION_ADMIN` → AdministratorDashboard (institution management)
+- `PRINCIPAL` → AdministratorDashboard (institution management)
 - `TEACHER` → EducatorDashboard (class management)
 - `STUDENT` → LearnerDashboard (personal schedule & assignments)
 - `PARENT` → GuardianDashboard (child monitoring)
@@ -263,7 +263,7 @@ Edusphere_Frontend/
 
 **Legacy Dashboard Patterns Adapted:**
 - ✅ SuperAdminDashboard: System stats + Institutions list + System Health monitoring
-- ✅ AdministratorDashboard: Adapted from legacy SchoolAdminDashboard - Institution stats + Financial metrics + Attendance tracking
+- ✅ AdministratorDashboard: Adapted from legacy InstitutionAdminDashboard - Institution stats + Financial metrics + Attendance tracking
 - ✅ EducatorDashboard: Adapted from legacy TeacherDashboard - Dynamic greeting + Class stats + Quick actions
 - ✅ LearnerDashboard: Student view - Schedule, assignments, grade display
 - ✅ GuardianDashboard: Parent view - Children overview, attendance, progress tracking
@@ -866,7 +866,7 @@ export const useStoreStore = create<State & Actions>((set) => ({
 14. Build Institution Management Pages
     - `src/pages/institutions/InstitutionListPage.tsx`
     - `src/pages/institutions/InstitutionFormPage.tsx`
-    - Adapt from legacy school_frontend/pages/school_management
+    - Adapt from legacy institution_frontend/pages/institution_management
 
 ### Phase 4+ (After Institution Management)
 15. User management (CRUD)
@@ -883,7 +883,7 @@ export const useStoreStore = create<State & Actions>((set) => ({
 
 ## REFERENCE: LEGACY ARCHITECTURE ANALYSIS
 
-### From school-management-frontend Deep Dive (2026-01-02)
+### From institution-management-frontend Deep Dive (2026-01-02)
 
 **Key Dashboard Patterns to Adopt:**
 1. **StatsCard Component** - Icon + Title + Value + Color
@@ -963,8 +963,8 @@ export const useStoreStore = create<State & Actions>((set) => ({
 
 For questions, blockers, or clarifications:
 - Review this plan file
-- Check legacy frontend at `D:\School_management\school-management-frontend`
-- Check backend API at `D:\School_management\school-management-backend`
+- Check legacy frontend at `D:\Institution_management\institution-management-frontend`
+- Check backend API at `D:\Institution_management\institution-management-backend`
 - Reference backend CLAUDE.md for API contracts
 
 ---

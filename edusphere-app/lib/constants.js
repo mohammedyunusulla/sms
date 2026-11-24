@@ -1,6 +1,6 @@
 export const ROLES = {
     SUPER_ADMIN: "SUPER_ADMIN",
-    SCHOOL_ADMIN: "SCHOOL_ADMIN",
+    INSTITUTION_ADMIN: "INSTITUTION_ADMIN",
     PRINCIPAL: "PRINCIPAL",
     TEACHER: "TEACHER",
     STUDENT: "STUDENT",
@@ -12,7 +12,7 @@ export const ROLE_ROUTES = {
     [ROLES.TEACHER]: "/(teacher)",
     [ROLES.STUDENT]: "/(student)",
     [ROLES.PARENT]: "/(parent)",
-    [ROLES.SCHOOL_ADMIN]: "/(admin)",
+    [ROLES.INSTITUTION_ADMIN]: "/(admin)",
     [ROLES.PRINCIPAL]: "/(admin)",
     [ROLES.SUPER_ADMIN]: "/(admin)",
     [ROLES.BUS_STAFF]: "/(bus-staff)",

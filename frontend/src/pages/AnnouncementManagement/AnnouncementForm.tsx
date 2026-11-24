@@ -261,7 +261,7 @@ const AnnouncementForm: FC = () => {
                 target_classes: formData.target_classes.map(id => parseInt(id)),
                 target_sections: formData.target_sections.map(id => parseInt(id)),
                 academic_year_id: authUser.current_academic_year.id,
-                created_by: authUser?.school_user_id,
+                created_by: authUser?.institution_user_id,
                 is_published: true,
             };
 
@@ -319,7 +319,7 @@ const AnnouncementForm: FC = () => {
                 subtitle={
                     isEditMode
                         ? `Update announcement: ${selectedAnnouncement?.title}`
-                        : 'Create a new school announcement'
+                        : 'Create a new announcement'
                 }
                 breadcrumbs={[
                     { label: 'Dashboard', href: '/dashboard' },
@@ -379,7 +379,7 @@ const AnnouncementForm: FC = () => {
                                     type="text"
                                     value={formData.title}
                                     onChange={handleInputChange}
-                                    placeholder="e.g., School Closure - Maintenance"
+                                    placeholder="e.g., Campus Closure - Maintenance"
                                     error={Boolean(errors.title)}
                                     required
                                 />

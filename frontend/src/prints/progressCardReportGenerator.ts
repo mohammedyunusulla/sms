@@ -12,7 +12,7 @@ import {
     commonPdfStyles,
     loadPdfFonts,
 } from './HeaderAndFooterComponent';
-import type { SchoolData, PdfAction } from './printTypes';
+import type { InstitutionData, PdfAction } from './printTypes';
 import type { IProgressCard } from '../types/index';
 import { formatDateRange } from '../utils/dateRange';
 
@@ -30,7 +30,7 @@ const gradeColor = (grade: string): string => {
  */
 const buildProgressCardContent = (
     data: IProgressCard,
-    schoolData: SchoolData
+    institutionData: InstitutionData
 ): { content: unknown[]; title: string; subtitle: string } => {
     const {
         student_name,
@@ -335,7 +335,7 @@ const buildProgressCardContent = (
 
     // ─── Content ───
     const content: any[] = [
-        getReportHeader(schoolData, title, subtitle, 'portrait', true),
+        getReportHeader(institutionData, title, subtitle, 'portrait', true),
         studentInfoSection,
         marksTable,
         performanceSummary,
@@ -358,11 +358,11 @@ const buildProgressCardContent = (
  */
 export const generateProgressCardPdf = async (
     data: IProgressCard,
-    schoolData: SchoolData,
+    institutionData: InstitutionData,
     action: PdfAction = 'download'
 ): Promise<void> => {
     await loadPdfFonts();
-    const { content, title, subtitle } = buildProgressCardContent(data, schoolData);
+    const { content, title, subtitle } = buildProgressCardContent(data, institutionData);
     const { student_name, exam_name } = data;
 
     // ─── Document Definition ───
@@ -393,7 +393,7 @@ export const generateProgressCardPdf = async (
             };
         },
         footer: (currentPage: number, pageCount: number) => {
-            return getReportFooter(currentPage, pageCount, schoolData?.generatedBy);
+            return getReportFooter(currentPage, pageCount, institutionData?.generatedBy);
         },
         content,
         styles: commonPdfStyles,
@@ -419,7 +419,7 @@ export const generateProgressCardPdf = async (
  */
 export const generateProgressCardsPdf = async (
     cards: IProgressCard[],
-    schoolData: SchoolData,
+    institutionData: InstitutionData,
     action: PdfAction = 'download',
     fileLabel = 'Class'
 ): Promise<void> => {
@@ -427,14 +427,14 @@ export const generateProgressCardsPdf = async (
     await loadPdfFonts();
     const content: unknown[] = [];
     cards.forEach((card, index) => {
-        const built = buildProgressCardContent(card, schoolData);
+        const built = buildProgressCardContent(card, institutionData);
         content.push({ stack: built.content, ...(index > 0 ? { pageBreak: 'before' } : {}) });
     });
     const docDefinition = {
         pageSize: 'A4',
         pageOrientation: 'portrait',
         pageMargins: [30, 20, 30, 50],
-        footer: (currentPage: number, pageCount: number) => getReportFooter(currentPage, pageCount, schoolData?.generatedBy),
+        footer: (currentPage: number, pageCount: number) => getReportFooter(currentPage, pageCount, institutionData?.generatedBy),
         content,
         styles: commonPdfStyles,
         defaultStyle: { fontSize: 9, color: '#333333' },

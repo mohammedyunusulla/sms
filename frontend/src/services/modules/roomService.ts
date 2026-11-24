@@ -4,7 +4,7 @@
 // Uses centralized API client from services/api/client.ts
 
 
-import { getApiClient, getSchoolId } from '../api/client';
+import { getApiClient, getInstitutionId } from '../api/client';
 
 interface IRoomListResponse {
     data: any[];
@@ -23,13 +23,13 @@ class RoomService {
     // Get list of rooms with optional filtering
     async list(filters?: { room_type?: string; building?: string; is_active?: boolean }): Promise<IRoomListResponse> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/list/${schoolId}`, { params: filters });
+        const response = await api.get(`${this.baseUrl}/list/${institutionId}`, { params: filters });
         return response.data;
     }
 
@@ -37,13 +37,13 @@ class RoomService {
     // Get single room by ID
     async getById(id: string): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/${id}/${schoolId}`);
+        const response = await api.get(`${this.baseUrl}/${id}/${institutionId}`);
         return response.data;
     }
 
@@ -51,13 +51,13 @@ class RoomService {
     // Create new room
     async create(data: any): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/create/room/${schoolId}`, data);
+        const response = await api.post(`${this.baseUrl}/create/room/${institutionId}`, data);
         if (response.code === 200 && response.status === 'success') {
             return response.data;
         }
@@ -68,13 +68,13 @@ class RoomService {
     // Update room
     async update(id: string, data: any): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.put(`${this.baseUrl}/update/room/${schoolId}/${id}`, data);
+        const response = await api.put(`${this.baseUrl}/update/room/${institutionId}/${id}`, data);
         if (response.code === 200 && response.status === 'success') {
             return response.data;
         }
@@ -85,13 +85,13 @@ class RoomService {
     // Delete room
     async delete(id: string): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.delete(`${this.baseUrl}/delete/room/${schoolId}/${id}`);
+        const response = await api.delete(`${this.baseUrl}/delete/room/${institutionId}/${id}`);
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response?.message || 'Failed to delete room');
         }
@@ -101,16 +101,16 @@ class RoomService {
     // Get available rooms (optionally filtered by type)
     async getAvailable(roomType?: string): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const params: any = {};
         if (roomType) params.room_type = roomType;
 
-        const response = await api.get(`${this.baseUrl}/available/${schoolId}`, { params });
+        const response = await api.get(`${this.baseUrl}/available/${institutionId}`, { params });
         return response.data;
     }
 }

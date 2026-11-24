@@ -9,7 +9,7 @@ class Syllabus(BaseModelTenant, BaseModelTenantMixin):
     id = Column(Integer, primary_key=True, autoincrement=True)
     subject_id = Column(Integer, ForeignKey('subjects.id', ondelete='CASCADE'), nullable=False)
     academic_year_id = Column(Integer, ForeignKey('academic_years.id', ondelete='CASCADE'), nullable=False)
-    created_by = Column(Integer, ForeignKey('school_users.id', ondelete='SET NULL'), nullable=True)
+    created_by = Column(Integer, ForeignKey('institution_users.id', ondelete='SET NULL'), nullable=True)
 
     title = Column(String(255), nullable=False)
     description = Column(Text)
@@ -23,7 +23,7 @@ class Syllabus(BaseModelTenant, BaseModelTenantMixin):
     # Relationships
     subject = relationship('Subject', backref='syllabi')
     academic_year = relationship('AcademicYear', backref='syllabi')
-    creator = relationship('SchoolUsers', backref='syllabi_created', foreign_keys=[created_by])
+    creator = relationship('InstitutionUsers', backref='syllabi_created', foreign_keys=[created_by])
     # every lesson (deleted ones too) - owns the rows
     all_lessons = relationship('Lesson', back_populates='syllabus', cascade='all, delete-orphan', order_by='Lesson.sequence_order')
     # what pages and reports show: active lessons only (deleted ones used to appear everywhere)
@@ -37,14 +37,14 @@ class Syllabus(BaseModelTenant, BaseModelTenantMixin):
 
     def to_dict(self, include_lessons=False):
         """Convert syllabus to dictionary"""
-        # Get creator name - handle both direct teacher and school_user scenarios
+        # Get creator name - handle both direct teacher and institution_user scenarios
         creator_name = None
         if self.creator:
             if hasattr(self.creator, 'teacher') and self.creator.teacher:
-                # If creator is a SchoolUser with a teacher profile
+                # If creator is a InstitutionUser with a teacher profile
                 creator_name = f"{self.creator.first_name} {self.creator.last_name}"
             else:
-                # Direct SchoolUser
+                # Direct InstitutionUser
                 creator_name = f"{self.creator.first_name} {self.creator.last_name}"
         
         data = {

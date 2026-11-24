@@ -64,7 +64,7 @@ export default function TeacherSyllabusDetailScreen() {
     const academicYear = useAppStore((s) => s.academicYear);
 
     const skid = user?.skid;
-    const teacherId = user?.school_user_id;
+    const teacherId = user?.institution_user_id;
     const subjectName = params.subject_name || "Subject";
 
     const [syllabus, setSyllabus] = useState(null);

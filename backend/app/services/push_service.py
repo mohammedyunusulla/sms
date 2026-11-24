@@ -118,23 +118,23 @@ def move_session(old_token, new_token):
         _log.exception("Couldn't move push devices to the refreshed session")
 
 
-# ---------------------------------------------------------------- recipients (school records -> login accounts)
+# ---------------------------------------------------------------- recipients (institution records -> login accounts)
 
-def main_user_ids_for(skid, school_user_ids=None, roles=None):
-    """Active login accounts of this school, by school_users ids and/or login roles."""
+def main_user_ids_for(skid, institution_user_ids=None, roles=None):
+    """Active login accounts of this institution, by institution_users ids and/or login roles."""
     query = db.session.query(User.id).filter(User.skid == str(skid), User.is_active == True)  # noqa: E712
-    if school_user_ids is not None:
-        ids = {int(i) for i in school_user_ids if i is not None}
+    if institution_user_ids is not None:
+        ids = {int(i) for i in institution_user_ids if i is not None}
         if not ids:
             return set()
-        query = query.filter(User.school_user_id.in_(ids))
+        query = query.filter(User.institution_user_id.in_(ids))
     if roles:
         query = query.filter(User.role.in_([UserRole(r) for r in roles]))
     return {row[0] for row in query.all()}
 
 
 def students_in_sections(tenant_session, section_ids):
-    """school_users ids of students currently in these sections (active enrollment or their section)."""
+    """institution_users ids of students currently in these sections (active enrollment or their section)."""
     from app.models.tenant.Student import Student
     from app.models.tenant.StudentEnrollment import StudentEnrollment
 
@@ -164,7 +164,7 @@ def all_students(tenant_session):
 
 
 def parents_of(tenant_session, student_ids):
-    """school_users ids of the parents linked to these students."""
+    """institution_users ids of the parents linked to these students."""
     from app.models.tenant.StudentParent import StudentParent
 
     ids = [int(s) for s in (student_ids or []) if s is not None]

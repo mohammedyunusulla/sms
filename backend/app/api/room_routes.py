@@ -7,13 +7,13 @@ room_bp = Blueprint('rooms', __name__)
 
 # CREATE ROOM
 @room_bp.route('/create/room/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_rooms')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_rooms')
 def create_room(skid):
     try:
         data = request.get_json()
 
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
 
         # Validate required fields
         if not data.get('room_name'):
@@ -37,13 +37,13 @@ def create_room(skid):
 
 # UPDATE ROOM
 @room_bp.route('/update/room/<skid>/<int:room_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_rooms')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_rooms')
 def update_room(skid, room_id):
     try:
         data = request.get_json()
 
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
 
         updated_room = RoomService.update_room(room_id, data, skid)
         return jsonify({
@@ -59,11 +59,11 @@ def update_room(skid, room_id):
 
 # DELETE ROOM
 @room_bp.route('/delete/room/<skid>/<int:room_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_rooms')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_rooms')
 def delete_room(skid, room_id):
     try:
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
 
         RoomService.delete_room(room_id, skid)
         return jsonify({
@@ -78,11 +78,11 @@ def delete_room(skid, room_id):
 
 # LIST ALL ROOMS
 @room_bp.route('/list/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_classes', 'manage_rooms', 'manage_exams'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER'], permission=('view_classes', 'manage_rooms', 'manage_exams'))
 def get_all_rooms(skid):
     try:
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
 
         # Build filters from query params
         filters = {}
@@ -107,11 +107,11 @@ def get_all_rooms(skid):
 
 # GET ROOM BY ID
 @room_bp.route('/<int:room_id>/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_classes', 'manage_rooms', 'manage_exams'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER'], permission=('view_classes', 'manage_rooms', 'manage_exams'))
 def get_room_by_id(room_id, skid):
     try:
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
 
         room = RoomService.get_room_by_id(room_id, skid)
         return jsonify({
@@ -127,11 +127,11 @@ def get_room_by_id(room_id, skid):
 
 # GET AVAILABLE ROOMS
 @room_bp.route('/available/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_classes', 'manage_rooms', 'manage_exams'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER'], permission=('view_classes', 'manage_rooms', 'manage_exams'))
 def get_available_rooms(skid):
     try:
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
 
         room_type = request.args.get('room_type')
         rooms = RoomService.get_available_rooms(skid, room_type)

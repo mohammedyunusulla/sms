@@ -10,7 +10,7 @@ const linkClass = "font-medium text-brand-600 underline-offset-4 hover:underline
 const FAQS: { q: string; a: ReactNode }[] = [
   {
     q: "How do I get my login details?",
-    a: "Accounts are created by your school's administrator. If you haven't received your username and password, please contact your school office.",
+    a: "Accounts are created by your institution's administrator. If you haven't received your username and password, please contact your institution's office.",
   },
   {
     q: "I forgot my password. What should I do?",
@@ -20,17 +20,17 @@ const FAQS: { q: string; a: ReactNode }[] = [
         <Link to="/forgot-password" className={linkClass}>
           Forgot password
         </Link>{" "}
-        on the login page, or ask your school administrator to reset it for you.
+        on the login page, or ask your institution's administrator to reset it for you.
       </>
     ),
   },
   {
-    q: "Can parents see where the school bus is?",
-    a: "Live map tracking for parents is coming soon in the EduSpyre mobile app. Today, bus staff already check each student in and out of the bus with a QR scan, and the school can review daily boarding reports.",
+    q: "Can parents see where the bus is?",
+    a: "Live map tracking for parents is coming soon in the EduSpyre mobile app. Today, bus staff already check each student in and out of the bus with a QR scan, and the institution can review daily boarding reports.",
   },
   {
-    q: "Is our school's data kept separate from other schools?",
-    a: "Yes. Every school on EduSpyre has its own dedicated database, so records are never mixed between schools. Within a school, each person only sees what their role allows.",
+    q: "Is our institution's data kept separate from other institutions?",
+    a: "Yes. Every institution on EduSpyre has its own dedicated database, so records are never mixed between institutions. Within an institution, each person only sees what their role allows.",
   },
   {
     q: "Can I use EduSpyre on my phone?",

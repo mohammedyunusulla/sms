@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Flask School Management System
+Flask Institution Management System
 Main application runner
 """
 
@@ -16,7 +16,7 @@ if __name__ == '__main__':
     port = int(os.environ.get('FLASK_PORT', 5000))
     debug = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
 
-    print(f"Starting School Management System...")
+    print(f"Starting Institution Management System...")
     print(f"Environment: {os.environ.get('FLASK_ENV', 'development')}")
     print(f"Debug mode: {debug}")
     print(f"Running on: http://{host}:{port}")

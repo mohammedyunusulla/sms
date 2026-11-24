@@ -4,7 +4,7 @@ from sqlalchemy import and_, or_, func
 from datetime import datetime, time, timedelta
 from typing import Dict, List, Optional, Tuple
 import logging
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ _schema_checked = set()
 
 
 def ensure_timetable_schema(session, skid):
-    """Existing school databases still have the old (teacher, day, time) unique key: drop it once per process."""
+    """Existing institution databases still have the old (teacher, day, time) unique key: drop it once per process."""
     if skid in _schema_checked:
         return
     from sqlalchemy import text
@@ -77,7 +77,7 @@ class TimetableService:
             lunch_minutes = number('lunch_duration', 0, 180, 'Lunch length (minutes)')
             total_periods = number('total_periods', 1, 15, 'Number of periods')
             try:
-                start_time = datetime.strptime(config['school_start_time'], '%H:%M').time()
+                start_time = datetime.strptime(config['institution_start_time'], '%H:%M').time()
                 lunch_time = datetime.strptime(config['lunch_start_time'], '%H:%M').time()
             except (TypeError, ValueError, KeyError):
                 raise ValueError("Times must look like 09:00")
@@ -87,7 +87,7 @@ class TimetableService:
             lunch_start = datetime.combine(datetime.today(), lunch_time)
             lunch_end = lunch_start + timedelta(minutes=lunch_minutes)
             if lunch_start <= current:
-                raise ValueError("Lunch must start after the school day starts")
+                raise ValueError("Lunch must start after the day starts")
             lunch_done = lunch_minutes == 0
             fmt = lambda d: d.strftime('%H:%M')
 
@@ -118,13 +118,13 @@ class TimetableService:
                                academic_year_id: int, semester: str, 
                                exclude_timetable_id: Optional[int] = None) -> Dict:
         """
-        Check if teacher has conflicts with existing timetable entries in school-specific DB
+        Check if teacher has conflicts with existing timetable entries in institution-specific DB
         """
         try:
             start_time_obj = datetime.strptime(start_time, '%H:%M').time()
             end_time_obj = datetime.strptime(end_time, '%H:%M').time()
             
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Import models inside the function to avoid import issues
                 from app.models.tenant.TimeTable import Timetable
                 from app.models.tenant.TimeTableEntry import TimetableEntry
@@ -132,7 +132,7 @@ class TimetableService:
                 from app.models.tenant.Sections import Section
                 from app.models.tenant.Subject import Subject
                 from app.models.tenant.Teacher import Teacher
-                from app.models.tenant.SchoolUsers import SchoolUsers  # Add this import
+                from app.models.tenant.InstitutionUsers import InstitutionUsers  # Add this import
                 
                 # Query for conflicting entries in the tenant database
                 query = tenant_session.query(TimetableEntry).join(Timetable).filter(
@@ -189,7 +189,7 @@ class TimetableService:
     @staticmethod
     def validate_timetable_conflicts(skid: str, data: Dict) -> Dict:
         """
-        Enhanced validation with detailed conflict checking for specific school DB
+        Enhanced validation with detailed conflict checking for specific institution DB
         """
         try:
             # Basic validation
@@ -212,7 +212,7 @@ class TimetableService:
                     'conflict_details': {}
                 }
             
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 from app.models.tenant.TimeTable import Timetable
                 
                 # Check existing timetable
@@ -297,7 +297,7 @@ class TimetableService:
         Every entry is on a real weekday and its teacher teaches that subject (QA B10: 'Funday' and any
         teacher / subject pair were accepted). Runs for drafts too. Raises ValueError naming the problem.
         """
-        from app.models.tenant import TeacherSubject, Subject, SchoolUsers
+        from app.models.tenant import TeacherSubject, Subject, InstitutionUsers
         days = {'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'}
         taught = {(ts.teacher_id, ts.subject_id) for ts in session.query(TeacherSubject).all()}
         for key, entry in entries.items():
@@ -307,7 +307,7 @@ class TimetableService:
             subject_id = entry.get('subject_id') or (entry.get('subject') or {}).get('id')
             teacher_id = entry.get('teacher_id') or (entry.get('teacher') or {}).get('id')
             if subject_id and teacher_id and (int(teacher_id), int(subject_id)) not in taught:
-                teacher = session.query(SchoolUsers).filter_by(id=int(teacher_id)).first()
+                teacher = session.query(InstitutionUsers).filter_by(id=int(teacher_id)).first()
                 subject = session.query(Subject).filter_by(id=int(subject_id)).first()
                 raise ValueError(
                     f"{teacher.full_name if teacher else 'This teacher'} doesn't teach "
@@ -331,7 +331,7 @@ class TimetableService:
                         'conflict_details': validation_result.get('conflict_details', {})
                     }
             
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 from app.models.tenant.TimeTable import Timetable
                 from app.models.tenant.TimeTableEntry import TimetableEntry
                 ensure_timetable_schema(tenant_session, skid)
@@ -369,7 +369,7 @@ class TimetableService:
                 
                 # Update configuration
                 timetable.period_duration = data.get('period_duration', 45)
-                timetable.school_start_time = datetime.strptime(data.get('school_start_time', '09:00'), '%H:%M').time()
+                timetable.institution_start_time = datetime.strptime(data.get('institution_start_time', '09:00'), '%H:%M').time()
                 timetable.lunch_start_time = datetime.strptime(data.get('lunch_start_time', '12:30'), '%H:%M').time()
                 timetable.lunch_duration = data.get('lunch_duration', 30)
                 timetable.total_periods = data.get('total_periods', 7)
@@ -378,7 +378,7 @@ class TimetableService:
                 
                 # Generate time slots
                 time_slots = TimetableService.generate_time_slots({
-                    'school_start_time': data.get('school_start_time', '09:00'),
+                    'institution_start_time': data.get('institution_start_time', '09:00'),
                     'lunch_start_time': data.get('lunch_start_time', '12:30'),
                     'lunch_duration': data.get('lunch_duration', 30),
                     'period_duration': data.get('period_duration', 45),
@@ -436,14 +436,14 @@ class TimetableService:
     def get_timetable_by_id(skid: str, timetable_id: int) -> Optional[Dict]:
         """Get timetable by ID with all entries"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 from app.models.tenant.TimeTable import Timetable
                 from app.models.tenant.TimeTableEntry import TimetableEntry
                 from app.models.tenant.Class import Class
                 from app.models.tenant.Sections import Section
                 from app.models.tenant.Subject import Subject
                 from app.models.tenant.Teacher import Teacher
-                from app.models.tenant.SchoolUsers import SchoolUsers
+                from app.models.tenant.InstitutionUsers import InstitutionUsers
                 
                 timetable = tenant_session.query(Timetable).filter(
                     Timetable.id == timetable_id,
@@ -460,7 +460,7 @@ class TimetableService:
                 
                 # Generate time slots
                 time_slots = TimetableService.generate_time_slots({
-                    'school_start_time': timetable.school_start_time.strftime('%H:%M'),
+                    'institution_start_time': timetable.institution_start_time.strftime('%H:%M'),
                     'lunch_start_time': timetable.lunch_start_time.strftime('%H:%M'),
                     'lunch_duration': timetable.lunch_duration,
                     'period_duration': timetable.period_duration,
@@ -501,7 +501,7 @@ class TimetableService:
                     'is_draft': timetable.is_draft,
                     'configuration': {
                         'period_duration': timetable.period_duration,
-                        'school_start_time': timetable.school_start_time.strftime('%H:%M'),
+                        'institution_start_time': timetable.institution_start_time.strftime('%H:%M'),
                         'lunch_start_time': timetable.lunch_start_time.strftime('%H:%M'),
                         'lunch_duration': timetable.lunch_duration,
                         'total_periods': timetable.total_periods
@@ -517,11 +517,11 @@ class TimetableService:
             raise
 
     @staticmethod
-    def get_all_timetables_by_school(skid: str, academic_year_id: int = None, 
+    def get_all_timetables_by_institution(skid: str, academic_year_id: int = None, 
                                    semester: str = None) -> List[Dict]:
-        """Get all timetables for a school with draft filter"""
+        """Get all timetables for an institution with draft filter"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 from app.models.tenant.TimeTable import Timetable
                 from app.models.tenant.Class import Class
                 from app.models.tenant.Sections import Section
@@ -576,9 +576,9 @@ class TimetableService:
 
     @staticmethod
     def get_draft_timetables(skid: str, academic_year_id: str = None, semester: str = None) -> List[Dict]:
-        """Get only draft timetables for a school"""
+        """Get only draft timetables for an institution"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 from app.models.tenant.TimeTable import Timetable
                 from app.models.tenant.Class import Class
                 from app.models.tenant.Sections import Section
@@ -630,7 +630,7 @@ class TimetableService:
     def publish_draft_timetable(skid: str, timetable_id: int) -> Dict:
         """Convert a draft timetable to published after validation"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 from app.models.tenant.TimeTable import Timetable
                 from app.models.tenant.TimeTableEntry import TimetableEntry
                 
@@ -701,7 +701,7 @@ class TimetableService:
     def delete_timetable(timetable_id: int, skid: str) -> Dict:
         """Delete a timetable and all its entries"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 from app.models.tenant.TimeTable import Timetable
                 from app.models.tenant.TimeTableEntry import TimetableEntry
                 
@@ -741,7 +741,7 @@ class TimetableService:
     def get_teacher_schedule(teacher_id: int, academic_year_id: str, semester: str, skid: str = None) -> Dict:
         """Get teacher's complete schedule across all classes"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 from app.models.tenant.TimeTable import Timetable
                 from app.models.tenant.TimeTableEntry import TimetableEntry
                 from app.models.tenant.Class import Class
@@ -806,17 +806,17 @@ class TimetableService:
         for that section on the given day, including teacher names.
 
         Args:
-            skid: School ID
-            student_id: Student's school_user_id
+            skid: Institution ID
+            student_id: Student's institution_user_id
             date: Date string in YYYY-MM-DD format
 
         Returns:
             List of periods with subject, time, and teacher details
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 from app.models.tenant.Student import Student
-                from app.models.tenant.SchoolUsers import SchoolUsers
+                from app.models.tenant.InstitutionUsers import InstitutionUsers
                 from app.models.tenant.Teacher import Teacher
                 from app.models.tenant.Subject import Subject
                 from app.models.tenant.TimeTable import Timetable
@@ -853,8 +853,8 @@ class TimetableService:
                     TimetableEntry.subject_id,
                     TimetableEntry.teacher_id,
                     Subject.subject_name.label('subject_name'),
-                    SchoolUsers.first_name.label('teacher_first_name'),
-                    SchoolUsers.last_name.label('teacher_last_name'),
+                    InstitutionUsers.first_name.label('teacher_first_name'),
+                    InstitutionUsers.last_name.label('teacher_last_name'),
                 ).join(
                     Timetable, TimetableEntry.timetable_id == Timetable.id
                 ).join(
@@ -862,7 +862,7 @@ class TimetableService:
                 ).join(
                     Teacher, TimetableEntry.teacher_id == Teacher.user_id
                 ).join(
-                    SchoolUsers, Teacher.user_id == SchoolUsers.id
+                    InstitutionUsers, Teacher.user_id == InstitutionUsers.id
                 ).filter(
                     and_(
                         Timetable.id.in_(live_ids),
@@ -899,7 +899,7 @@ class TimetableService:
     def duplicate_timetable(skid: str, source_timetable_id: int, target_data: Dict) -> Dict:
         """Duplicate an existing timetable to a new class/section/semester"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 from app.models.tenant.TimeTable import Timetable
                 from app.models.tenant.TimeTableEntry import TimetableEntry
                 ensure_timetable_schema(tenant_session, skid)
@@ -938,7 +938,7 @@ class TimetableService:
                     academic_year_id=target_data['academic_year_id'],
                     semester=target_data['semester'],
                     period_duration=source_timetable.period_duration,
-                    school_start_time=source_timetable.school_start_time,
+                    institution_start_time=source_timetable.institution_start_time,
                     lunch_start_time=source_timetable.lunch_start_time,
                     lunch_duration=source_timetable.lunch_duration,
                     total_periods=source_timetable.total_periods,

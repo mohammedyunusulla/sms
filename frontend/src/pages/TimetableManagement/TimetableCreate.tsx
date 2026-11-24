@@ -54,7 +54,7 @@ const TimetableCreate: FC = () => {
     const [periodConfig, setPeriodConfig] = useState({
         period_duration: 45,
         total_periods: 7,
-        school_start_time: '09:00',
+        institution_start_time: '09:00',
         lunch_start_time: '12:30',
         lunch_duration: 30,
     });
@@ -166,7 +166,7 @@ const TimetableCreate: FC = () => {
         setGenerating(true);
         try {
             const slotsData = await timetableService.generateTimeSlots({
-                school_start_time: periodConfig.school_start_time,
+                institution_start_time: periodConfig.institution_start_time,
                 lunch_start_time: periodConfig.lunch_start_time,
                 lunch_duration: periodConfig.lunch_duration,
                 period_duration: periodConfig.period_duration,
@@ -322,7 +322,7 @@ const TimetableCreate: FC = () => {
                 academic_year_id: academicYearId,
                 semester: semester,
                 period_duration: periodConfig.period_duration,
-                school_start_time: periodConfig.school_start_time,
+                institution_start_time: periodConfig.institution_start_time,
                 lunch_start_time: periodConfig.lunch_start_time,
                 lunch_duration: periodConfig.lunch_duration,
                 total_periods: periodConfig.total_periods,
@@ -474,11 +474,11 @@ const TimetableCreate: FC = () => {
                             />
                         </FormField>
 
-                        <FormField label="School Start Time" required>
+                        <FormField label="Day Start Time" required>
                             <FormInput
                                 type="time"
-                                name="school_start_time"
-                                value={periodConfig.school_start_time}
+                                name="institution_start_time"
+                                value={periodConfig.institution_start_time}
                                 onChange={handlePeriodConfigChange}
                                 required
                             />

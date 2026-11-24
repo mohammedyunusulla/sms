@@ -12,7 +12,7 @@ import { PageHeader, FormField, FormSelect, LoadingSpinner, EmptyState, PrintAct
 import { academicsService } from '../../services/modules/academicsService';
 import { useAuthStore } from '../../stores/authStore';
 import { generateAnnualProgressReportPdf, generateProgressCardPdf } from '../../prints';
-import type { AnnualReportData, SchoolData, PdfAction } from '../../prints';
+import type { AnnualReportData, InstitutionData, PdfAction } from '../../prints';
 
 interface ExamResult {
     exam_id: string;
@@ -92,7 +92,7 @@ export const AnnualResultsView: FC<{ studentId?: string; forFamily?: boolean }> 
             setDownloading(examId);
             const card = await academicsService.fetchProgressCard(studentId, examId);
             if (!card) throw new Error('Report card not available');
-            await generateProgressCardPdf(card, getSchoolData(), 'download');
+            await generateProgressCardPdf(card, getInstitutionData(), 'download');
             toast.success('Report card downloaded');
         } catch (error) {
             toast.error((error as Error).message || 'Failed to download the report card');
@@ -110,14 +110,14 @@ export const AnnualResultsView: FC<{ studentId?: string; forFamily?: boolean }> 
         }
     }, [selectedExamFilter, examResults]);
 
-    const getSchoolData = useCallback((): SchoolData => {
+    const getInstitutionData = useCallback((): InstitutionData => {
         const authUser = user;
         return {
-            logo: authUser?.school_logo || '',
-            schoolName: authUser?.school_name || 'School Name',
-            schoolAddress: authUser?.school_address || 'School Address',
-            schoolPhone: authUser?.school_phone || 'N/A',
-            schoolEmail: authUser?.school_email || 'N/A',
+            logo: authUser?.institution_logo || '',
+            institutionName: authUser?.institution_name || 'Institution Name',
+            institutionAddress: authUser?.institution_address || 'Institution Address',
+            institutionPhone: authUser?.institution_phone || 'N/A',
+            institutionEmail: authUser?.institution_email || 'N/A',
             generatedBy: authUser?.full_name || authUser?.name || 'System',
         };
     }, [user]);
@@ -138,7 +138,7 @@ export const AnnualResultsView: FC<{ studentId?: string; forFamily?: boolean }> 
                 exam_results: filteredResults,
             };
 
-            await generateAnnualProgressReportPdf(reportData, getSchoolData(), action);
+            await generateAnnualProgressReportPdf(reportData, getInstitutionData(), action);
             const message = action === 'download'
                 ? 'Report downloaded successfully'
                 : 'Report sent to printer successfully';
@@ -286,7 +286,7 @@ export const AnnualResultsView: FC<{ studentId?: string; forFamily?: boolean }> 
                             icon="📊"
                             title="No Exam Results"
                             description={forFamily
-                                ? "No results have been published yet. They appear here once the school publishes an exam's results."
+                                ? "No results have been published yet. They appear here once the institution publishes an exam's results."
                                 : 'No exam results available for this student yet.'}
                         />
                     )}

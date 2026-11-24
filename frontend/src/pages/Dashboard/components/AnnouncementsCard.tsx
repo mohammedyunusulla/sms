@@ -15,7 +15,7 @@ const AnnouncementsCard: FC = () => {
     const skid = user?.skid || '';
     const academicYearId = user?.current_academic_year?.id;
     // Staff need the announcements tick (the server refuses them otherwise and the box showed "Failed to load
-    // announcements"); students and parents always see their school's announcements.
+    // announcements"); students and parents always see their institution's announcements.
     const { hasAnyPermission } = usePermissions();
     const canSee = user?.role === 'STUDENT' || user?.role === 'PARENT'
         || hasAnyPermission([Permission.VIEW_ANNOUNCEMENTS, Permission.MANAGE_ANNOUNCEMENTS]);
@@ -36,7 +36,7 @@ const AnnouncementsCard: FC = () => {
                 skid,
                 academicYearId!,
                 user!.role,
-                user!.school_user_id
+                user!.institution_user_id
             );
             setAnnouncements(data);
         } catch (err: any) {

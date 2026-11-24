@@ -15,18 +15,18 @@ POSTGRES_USER = os.getenv("POSTGRES_USER", "postgres")
 POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "postgres")
 
 
-def get_all_schools():
+def get_all_institutions():
     engine = create_engine(MAIN_DB_URL)
     with engine.connect() as conn:
-        result = conn.execute(text("SELECT skid FROM schools"))
+        result = conn.execute(text("SELECT skid FROM institutions"))
         return [row[0] for row in result]
 
 
 def upgrade_all_tenants():
     pwd = quote_plus(POSTGRES_PASSWORD)
-    school_ids = get_all_schools()
-    for skid in school_ids:
-        db_name = f"skool_{skid}"
+    institution_ids = get_all_institutions()
+    for skid in institution_ids:
+        db_name = f"eduspyre_{skid}"
         db_url = f"postgresql://{POSTGRES_USER}:{pwd}@{POSTGRES_HOST}:{POSTGRES_PORT}/{db_name}"
 
         print(f"⚙️  Running migration for: {db_name}")

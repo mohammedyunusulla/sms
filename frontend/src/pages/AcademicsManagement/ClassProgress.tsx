@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 import { PageHeader, FormField, FormSelect, LoadingSpinner, EmptyState, Button } from '../../components';
 import * as XLSX from 'xlsx';
 import { generateProgressCardsPdf } from '../../prints';
-import type { SchoolData } from '../../prints';
+import type { InstitutionData } from '../../prints';
 import { ProgressStatCard, SubjectAnalysisTable, StudentProgressTable } from '../../components/academics';
 import { academicsService } from '../../services/modules/academicsService';
 import { IClassStatistics, ISubjectAnalysis, IStudentProgress } from '../../types/index';
@@ -18,7 +18,7 @@ import { useAuthStore } from '../../stores/authStore';
 const ClassProgress: FC = () => {
     const navigate = useNavigate();
     const { user, academicYearVersion } = useAuthStore();
-    const isSchoolAdmin = user?.role === 'SCHOOL_ADMIN';
+    const isInstitutionAdmin = user?.role === 'INSTITUTION_ADMIN';
     const [classes, setClasses] = useState<any[]>([]);
     const [sections, setSections] = useState<any[]>([]);
     const [examTypes, setExamTypes] = useState<any[]>([]);
@@ -70,21 +70,21 @@ const ClassProgress: FC = () => {
     }, []);
 
     const fetchTeacherAssignedClass = useCallback(async () => {
-        if (!user?.school_user_id) return;
+        if (!user?.institution_user_id) return;
 
         try {
-            const data = await academicsService.fetchMyClass(String(user.school_user_id));
+            const data = await academicsService.fetchMyClass(String(user.institution_user_id));
             setClassInfo(data);
         } catch (error: any) {
             toast.error(error.message || 'No class assigned to you as class teacher');
         }
-    }, [user?.school_user_id]);
+    }, [user?.institution_user_id]);
 
     const fetchClassProgressData = useCallback(async () => {
         if (!selectedExam || !user?.current_academic_year?.id) return;
 
-        const classId = isSchoolAdmin ? selectedClass : classInfo?.class_id;
-        const sectionId = isSchoolAdmin ? selectedSection : classInfo?.section_id;
+        const classId = isInstitutionAdmin ? selectedClass : classInfo?.class_id;
+        const sectionId = isInstitutionAdmin ? selectedSection : classInfo?.section_id;
 
         if (!classId || !sectionId) return;
 
@@ -111,7 +111,7 @@ const ClassProgress: FC = () => {
         } finally {
             setLoading(false);
         }
-    }, [selectedExam, selectedClass, selectedSection, classInfo, isSchoolAdmin, user?.current_academic_year?.id]);
+    }, [selectedExam, selectedClass, selectedSection, classInfo, isInstitutionAdmin, user?.current_academic_year?.id]);
 
     // ============================================
     // Effects
@@ -120,15 +120,15 @@ const ClassProgress: FC = () => {
     useEffect(() => {
         fetchExamTypes();
 
-        if (isSchoolAdmin) {
+        if (isInstitutionAdmin) {
             fetchClasses();
         } else {
             fetchTeacherAssignedClass();
         }
-    }, [isSchoolAdmin, fetchExamTypes, fetchClasses, fetchTeacherAssignedClass, academicYearVersion]);
+    }, [isInstitutionAdmin, fetchExamTypes, fetchClasses, fetchTeacherAssignedClass, academicYearVersion]);
 
     useEffect(() => {
-        if (isSchoolAdmin && selectedClass) {
+        if (isInstitutionAdmin && selectedClass) {
             setSelectedSection('');
             setSections([]);
             setClassStatistics(null);
@@ -136,10 +136,10 @@ const ClassProgress: FC = () => {
             setStudentProgress([]);
             fetchSections(selectedClass);
         }
-    }, [selectedClass, isSchoolAdmin, fetchSections]);
+    }, [selectedClass, isInstitutionAdmin, fetchSections]);
 
     useEffect(() => {
-        if (isSchoolAdmin) {
+        if (isInstitutionAdmin) {
             if (selectedClass && selectedSection) {
                 fetchClassProgressData();
             }
@@ -153,10 +153,10 @@ const ClassProgress: FC = () => {
     // ─── Exports ───
     const [downloadingCards, setDownloadingCards] = useState(false);
     const sectionLabel = (): string => {
-        const cls = isSchoolAdmin
+        const cls = isInstitutionAdmin
             ? classes.find((c) => String(c.id) === String(selectedClass))?.class_name
             : classInfo?.class_name;
-        const sec = isSchoolAdmin
+        const sec = isInstitutionAdmin
             ? sections.find((s) => String(s.id) === String(selectedSection))?.section_name
             : classInfo?.section_name;
         return [cls, sec].filter(Boolean).join(' ') || 'Class';
@@ -197,7 +197,7 @@ const ClassProgress: FC = () => {
 
     // Every active student's report card in one PDF
     const handleDownloadAllCards = async () => {
-        const sectionId = isSchoolAdmin ? selectedSection : classInfo?.section_id;
+        const sectionId = isInstitutionAdmin ? selectedSection : classInfo?.section_id;
         if (!sectionId || !selectedExam) return;
         try {
             setDownloadingCards(true);
@@ -207,15 +207,15 @@ const ClassProgress: FC = () => {
                 return;
             }
             const authUser = useAuthStore.getState().user;
-            const schoolData: SchoolData = {
-                schoolName: authUser?.school_name || 'School Name',
-                schoolAddress: '',
-                schoolPhone: '',
-                schoolEmail: authUser?.email || '',
+            const institutionData: InstitutionData = {
+                institutionName: authUser?.institution_name || 'Institution Name',
+                institutionAddress: '',
+                institutionPhone: '',
+                institutionEmail: authUser?.email || '',
                 logo: null,
                 generatedBy: authUser?.full_name || authUser?.name || 'System',
             };
-            await generateProgressCardsPdf(result.cards, schoolData, 'download', sectionLabel());
+            await generateProgressCardsPdf(result.cards, institutionData, 'download', sectionLabel());
             toast.success(`${result.cards.length} report card${result.cards.length === 1 ? '' : 's'} downloaded`
                 + (result.skipped.length ? ` (${result.skipped.length} skipped)` : ''));
         } catch (error) {
@@ -236,7 +236,7 @@ const ClassProgress: FC = () => {
         { label: 'Class Progress', href: '#' },
     ];
 
-    const pageTitle = isSchoolAdmin ? 'Class Progress Report' : 'My Class Progress';
+    const pageTitle = isInstitutionAdmin ? 'Class Progress Report' : 'My Class Progress';
 
     return (
         <div className="space-y-6">
@@ -260,7 +260,7 @@ const ClassProgress: FC = () => {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                             {/* Class Filter (Admin Only) */}
-                            {isSchoolAdmin && (
+                            {isInstitutionAdmin && (
                                 <FormField label="Class *" required>
                                     <FormSelect
                                         value={selectedClass}
@@ -282,7 +282,7 @@ const ClassProgress: FC = () => {
                             )}
 
                             {/* Section Filter (Admin Only) */}
-                            {isSchoolAdmin && (
+                            {isInstitutionAdmin && (
                                 <FormField label="Section *" required>
                                     <FormSelect
                                         value={selectedSection}
@@ -390,7 +390,7 @@ const ClassProgress: FC = () => {
                     )}
 
                     {/* No Class Assigned (Teacher) */}
-                    {!isSchoolAdmin && !classInfo && !loading && (
+                    {!isInstitutionAdmin && !classInfo && !loading && (
                         <EmptyState
                             icon="👥"
                             title="No Class Assigned"
@@ -399,7 +399,7 @@ const ClassProgress: FC = () => {
                     )}
 
                     {/* Select Class & Section (Admin) */}
-                    {isSchoolAdmin && !selectedClass && !loading && (
+                    {isInstitutionAdmin && !selectedClass && !loading && (
                         <EmptyState
                             icon="📋"
                             title="Select Class and Section"
@@ -408,8 +408,8 @@ const ClassProgress: FC = () => {
                     )}
 
                     {/* No Data Available */}
-                    {((isSchoolAdmin && selectedClass && selectedSection && selectedExam) ||
-                        (!isSchoolAdmin && classInfo && selectedExam)) &&
+                    {((isInstitutionAdmin && selectedClass && selectedSection && selectedExam) ||
+                        (!isInstitutionAdmin && classInfo && selectedExam)) &&
                         studentProgress.length === 0 &&
                         !loading && (
                             <EmptyState

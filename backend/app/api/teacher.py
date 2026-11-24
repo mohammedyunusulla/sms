@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.services.teacher_service import TeacherService
 from app.decorators import log_actions, login_required
-from app.utils.user_status import set_school_user_active, status_response
+from app.utils.user_status import set_institution_user_active, status_response
 from app.models.tenant.Teacher import Teacher
 from app.models.main.User import UserRole
 from app.utils.teaching_scope import (current_teacher_id, forbidden, teacher_scope_sections, strip_fields,
@@ -22,8 +22,8 @@ TEACHER_REQUIRED_FIELDS = (('username', 'Username'), ('password', 'Password'), (
 def _employee_id_taken(skid, employee_id, exclude_user_id=None):
     """teachers.employee_id is unique and NOT NULL in the tenant DB."""
     from app.models.tenant import Teacher
-    from app.utils.db_manager import switch_to_school_db
-    with switch_to_school_db(skid) as tenant_session:
+    from app.utils.db_manager import switch_to_institution_db
+    with switch_to_institution_db(skid) as tenant_session:
         q = tenant_session.query(Teacher).filter(Teacher.employee_id == employee_id)
         if exclude_user_id is not None:
             q = q.filter(Teacher.user_id != int(exclude_user_id))
@@ -47,12 +47,12 @@ def _missing_teacher_fields(data):
     return f"{', '.join(missing)} {'is' if len(missing) == 1 and missing[0] != 'Qualifications' else 'are'} required"
 
 @teacher_bp.route('/create/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_teachers')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_teachers')
 @log_actions('CREATE_TEACHER_USER')
 def create_teacher(skid):
     """
     Create a new teacher
-    Only super admin and school admin can create users
+    Only super admin and institution admin can create users
     """
     try:
         data = request.get_json()
@@ -60,7 +60,7 @@ def create_teacher(skid):
         if not data:
             return jsonify({'message': 'No data provided'}), 400
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
 
         data = _clean_teacher_payload(data)
         missing = _missing_teacher_fields(data)
@@ -94,12 +94,12 @@ def create_teacher(skid):
 
 
 @teacher_bp.route('/update/<skid>/<teacher_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_teachers')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL'], permission='manage_teachers')
 @log_actions('UPDATE_TEACHER_USER')
 def update_teacher(skid, teacher_id):
     """
     Update an existing teacher
-    Only super admin and school admin can update users
+    Only super admin and institution admin can update users
     Teacher can update there own profile after login, with restricted fields
     """
     try:
@@ -108,7 +108,7 @@ def update_teacher(skid, teacher_id):
         if not data:
             return jsonify({'message': 'No data provided'}), 400
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
         if not teacher_id:
             raise ValueError("Teacher ID is required")
 
@@ -138,21 +138,21 @@ def update_teacher(skid, teacher_id):
 
 
 @teacher_bp.route('/delete/<skid>/<teacher_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission=('delete_teachers', 'manage_teachers'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission=('delete_teachers', 'manage_teachers'))
 @log_actions('DELETE_TEACHER_USER')
 def delete_teacher(skid, teacher_id):
     """
     Delete a teacher
-    Only super admin and school admin can delete users
+    Only super admin and institution admin can delete users
     """
     try:
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
         if not teacher_id:
             raise ValueError("Teacher ID is required")
         
         # Soft delete: inactive + login disabled; all records are kept and can be reactivated.
-        return status_response(set_school_user_active(skid, teacher_id, False, Teacher, 'Teacher'))
+        return status_response(set_institution_user_active(skid, teacher_id, False, Teacher, 'Teacher'))
         
     except ValueError as e:
         return jsonify({'message': str(e)}), 400
@@ -160,22 +160,22 @@ def delete_teacher(skid, teacher_id):
         return jsonify({'message': f'Failed to delete user: {str(e)}'}), 500
 
  
-@teacher_bp.route('/profile/<skid>/<school_user_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_teachers', 'manage_teachers'), own_roles=('TEACHER',))
+@teacher_bp.route('/profile/<skid>/<institution_user_id>', methods=['GET'])
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER'], permission=('view_teachers', 'manage_teachers'), own_roles=('TEACHER',))
 @log_actions('GET_TEACHERS')
-def get_teacher_data_by_id(skid, school_user_id):
+def get_teacher_data_by_id(skid, institution_user_id):
     """
-    Get data of single teacher by school_user_id
+    Get data of single teacher by institution_user_id
     """
     try:
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
             
         # A teacher may open only their own profile (others' include salary, DOB, address)
         own_id = current_teacher_id()
-        if own_id is not None and str(own_id) != str(school_user_id):
+        if own_id is not None and str(own_id) != str(institution_user_id):
             return forbidden("You can only view your own teacher profile")
-        teacher_data = TeacherService.get_teacher_data(skid, school_user_id)
+        teacher_data = TeacherService.get_teacher_data(skid, institution_user_id)
 
         return jsonify({
             'teacher_data': teacher_data,
@@ -188,11 +188,11 @@ def get_teacher_data_by_id(skid, school_user_id):
  
  
 @teacher_bp.route('/list/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_teachers', 'manage_teachers'), own_roles=('TEACHER',))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_teachers', 'manage_teachers'), own_roles=('TEACHER',))
 @log_actions('GET_TEACHERS')
 def get_teachers_paginated(skid):
     """
-    Get paginated list of teachers in the specific school with filtering and sorting
+    Get paginated list of teachers in the specific institution with filtering and sorting
     Query Parameters:
     - page: Page number (default: 1)
     - limit: Items per page (default: 10)
@@ -202,7 +202,7 @@ def get_teachers_paginated(skid):
     """
     try:
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
 
         # Get query parameters
         page = request.args.get('page', 1, type=int)
@@ -240,7 +240,7 @@ def get_teachers_paginated(skid):
 
 # Fetch the subjects assigned to that teacher
 @teacher_bp.route('/<int:teacher_id>/subjects/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_teachers')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_teachers')
 def get_teacher_subjects(teacher_id, skid):
     try:
         subject_ids = TeacherService.get_subject_ids_by_teacher(teacher_id, skid)
@@ -255,7 +255,7 @@ def get_teacher_subjects(teacher_id, skid):
 
 # Assign subjects to a teacher (sync/replace all assignments)
 @teacher_bp.route('/<int:teacher_id>/assign-subjects/<skid>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_teachers')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_teachers')
 @log_actions('ASSIGN_SUBJECTS_TO_TEACHER')
 def assign_subjects_to_teacher(teacher_id, skid):
     """
@@ -268,7 +268,7 @@ def assign_subjects_to_teacher(teacher_id, skid):
         if not data:
             return jsonify({'message': 'No data provided'}), 400
         if not skid:
-            return jsonify({'message': 'School ID (skid) is required'}), 400
+            return jsonify({'message': 'Institution ID (skid) is required'}), 400
 
         subject_ids = data.get('subject_ids', [])
         if not isinstance(subject_ids, list):
@@ -291,11 +291,11 @@ def assign_subjects_to_teacher(teacher_id, skid):
 
 
 @teacher_bp.route('/reactivate/<skid>/<teacher_id>', methods=['PATCH'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_teachers')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL'], permission='manage_teachers')
 @log_actions('REACTIVATE_TEACHER_USER')
 def reactivate_teacher(skid, teacher_id):
     """Undo a soft delete: active again and login re-enabled."""
     try:
-        return status_response(set_school_user_active(skid, teacher_id, True, Teacher, 'Teacher'))
+        return status_response(set_institution_user_active(skid, teacher_id, True, Teacher, 'Teacher'))
     except Exception as e:
         return jsonify({'code': 500, 'status': 'error', 'message': f'Failed to reactivate teacher: {str(e)}'}), 500

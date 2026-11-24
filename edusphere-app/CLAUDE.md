@@ -4,7 +4,7 @@ This file provides guidance to Claude Code when working with the Edusphere mobil
 
 ## Repository Overview
 
-React Native Expo application for the **Edusphere School Management System**. Supports six user roles with role-specific dashboards and screens. Built with Expo Router (file-based routing) and NativeWind (Tailwind CSS for React Native).
+React Native Expo application for the **Edusphere Institution Management System**. Supports six user roles with role-specific dashboards and screens. Built with Expo Router (file-based routing) and NativeWind (Tailwind CSS for React Native).
 
 ## Technology Stack
 
@@ -56,7 +56,7 @@ edusphere-app/
 │   ├── (auth)/
 │   │   ├── _layout.js
 │   │   └── login.js            # Login screen (React Hook Form + Zod)
-│   ├── (admin)/                # School Admin, Principal, Super Admin
+│   ├── (admin)/                # Institution Admin, Principal, Super Admin
 │   │   ├── _layout.js
 │   │   ├── index.js            # Admin dashboard
 │   │   ├── academics.js
@@ -157,7 +157,7 @@ edusphere-app/
 ├── store/                      # Zustand stores
 │   ├── index.js                # Re-exports all stores
 │   ├── useAuthStore.js         # Auth state (user, tokens, role, permissions)
-│   ├── useAppStore.js          # App state (school, academic year, theme)
+│   ├── useAppStore.js          # App state (institution, academic year, theme)
 │   └── useParentStore.js       # Parent: selected child state
 ├── lib/                        # Shared utilities
 │   ├── axios.js                # Axios instance with JWT interceptors
@@ -191,7 +191,7 @@ const user = useAuthStore.getState().user;
 
 Three stores:
 - `useAuthStore` — user, token, refreshToken, sessionId, role, permissions
-- `useAppStore` — school info, academicYear, academicYears, theme
+- `useAppStore` — institution info, academicYear, academicYears, theme
 - `useParentStore` — children list, selectedChild (no persistence — non-critical)
 
 ### Axios (`lib/axios.js`)
@@ -216,13 +216,13 @@ socket.emit('bus_location_update', payload);
 ### Role Routing (`lib/constants.js`)
 ```js
 export const ROLES = {
-  SUPER_ADMIN, SCHOOL_ADMIN, PRINCIPAL, TEACHER, STUDENT, PARENT, BUS_STAFF
+  SUPER_ADMIN, INSTITUTION_ADMIN, PRINCIPAL, TEACHER, STUDENT, PARENT, BUS_STAFF
 };
 export const ROLE_ROUTES = {
   TEACHER: "/(teacher)",
   STUDENT: "/(student)",
   PARENT:  "/(parent)",
-  SCHOOL_ADMIN: "/(admin)",
+  INSTITUTION_ADMIN: "/(admin)",
   PRINCIPAL:    "/(admin)",
   SUPER_ADMIN:  "/(admin)",
   BUS_STAFF:    "/(bus-staff)",
@@ -296,4 +296,4 @@ EXPO_PUBLIC_API_BASE_URL=http://192.168.x.x:5000/api
 - **Platform guards** — `SplashScreen.preventAutoHideAsync()` and hide calls are wrapped in `Platform.OS !== 'web'`
 - **BusMap.web.js** — platform-specific file: Metro auto-selects `.web.js` on web, `.js` on native
 - **Parent store** — `useParentStore` is not persisted; children are re-fetched on each parent session
-- **skid** — school-scoped user identifier used in API URLs (`/api/.../update/<skid>`); available on `user.skid` in auth store
+- **skid** — institution-scoped user identifier used in API URLs (`/api/.../update/<skid>`); available on `user.skid` in auth store

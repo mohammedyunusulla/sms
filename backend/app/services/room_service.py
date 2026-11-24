@@ -2,7 +2,7 @@
 # app/services/room_service.py
 from app import db
 from app.models.tenant import Room
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 
 
 class RoomService:
@@ -13,7 +13,7 @@ class RoomService:
         Create a new room in tenant database
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Check if room name already exists
                 existing_room = tenant_session.query(Room).filter_by(
                     room_name=data['room_name']
@@ -51,7 +51,7 @@ class RoomService:
         Update an existing room in tenant database
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 room = tenant_session.query(Room).filter_by(id=room_id).first()
 
                 if not room:
@@ -95,7 +95,7 @@ class RoomService:
         Delete a room from tenant database
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 room = tenant_session.query(Room).filter_by(id=room_id).first()
 
                 if not room:
@@ -115,7 +115,7 @@ class RoomService:
         Get a specific room by ID
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 room = tenant_session.query(Room).filter_by(id=room_id).first()
 
                 if not room:
@@ -132,7 +132,7 @@ class RoomService:
         Get all rooms with optional filters
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 query = tenant_session.query(Room)
 
                 if filters:
@@ -158,7 +158,7 @@ class RoomService:
         Get rooms where is_active=True and status='available'
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 query = tenant_session.query(Room).filter(
                     Room.is_active == True
                 )

@@ -1,9 +1,9 @@
 from app import db
 from app.models.tenant.Roles import Role
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 
 # Built-in roles (stored on login accounts); a custom role must be based on one of the staff ones
-BUILT_IN_ROLES = ('SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT', 'BUS_STAFF', 'CLERK')
+BUILT_IN_ROLES = ('INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT', 'BUS_STAFF', 'CLERK')
 CUSTOM_ROLE_BASES = ('PRINCIPAL', 'CLERK', 'BUS_STAFF')
 
 
@@ -15,7 +15,7 @@ def _base_role(value):
 
 
 def _is_built_in(role):
-    """Built-in roles (School Admin, Principal, Teacher, Student, Parent, Bus Staff, Clerk): only their permissions change."""
+    """Built-in roles (Institution Admin, Principal, Teacher, Student, Parent, Bus Staff, Clerk): only their permissions change."""
     return bool(role.is_system_role) or str(role.role_code or '').upper() in BUILT_IN_ROLES
 
 
@@ -23,9 +23,9 @@ BUILT_IN_ONLY_PERMISSIONS = "is a built-in role: only its permissions can be cha
 
 
 def _role_holders(tenant_session, role_id):
-    from app.models.tenant.SchoolUsers import SchoolUsers
+    from app.models.tenant.InstitutionUsers import InstitutionUsers
     from app.models.tenant.UserRoles import UserRoles
-    holders = {uid for (uid,) in tenant_session.query(SchoolUsers.id).filter(SchoolUsers.role_id == role_id)}
+    holders = {uid for (uid,) in tenant_session.query(InstitutionUsers.id).filter(InstitutionUsers.role_id == role_id)}
     holders |= {uid for (uid,) in tenant_session.query(UserRoles.user_id).filter(UserRoles.role_id == role_id)}
     return holders
 
@@ -35,7 +35,7 @@ class RolesService:
     @staticmethod
     def create_role(data, skid):
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 role_code = str(data.get('role_code') or '').strip().upper()
                 if not role_code:
                     raise ValueError("Role code is required")
@@ -66,7 +66,7 @@ class RolesService:
     @staticmethod
     def update_role(role_id, data, skid):
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 role = tenant_session.query(Role).get(role_id)
                 if not role:
                     raise ValueError("Role not found")
@@ -99,7 +99,7 @@ class RolesService:
     @staticmethod
     def assign_permissions(skid, role_id, permissions):
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 role = tenant_session.query(Role).get(role_id)
                 if not role:
                     raise ValueError("Role not found")
@@ -116,7 +116,7 @@ class RolesService:
     @staticmethod
     def toggle_role_status(role_id, skid):
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 role = tenant_session.query(Role).get(role_id)
                 if not role:
                     raise ValueError("Role not found")
@@ -141,7 +141,7 @@ class RolesService:
         Get paginated list of roles with filtering
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Base query
                 query = tenant_session.query(Role)
 
@@ -181,7 +181,7 @@ class RolesService:
     @staticmethod
     def get_all_roles(skid):
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 Roles = tenant_session.query(Role).all()
                 return [role.to_dict() for role in Roles]
 
@@ -191,7 +191,7 @@ class RolesService:
     @staticmethod
     def get_role_by_id(role_id, skid):
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 role = tenant_session.query(Role).get(role_id)
                 if not role:
                     raise ValueError("Role not found")
@@ -203,7 +203,7 @@ class RolesService:
     @staticmethod
     def delete_role(role_id, skid):
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 role = tenant_session.query(Role).get(role_id)
                 if not role:
                     raise ValueError("Role not found")

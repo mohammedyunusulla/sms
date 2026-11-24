@@ -30,7 +30,7 @@ const ChildSelectorDropdown: FC = () => {
 
     // Fetch children once per session. Refetch if the logged-in user changes.
     useEffect(() => {
-        const uid = user?.school_user_id;
+        const uid = user?.institution_user_id;
         if (!uid) return;
 
         // New user logged in — clear stale state from the previous user
@@ -48,7 +48,7 @@ const ChildSelectorDropdown: FC = () => {
             .then((list) => setChildren(Array.isArray(list) ? list : []))
             .catch(() => setChildren([]))
             .finally(() => setLoading(false));
-    }, [user?.school_user_id, loaded, loading, setChildren, setLoading, reset]);
+    }, [user?.institution_user_id, loaded, loading, setChildren, setLoading, reset]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {

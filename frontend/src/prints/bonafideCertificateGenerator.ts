@@ -13,7 +13,7 @@ import {
     loadPdfFonts,
     formatDate,
 } from './HeaderAndFooterComponent';
-import type { SchoolData, PdfAction } from './printTypes';
+import type { InstitutionData, PdfAction } from './printTypes';
 
 export interface BonafideCertificateData {
     // Student Information
@@ -39,7 +39,7 @@ export interface BonafideCertificateData {
  */
 export const generateBonafideCertificatePdf = async (
     data: BonafideCertificateData,
-    schoolData: SchoolData,
+    institutionData: InstitutionData,
     action: PdfAction = 'print'
 ): Promise<void> => {
     await loadPdfFonts();
@@ -156,7 +156,7 @@ export const generateBonafideCertificatePdf = async (
         certificateBody,
         getSignatureSection([
             { label: 'Class Teacher', position: 'left' },
-            { label: 'Principal (with School Seal)', position: 'right' }
+            { label: 'Principal (with Institution Seal)', position: 'right' }
         ])
     ];
 
@@ -167,14 +167,14 @@ export const generateBonafideCertificatePdf = async (
         pageMargins: [60, 140, 60, 60],
         header: () => {
             return getReportHeader(
-                schoolData,
+                institutionData,
                 'Bonafide Certificate',
                 `Academic Year: ${academic_year}`,
                 'portrait'
             );
         },
         footer: (currentPage: number, pageCount: number) => {
-            return getReportFooter(currentPage, pageCount, schoolData?.generatedBy);
+            return getReportFooter(currentPage, pageCount, institutionData?.generatedBy);
         },
         content,
         styles: commonPdfStyles,

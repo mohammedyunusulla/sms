@@ -1,7 +1,7 @@
 /**
  * usePermissions Hook
  * Core hook for permission-based access control.
- * SUPER_ADMIN and SCHOOL_ADMIN bypass all permission checks (full access).
+ * SUPER_ADMIN and INSTITUTION_ADMIN bypass all permission checks (full access).
  * All other roles are checked against user.role_obj.permissions.
  */
 
@@ -10,14 +10,14 @@ import { useAuth } from './useAuth';
 import { UserRole } from '../types/common';
 import { ROUTE_PERMISSION_MAP, Permission } from '../config/permissions';
 
-const FULL_ACCESS_ROLES: UserRole[] = [UserRole.SUPER_ADMIN, UserRole.SCHOOL_ADMIN];
+const FULL_ACCESS_ROLES: UserRole[] = [UserRole.SUPER_ADMIN, UserRole.INSTITUTION_ADMIN];
 
 export interface UsePermissionsReturn {
     /** True if user has the given permission (or is a full-access role) */
     hasPermission: (key: Permission) => boolean;
     /** True if user has ANY of the given permissions (or is a full-access role) */
     hasAnyPermission: (keys: Permission[]) => boolean;
-    /** True for SUPER_ADMIN or SCHOOL_ADMIN */
+    /** True for SUPER_ADMIN or INSTITUTION_ADMIN */
     isFullAccess: boolean;
     /** True only for SUPER_ADMIN */
     isSuperAdmin: boolean;

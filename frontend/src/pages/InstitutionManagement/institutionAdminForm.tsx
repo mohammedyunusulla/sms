@@ -1,15 +1,15 @@
 /**
- * School Admin Form Component
- * Form for creating and editing school admin users
+ * Institution Admin Form Component
+ * Form for creating and editing institution admin users
  */
 
 import { FC, useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { passwordProblem } from '../../utils/formValidation';
-import { schoolService } from '../../services/modules/schoolService';
+import { institutionService } from '../../services/modules/institutionService';
 
-interface SchoolAdminFormProps {
-  school: any;
+interface InstitutionAdminFormProps {
+  institution: any;
   onClose: () => void;
 }
 
@@ -20,7 +20,7 @@ interface FormData {
   phone: string;
   username: string;
   password: string;
-  school_id: number;
+  institution_id: number;
   role: string;
 }
 
@@ -28,7 +28,7 @@ interface FormErrors {
   [key: string]: string;
 }
 
-const SchoolAdminForm: FC<SchoolAdminFormProps> = ({ school, onClose }) => {
+const InstitutionAdminForm: FC<InstitutionAdminFormProps> = ({ institution, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<FormData>({
     first_name: '',
@@ -37,25 +37,25 @@ const SchoolAdminForm: FC<SchoolAdminFormProps> = ({ school, onClose }) => {
     phone: '',
     username: '',
     password: '',
-    school_id: school?.id || 0,
-    role: 'SCHOOL_ADMIN',
+    institution_id: institution?.id || 0,
+    role: 'INSTITUTION_ADMIN',
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [showPassword, setShowPassword] = useState(false);
 
-  const isEditMode = Boolean(school && school.school_admin_id);
+  const isEditMode = Boolean(institution && institution.institution_admin_id);
 
   useEffect(() => {
-    if (isEditMode && school?.school_admin_id) {
+    if (isEditMode && institution?.institution_admin_id) {
       fetchAdminData();
     }
-  }, [school]);
+  }, [institution]);
 
   const fetchAdminData = async () => {
     try {
       setLoading(true);
-      // Fetch admin details using skid and admin_id via /users/schoolAdmin/{skid}/{admin_id}
-      const admin = await schoolService.getSchoolAdmin(school.skid, school.school_admin_id);
+      // Fetch admin details using skid and admin_id via /users/institutionAdmin/{skid}/{admin_id}
+      const admin = await institutionService.getInstitutionAdmin(institution.skid, institution.institution_admin_id);
       setFormData({
         first_name: admin.first_name || '',
         last_name: admin.last_name || '',
@@ -63,8 +63,8 @@ const SchoolAdminForm: FC<SchoolAdminFormProps> = ({ school, onClose }) => {
         phone: admin.phone || '',
         username: admin.username || '',
         password: '',
-        school_id: school.id,
-        role: 'SCHOOL_ADMIN',
+        institution_id: institution.id,
+        role: 'INSTITUTION_ADMIN',
       });
     } catch (error) {
       console.error('Error fetching admin data:', error);
@@ -139,8 +139,8 @@ const SchoolAdminForm: FC<SchoolAdminFormProps> = ({ school, onClose }) => {
         email: formData.email,
         phone: formData.phone,
         username: formData.username,
-        school_id: school.id,
-        skid: school.skid,
+        institution_id: institution.id,
+        skid: institution.skid,
         role: formData.role,
       };
 
@@ -149,17 +149,17 @@ const SchoolAdminForm: FC<SchoolAdminFormProps> = ({ school, onClose }) => {
       }
 
       if (isEditMode) {
-        await schoolService.updateSchoolAdmin(school.school_admin_id, payload);
-        toast.success('School admin updated successfully');
+        await institutionService.updateInstitutionAdmin(institution.institution_admin_id, payload);
+        toast.success('Institution admin updated successfully');
       } else {
-        await schoolService.createSchoolAdmin(payload);
-        toast.success('School admin created successfully');
+        await institutionService.createInstitutionAdmin(payload);
+        toast.success('Institution admin created successfully');
       }
 
       onClose();
     } catch (error: any) {
       console.error('Error submitting form:', error);
-      toast.error(error.message || 'Failed to save school admin');
+      toast.error(error.message || 'Failed to save institution admin');
     } finally {
       setLoading(false);
     }
@@ -317,4 +317,4 @@ const SchoolAdminForm: FC<SchoolAdminFormProps> = ({ school, onClose }) => {
   );
 };
 
-export default SchoolAdminForm;
+export default InstitutionAdminForm;

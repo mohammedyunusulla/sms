@@ -25,7 +25,7 @@ export interface RoleObj {
   role_name: string;
   is_active: boolean;
   is_system_role: boolean;
-  school_id: number | null;
+  institution_id: number | null;
   permissions: string[];
 }
 
@@ -44,15 +44,15 @@ export interface AuthUser {
   role: UserRole;
   is_active: boolean;
   plan: string;
-  school_id: number;
-  school_code: string;
-  school_name: string;
-  school_logo?: string;
-  school_address?: string;
-  school_phone?: string;
-  school_email?: string;
+  institution_id: number;
+  institution_code: string;
+  institution_name: string;
+  institution_logo?: string;
+  institution_address?: string;
+  institution_phone?: string;
+  institution_email?: string;
   skid: string;
-  school_user_id: number;
+  institution_user_id: number;
   role_obj: RoleObj;
   academicYear?: string | number;
   academic_year?: string | number;

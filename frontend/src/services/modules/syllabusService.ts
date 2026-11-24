@@ -1,4 +1,4 @@
-import { getApiClient, getSchoolId } from '../api/client';
+import { getApiClient, getInstitutionId } from '../api/client';
 import {
     ISyllabus,
     ISyllabusFormData,
@@ -26,17 +26,17 @@ class SyllabusService {
 
     // ============== SYLLABUS OPERATIONS ==============
 
-    // Get all syllabi for the school (Admin/Principal view)
+    // Get all syllabi for the institution (Admin/Principal view)
     async fetchAllSyllabi(academicYearId: string): Promise<ISyllabus[]> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const response = await api.get(
-            `${this.baseUrl}/get/list/${schoolId}?academic_year_id=${academicYearId}`
+            `${this.baseUrl}/get/list/${institutionId}?academic_year_id=${academicYearId}`
         );
         return response.data || [];
     }
@@ -44,14 +44,14 @@ class SyllabusService {
     // Get syllabi assigned to a specific teacher
     async fetchSyllabiByTeacher(teacherId: string, academicYearId: string): Promise<ISyllabus[]> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const response = await api.get(
-            `${this.baseUrl}/list/teacher/${schoolId}/${teacherId}?academic_year_id=${academicYearId}`
+            `${this.baseUrl}/list/teacher/${institutionId}/${teacherId}?academic_year_id=${academicYearId}`
         );
         return response.data || [];
     }
@@ -59,14 +59,14 @@ class SyllabusService {
     // Get syllabi for a specific subject
     async fetchSyllabiBySubject(subjectId: string, academicYearId: string): Promise<ISyllabus[]> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const response = await api.get(
-            `${this.baseUrl}/list/subject/${schoolId}/${subjectId}?academic_year_id=${academicYearId}`
+            `${this.baseUrl}/list/subject/${institutionId}/${subjectId}?academic_year_id=${academicYearId}`
         );
         return response.data || [];
     }
@@ -80,13 +80,13 @@ class SyllabusService {
         sectionId?: number | null
     ): Promise<ISyllabus> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        let url = `${this.baseUrl}/get/${schoolId}/${syllabusId}?include_hierarchy=${includeHierarchy}`;
+        let url = `${this.baseUrl}/get/${institutionId}/${syllabusId}?include_hierarchy=${includeHierarchy}`;
         if (teacherId !== undefined && teacherId !== null) {
             url += `&teacher_id=${teacherId}`;
         }
@@ -104,14 +104,14 @@ class SyllabusService {
     // Get teachers assigned to a syllabus's subject with their progress
     async fetchTeachersForSyllabus(syllabusId: string): Promise<ISyllabusTeacherProgress[]> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const response = await api.get(
-            `${this.baseUrl}/teachers-for-syllabus/${schoolId}/${syllabusId}`
+            `${this.baseUrl}/teachers-for-syllabus/${institutionId}/${syllabusId}`
         );
         return response.data || [];
     }
@@ -119,13 +119,13 @@ class SyllabusService {
     // Create a new syllabus
     async createSyllabus(data: ISyllabusFormData): Promise<ISyllabus> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/create/${schoolId}`, data) as ApiResponse<ISyllabus>;
+        const response = await api.post(`${this.baseUrl}/create/${institutionId}`, data) as ApiResponse<ISyllabus>;
         if (response.code === 200 || response.status === 'success') {
             return response.data as ISyllabus;
         }
@@ -135,13 +135,13 @@ class SyllabusService {
     // Update an existing syllabus
     async updateSyllabus(syllabusId: string, data: Partial<ISyllabusFormData>): Promise<ISyllabus> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.put(`${this.baseUrl}/update/${schoolId}/${syllabusId}`, data) as ApiResponse<ISyllabus>;
+        const response = await api.put(`${this.baseUrl}/update/${institutionId}/${syllabusId}`, data) as ApiResponse<ISyllabus>;
         if (response.code === 200 || response.status === 'success') {
             return response.data as ISyllabus;
         }
@@ -151,13 +151,13 @@ class SyllabusService {
     // Delete a syllabus
     async deleteSyllabus(syllabusId: string): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.delete(`${this.baseUrl}/delete/${schoolId}/${syllabusId}`) as ApiResponse;
+        const response = await api.delete(`${this.baseUrl}/delete/${institutionId}/${syllabusId}`) as ApiResponse;
         if (response.code !== 200 && response.status !== 'success') {
             throw new Error(response.message || 'Failed to delete syllabus');
         }
@@ -168,14 +168,14 @@ class SyllabusService {
     // Create a new lesson under a syllabus
     async createLesson(syllabusId: string, data: ILessonFormData): Promise<ILesson> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const response = await api.post(
-            `${this.baseUrl}/lesson/create/${schoolId}/${syllabusId}`,
+            `${this.baseUrl}/lesson/create/${institutionId}/${syllabusId}`,
             data
         ) as ApiResponse<ILesson>;
         if (response.code === 200 || response.status === 'success') {
@@ -187,14 +187,14 @@ class SyllabusService {
     // Update an existing lesson
     async updateLesson(lessonId: string, data: Partial<ILessonFormData>): Promise<ILesson> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const response = await api.put(
-            `${this.baseUrl}/lesson/update/${schoolId}/${lessonId}`,
+            `${this.baseUrl}/lesson/update/${institutionId}/${lessonId}`,
             data
         ) as ApiResponse<ILesson>;
         if (response.code === 200 || response.status === 'success') {
@@ -206,13 +206,13 @@ class SyllabusService {
     // Delete a lesson
     async deleteLesson(lessonId: string): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.delete(`${this.baseUrl}/lesson/delete/${schoolId}/${lessonId}`) as ApiResponse;
+        const response = await api.delete(`${this.baseUrl}/lesson/delete/${institutionId}/${lessonId}`) as ApiResponse;
         if (response.code !== 200 && response.status !== 'success') {
             throw new Error(response.message || 'Failed to delete lesson');
         }
@@ -223,14 +223,14 @@ class SyllabusService {
     // Create a new topic under a lesson
     async createTopic(lessonId: string, data: ITopicFormData): Promise<ITopic> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const response = await api.post(
-            `${this.baseUrl}/topic/create/${schoolId}/${lessonId}`,
+            `${this.baseUrl}/topic/create/${institutionId}/${lessonId}`,
             data
         ) as ApiResponse<ITopic>;
         if (response.code === 200 || response.status === 'success') {
@@ -242,14 +242,14 @@ class SyllabusService {
     // Update an existing topic
     async updateTopic(topicId: string, data: Partial<ITopicFormData>): Promise<ITopic> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const response = await api.put(
-            `${this.baseUrl}/topic/update/${schoolId}/${topicId}`,
+            `${this.baseUrl}/topic/update/${institutionId}/${topicId}`,
             data
         ) as ApiResponse<ITopic>;
         if (response.code === 200 || response.status === 'success') {
@@ -261,13 +261,13 @@ class SyllabusService {
     // Delete a topic
     async deleteTopic(topicId: string): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.delete(`${this.baseUrl}/topic/delete/${schoolId}/${topicId}`) as ApiResponse;
+        const response = await api.delete(`${this.baseUrl}/topic/delete/${institutionId}/${topicId}`) as ApiResponse;
         if (response.code !== 200 && response.status !== 'success') {
             throw new Error(response.message || 'Failed to delete topic');
         }
@@ -278,14 +278,14 @@ class SyllabusService {
     // Create a new subtopic under a topic
     async createSubtopic(topicId: string, data: ISubtopicFormData): Promise<ISubtopic> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const response = await api.post(
-            `${this.baseUrl}/subtopic/create/${schoolId}/${topicId}`,
+            `${this.baseUrl}/subtopic/create/${institutionId}/${topicId}`,
             data
         ) as ApiResponse<ISubtopic>;
         if (response.code === 200 || response.status === 'success') {
@@ -297,14 +297,14 @@ class SyllabusService {
     // Update an existing subtopic
     async updateSubtopic(subtopicId: string, data: Partial<ISubtopicFormData>): Promise<ISubtopic> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const response = await api.put(
-            `${this.baseUrl}/subtopic/update/${schoolId}/${subtopicId}`,
+            `${this.baseUrl}/subtopic/update/${institutionId}/${subtopicId}`,
             data
         ) as ApiResponse<ISubtopic>;
         if (response.code === 200 || response.status === 'success') {
@@ -316,13 +316,13 @@ class SyllabusService {
     // Delete a subtopic
     async deleteSubtopic(subtopicId: string): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.delete(`${this.baseUrl}/subtopic/delete/${schoolId}/${subtopicId}`) as ApiResponse;
+        const response = await api.delete(`${this.baseUrl}/subtopic/delete/${institutionId}/${subtopicId}`) as ApiResponse;
         if (response.code !== 200 && response.status !== 'success') {
             throw new Error(response.message || 'Failed to delete subtopic');
         }
@@ -333,27 +333,27 @@ class SyllabusService {
     // Get analytics for a specific syllabus
     async fetchSyllabusAnalytics(syllabusId: string, sectionId?: number | null): Promise<ISyllabusAnalytics> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/analytics/${schoolId}/${syllabusId}${sectionId ? `?section_id=${sectionId}` : ''}`);
+        const response = await api.get(`${this.baseUrl}/analytics/${institutionId}/${syllabusId}${sectionId ? `?section_id=${sectionId}` : ''}`);
         return response.data || response;
     }
 
     // Get progress summary for a teacher
     async fetchTeacherProgressSummary(teacherId: string, academicYearId: string): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const response = await api.get(
-            `${this.baseUrl}/analytics/teacher/${schoolId}/${teacherId}?academic_year_id=${academicYearId}`
+            `${this.baseUrl}/analytics/teacher/${institutionId}/${teacherId}?academic_year_id=${academicYearId}`
         );
         return response.data || response;
     }
@@ -368,13 +368,13 @@ class SyllabusService {
         sectionId?: number | null
     ): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/progress/configure/${schoolId}`, {
+        const response = await api.post(`${this.baseUrl}/progress/configure/${institutionId}`, {
             item_type: itemType,
             item_id: itemId,
             ...data,
@@ -389,13 +389,13 @@ class SyllabusService {
     // Start teaching a syllabus item (must be configured first)
     async startItem(itemType: string, itemId: string, sectionId?: number | null): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/progress/start/${schoolId}`, {
+        const response = await api.post(`${this.baseUrl}/progress/start/${institutionId}`, {
             item_type: itemType,
             item_id: itemId,
             ...(sectionId ? { section_id: sectionId } : {}),
@@ -411,13 +411,13 @@ class SyllabusService {
     // Mark a syllabus item as complete/incomplete (teacher only)
     async markProgress(itemType: string, itemId: string, isCompleted: boolean, sectionId?: number | null): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/progress/mark/${schoolId}`, {
+        const response = await api.post(`${this.baseUrl}/progress/mark/${institutionId}`, {
             item_type: itemType,
             item_id: itemId,
             is_completed: isCompleted,
@@ -434,13 +434,13 @@ class SyllabusService {
     // Get student's syllabus progress overview
     async fetchStudentSyllabusView(academicYearId: string, studentUserId?: string): Promise<IStudentSyllabusEntry[]> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        let url = `${this.baseUrl}/student-view/${schoolId}?academic_year_id=${academicYearId}`;
+        let url = `${this.baseUrl}/student-view/${institutionId}?academic_year_id=${academicYearId}`;
         if (studentUserId) {
             url += `&student_user_id=${studentUserId}`;
         }
@@ -452,14 +452,14 @@ class SyllabusService {
     // Get full syllabus detail with teacher progress (student read-only view)
     async fetchStudentSyllabusDetail(syllabusId: string, teacherId: string, sectionId?: string | null): Promise<ISyllabus> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const response = await api.get(
-            `${this.baseUrl}/student-view/${schoolId}/${syllabusId}?teacher_id=${teacherId}${sectionId ? `&section_id=${sectionId}` : ''}`
+            `${this.baseUrl}/student-view/${institutionId}/${syllabusId}?teacher_id=${teacherId}${sectionId ? `&section_id=${sectionId}` : ''}`
         );
         return response.data || response;
     }
@@ -469,13 +469,13 @@ class SyllabusService {
     // Assign a teacher to a syllabus for a specific section
     async assignTeacher(syllabusId: string, teacherId: number, sectionId: number): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/assign-teacher/${schoolId}/${syllabusId}`, {
+        const response = await api.post(`${this.baseUrl}/assign-teacher/${institutionId}/${syllabusId}`, {
             teacher_id: teacherId,
             section_id: sectionId,
         }) as ApiResponse;
@@ -488,13 +488,13 @@ class SyllabusService {
     // Unassign a teacher from a syllabus section
     async unassignTeacher(assignmentId: number): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.put(`${this.baseUrl}/unassign-teacher/${schoolId}/${assignmentId}`) as ApiResponse;
+        const response = await api.put(`${this.baseUrl}/unassign-teacher/${institutionId}/${assignmentId}`) as ApiResponse;
         if (response.code !== 200 && response.status !== 'success') {
             throw new Error(response.message || 'Failed to unassign teacher');
         }
@@ -503,26 +503,26 @@ class SyllabusService {
     // Get teachers assigned to a subject (via TeacherSubject)
     async getTeachersBySubject(subjectId: number): Promise<{ teacher_id: number; teacher_name: string }[]> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/teachers-by-subject/${schoolId}/${subjectId}`);
+        const response = await api.get(`${this.baseUrl}/teachers-by-subject/${institutionId}/${subjectId}`);
         return response.data || [];
     }
 
     // Get all teacher assignments for a syllabus
     async getAssignments(syllabusId: string): Promise<any[]> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/assignments/${schoolId}/${syllabusId}`);
+        const response = await api.get(`${this.baseUrl}/assignments/${institutionId}/${syllabusId}`);
         return response.data || [];
     }
 
@@ -531,19 +531,19 @@ class SyllabusService {
     // Get subjects for syllabus creation (based on user role)
     async getSubjectsForUser(loggedUser: any): Promise<any[]> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         let url: string;
         if (loggedUser?.role === 'TEACHER') {
             // Teachers only see their assigned subjects
-            url = `/teachers/${loggedUser.school_user_id}/subjects/${schoolId}`;
+            url = `/teachers/${loggedUser.institution_user_id}/subjects/${institutionId}`;
         } else {
             // Admins/Principals see all subjects
-            url = `/subjects/list/${schoolId}`;
+            url = `/subjects/list/${institutionId}`;
         }
 
         const response = await api.get(url);

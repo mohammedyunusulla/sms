@@ -8,7 +8,7 @@
  * - Salary Payments (generate, mark paid/unpaid)
  */
 
-import { getApiClient, getSchoolId } from '../api/client';
+import { getApiClient, getInstitutionId } from '../api/client';
 import type { ICollectionReport, IDefaultersReport } from '../../types/index';
 
 class FinanceService {
@@ -19,8 +19,8 @@ class FinanceService {
 
     async listFeeStructures(academicYearId: string | number): Promise<any> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.get(`/fee/structure/list/${skid}`, {
             params: { academic_year_id: academicYearId },
         });
@@ -29,40 +29,40 @@ class FinanceService {
 
     async createFeeStructure(data: any): Promise<any> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.post(`/fee/structure/create/${skid}`, data);
         return response;
     }
 
     async updateFeeStructure(feeId: number | string, data: any): Promise<any> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.put(`/fee/structure/update/${skid}/${feeId}`, data);
         return response;
     }
 
     async deleteFeeStructure(feeId: number | string): Promise<any> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.delete(`/fee/structure/delete/${skid}/${feeId}`);
         return response;
     }
 
     async deleteClassFeeStructures(classId: number | string, academicYearId: number | string): Promise<any> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.delete(`/fee/structure/delete-class/${skid}/${classId}/${academicYearId}`);
         return response;
     }
 
     async assignFeesToClass(data: any): Promise<any> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.post(`/fee/assign/class/${skid}`, data);
         return response;
     }
@@ -73,8 +73,8 @@ class FinanceService {
 
     async searchStudent(query: string, academicYearId: string | number): Promise<any[]> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.get(`/fee/search-student/${skid}`, {
             params: { q: query, academic_year_id: academicYearId },
         });
@@ -83,8 +83,8 @@ class FinanceService {
 
     async getStudentFeeSummary(userId: number | string, academicYearId: string | number): Promise<any> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.get(`/fee/summary/student/${skid}/${userId}`, {
             params: { academic_year_id: academicYearId },
         });
@@ -93,40 +93,40 @@ class FinanceService {
 
     async getInstallments(feeId: number | string): Promise<any[]> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.get(`/fee/installments/get/${skid}/${feeId}`);
         return response?.data || [];
     }
 
     async recordPayment(data: any): Promise<any> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.post(`/fee/payment/record/${skid}`, data);
         return response;
     }
 
     async recordInstallmentPayment(installmentId: number | string, data: any): Promise<any> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.post(`/fee/installments/payment/${skid}/${installmentId}`, data);
         return response;
     }
 
     async convertToFullPayment(feeId: number | string): Promise<any> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.post(`/fee/payment/convert-to-full/${skid}/${feeId}`);
         return response;
     }
 
     async autoGenerateInstallments(data: { student_fee_id: number | string; preview?: boolean }): Promise<any> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.post(`/fee/installments/auto-generate-recurring/${skid}`, data);
         return response;
     }
@@ -139,8 +139,8 @@ class FinanceService {
 
     async createManualInstallments(data: any): Promise<any> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.post(`/fee/installments/create/${skid}`, data);
         return response;
     }
@@ -151,8 +151,8 @@ class FinanceService {
 
     async listClasses(): Promise<any[]> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.get(`/classes/list/${skid}`);
         // The API returns { code, data: [...] }; accept a bare array too.
         return Array.isArray(response) ? response : (response as any)?.data || [];
@@ -169,32 +169,32 @@ class FinanceService {
         end_date?: string;
     }): Promise<any[]> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.get(`/expenses/${skid}`, { params });
         return Array.isArray(response) ? response : (response as any).expenses || [];
     }
 
     async createExpense(data: any): Promise<any> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.post(`/expenses/create/${skid}`, data);
         return response;
     }
 
     async updateExpense(expenseId: number | string, data: any): Promise<any> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.put(`/expenses/update/${skid}/${expenseId}`, data);
         return response;
     }
 
     async deleteExpense(expenseId: number | string): Promise<any> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.delete(`/expenses/delete/${skid}/${expenseId}`);
         return response;
     }
@@ -205,8 +205,8 @@ class FinanceService {
 
     async listSalarySetups(academicYearId: string | number): Promise<any[]> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.get(`/expenses/list/salary-setup/${skid}`, {
             params: { academic_year_id: academicYearId },
         });
@@ -215,32 +215,32 @@ class FinanceService {
 
     async createSalarySetup(data: any): Promise<any> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.post(`/expenses/salary-setup/${skid}`, data);
         return response;
     }
 
     async updateSalarySetup(data: any): Promise<any> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.put(`/expenses/salary-setup/update/${skid}`, data);
         return response;
     }
 
     async deleteSalarySetup(setupId: number | string): Promise<any> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.delete(`/expenses/salary-setup/delete/${skid}/${setupId}`);
         return response;
     }
 
     async listStaff(): Promise<any[]> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.get(`/users/list/staff/${skid}`);
         return Array.isArray(response) ? response : (response as any).staff || [];
     }
@@ -251,8 +251,8 @@ class FinanceService {
 
     async listSalaryPayments(academicYearId: string | number): Promise<any[]> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.get(`/expenses/salary-payments/${skid}`, {
             params: { academic_year_id: academicYearId },
         });
@@ -261,24 +261,24 @@ class FinanceService {
 
     async generateSalaryPayments(data: { month: number; year: number; academic_year_id: string | number }): Promise<any> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.post(`/expenses/salary-payments/generate/${skid}`, data);
         return response;
     }
 
     async markSalaryPaid(paymentId: number | string, data: any): Promise<any> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.put(`/expenses/salary-payments/${paymentId}/mark-paid/${skid}`, data);
         return response;
     }
 
     async markSalaryUnpaid(paymentId: number | string): Promise<any> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = await api.put(`/expenses/salary-payments/${skid}/mark-unpaid/${paymentId}`);
         return response;
     }
@@ -289,8 +289,8 @@ class FinanceService {
 
     async cancelPayment(paymentId: number | string, reason: string): Promise<unknown> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         return api.post(`/fee/payment/cancel/${skid}/${paymentId}`, { reason });
     }
 
@@ -304,15 +304,15 @@ class FinanceService {
         reason?: string;
     }): Promise<{ data?: { total_discount_added?: number } }> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         return api.post(`/fee/discount/apply/${skid}`, data);
     }
 
     async getCollectionReport(params: { start_date: string; end_date: string; class_id?: string | number }): Promise<ICollectionReport> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const query: Record<string, string> = { start_date: params.start_date, end_date: params.end_date };
         if (params.class_id) query.class_id = String(params.class_id);
         const response = (await api.get(`/fee/report/collection/${skid}`, { params: query })) as unknown as { data?: ICollectionReport };
@@ -321,8 +321,8 @@ class FinanceService {
 
     async getDefaulters(academicYearId: number | string, asOfDate?: string): Promise<IDefaultersReport> {
         const api = getApiClient();
-        const skid = getSchoolId();
-        if (!skid) throw new Error('School ID not found. Please log in again.');
+        const skid = getInstitutionId();
+        if (!skid) throw new Error('Institution ID not found. Please log in again.');
         const response = (await api.get(`/fee/report/defaulters/${skid}`, {
             params: { academic_year_id: academicYearId, ...(asOfDate ? { as_of_date: asOfDate } : {}) },
         })) as unknown as { data?: IDefaultersReport } & IDefaultersReport;

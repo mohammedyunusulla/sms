@@ -57,7 +57,7 @@ def not_in_future(value, label="Date"):
 
 
 def within_an_academic_year(tenant_session, value, label="Date"):
-    """The date must fall inside one of the school's academic years; returns that year's id."""
+    """The date must fall inside one of the institution's academic years; returns that year's id."""
     from app.models.tenant.AcademicYear import AcademicYear
     day = to_date(value, label)
     year = tenant_session.query(AcademicYear).filter(

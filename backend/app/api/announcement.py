@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.services.announcement_service import AnnouncementService
 from app.decorators import login_required
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from app.utils.teaching_scope import current_teacher_id, forbidden
 from app.models.tenant.Announcement import Announcement as AnnouncementModel
 import logging
@@ -10,7 +10,7 @@ _log = logging.getLogger(__name__)
 announcement_bp = Blueprint('announcements', __name__)
 
 @announcement_bp.route('/create/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_announcements')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_announcements')
 def create_announcement(skid):
     """Create a new Announcement"""
     try:
@@ -25,9 +25,9 @@ def create_announcement(skid):
                     'message': f'Missing required field: {field}'
                 }), 400
         
-        # The author is always the logged-in user (super admins have no school user and keep the sent value).
-        if data is not None and getattr(request.current_user, 'school_user_id', None):
-            data['created_by'] = request.current_user.school_user_id
+        # The author is always the logged-in user (super admins have no institution user and keep the sent value).
+        if data is not None and getattr(request.current_user, 'institution_user_id', None):
+            data['created_by'] = request.current_user.institution_user_id
 
         Announcement = AnnouncementService.create_announcement(skid, data)
         
@@ -52,7 +52,7 @@ def create_announcement(skid):
         }), 500
 
 @announcement_bp.route('/get-by-id/<skid>/<int:announcement_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_announcements', 'manage_announcements'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_announcements', 'manage_announcements'))
 def get_announcement_by_id(skid, announcement_id):
     """Get a single announcement by ID"""
     try:
@@ -79,7 +79,7 @@ def get_announcement_by_id(skid, announcement_id):
 
 
 @announcement_bp.route('/list/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT'], permission=('view_announcements', 'manage_announcements'), own_roles=('STUDENT', 'PARENT'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT'], permission=('view_announcements', 'manage_announcements'), own_roles=('STUDENT', 'PARENT'))
 def get_announcements(skid):
     """Get announcements list"""
     try:
@@ -89,11 +89,11 @@ def get_announcements(skid):
         search = (request.args.get('search') or '').strip()
         
         # Who is asking comes from the login token, never from the URL: the old
-        # user_role / school_user_id query params let any user see every announcement
+        # user_role / institution_user_id query params let any user see every announcement
         # (or claim to be an admin). Those params are now ignored.
         current_user = request.current_user
         user_role = current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)
-        school_user_id = current_user.school_user_id
+        institution_user_id = current_user.institution_user_id
 
         if not academic_year_id:
             return jsonify({
@@ -113,7 +113,7 @@ def get_announcements(skid):
         # Always filter by the logged-in user (admins/principal see everything inside the filter)
         user_info = {
             'role': user_role,
-            'school_user_id': school_user_id
+            'institution_user_id': institution_user_id
         }
         
         announcements = AnnouncementService.get_announcements(
@@ -141,17 +141,17 @@ def get_announcements(skid):
 
 
 @announcement_bp.route('/update/<skid>/<int:announcement_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_announcements')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_announcements')
 def update_announcement(skid, announcement_id):
     """Update a Announcement"""
     try:
         data = request.get_json()
 
-        if data is not None and getattr(request.current_user, 'school_user_id', None):
+        if data is not None and getattr(request.current_user, 'institution_user_id', None):
             data.pop('created_by', None)  # authorship can't be changed
         teacher_id = current_teacher_id()
         if teacher_id is not None:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 existing = session.query(AnnouncementModel).filter_by(id=announcement_id).first()
                 if existing and existing.created_by != teacher_id:
                     return forbidden('You can only edit your own announcements')
@@ -180,7 +180,7 @@ def update_announcement(skid, announcement_id):
 
 
 @announcement_bp.route('/delete/<skid>/<int:announcement_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_announcements')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL'], permission='manage_announcements')
 def delete_announcement(skid, announcement_id):
     """Delete a Announcement"""
     try:

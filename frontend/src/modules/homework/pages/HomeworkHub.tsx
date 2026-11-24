@@ -10,7 +10,7 @@ export default function HomeworkHub() {
   if (role === 'STUDENT' || role === 'LEARNER') {
     return <StudentHomeworkPage />;
   }
-  if (role === 'TEACHER' || role === 'SCHOOL_ADMIN' || role === 'PRINCIPAL' || role === 'SUPER_ADMIN') {
+  if (role === 'TEACHER' || role === 'INSTITUTION_ADMIN' || role === 'PRINCIPAL' || role === 'SUPER_ADMIN') {
     return <TeacherHomeworkPage />;
   }
   if (role === 'PARENT' || role === 'GUARDIAN') {

@@ -4,7 +4,7 @@
  * Uses centralized API client from services/api/client.ts
  */
 
-import { getApiClient, getSchoolId } from '../api/client';
+import { getApiClient, getInstitutionId } from '../api/client';
 import { IUser } from '../../types/index';
 
 /**
@@ -57,14 +57,14 @@ class UserService {
      */
     async list(params?: IUserListParams): Promise<IUserListResponse> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         try {
-            const response = (await api.get(`${this.baseUrl}/list/${schoolId}`, { params })) as ApiResponse;
+            const response = (await api.get(`${this.baseUrl}/list/${institutionId}`, { params })) as ApiResponse;
 
             // Handle response format
             if (response.data && response.meta) {
@@ -98,13 +98,13 @@ class UserService {
      */
     async getById(id: string): Promise<IUser> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = (await api.get(`${this.baseUrl}/get/${schoolId}/${id}`)) as ApiResponse;
+        const response = (await api.get(`${this.baseUrl}/get/${institutionId}/${id}`)) as ApiResponse;
         return (response.user || response.data) as IUser;
     }
 
@@ -113,10 +113,10 @@ class UserService {
      */
     async create(data: Omit<IUser, 'id' | 'created_at' | 'updated_at'>): Promise<IUser> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const response = (await api.post(`${this.baseUrl}/create`, data)) as ApiResponse;
@@ -131,13 +131,13 @@ class UserService {
      */
     async update(id: string, data: Partial<IUser>): Promise<IUser> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = (await api.put(`${this.baseUrl}/update-school/${schoolId}/${id}`, data)) as ApiResponse;
+        const response = (await api.put(`${this.baseUrl}/update-institution/${institutionId}/${id}`, data)) as ApiResponse;
         if (response.code === 200 && response.status === 'success') {
             return (response.user || response.data) as IUser;
         }
@@ -149,14 +149,14 @@ class UserService {
      */
     async delete(id: string): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         // Soft delete: inactive + login disabled; records kept, can be reactivated
-        const response = (await api.delete(`${this.baseUrl}/delete/${schoolId}/${id}`)) as ApiResponse;
+        const response = (await api.delete(`${this.baseUrl}/delete/${institutionId}/${id}`)) as ApiResponse;
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.message || 'Failed to delete user');
         }
@@ -167,13 +167,13 @@ class UserService {
      */
     async reactivate(id: string): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = (await api.patch(`${this.baseUrl}/reactivate/${schoolId}/${id}`)) as ApiResponse;
+        const response = (await api.patch(`${this.baseUrl}/reactivate/${institutionId}/${id}`)) as ApiResponse;
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.message || 'Failed to reactivate user');
         }
@@ -185,13 +185,13 @@ class UserService {
      */
     async resetPassword(id: string, newPassword: string): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = (await api.post(`${this.baseUrl}/${id}/reset-password/${schoolId}`, {
+        const response = (await api.post(`${this.baseUrl}/${id}/reset-password/${institutionId}`, {
             new_password: newPassword,
         })) as ApiResponse;
         if (response.code !== 200 || response.status !== 'success') {
@@ -224,12 +224,12 @@ class UserService {
     }
 
     /**
-     * Provision login for a single school user (STUDENT/PARENT)
+     * Provision login for a single institution user (STUDENT/PARENT)
      */
     async provisionLogin(data: {
-        school_user_id: number;
+        institution_user_id: number;
         skid: string;
-        school_id: number;
+        institution_id: number;
         password: string;
     }): Promise<any> {
         const api = getApiClient();
@@ -245,7 +245,7 @@ class UserService {
      */
     async provisionBulkLogins(data: {
         skid: string;
-        school_id: number;
+        institution_id: number;
         default_password: string;
         role_filter?: string;
     }): Promise<any> {
@@ -260,9 +260,9 @@ class UserService {
     /**
      * Get provisioning report for export
      */
-    async getProvisioningReport(skid: string, schoolId: number): Promise<any> {
+    async getProvisioningReport(skid: string, institutionId: number): Promise<any> {
         const api = getApiClient();
-        const response = (await api.get(`${this.baseUrl}/provisioning-report/${skid}/${schoolId}`)) as any;
+        const response = (await api.get(`${this.baseUrl}/provisioning-report/${skid}/${institutionId}`)) as any;
         if (response.code === 200 && response.status === 'success') {
             return response.data;
         }

@@ -9,7 +9,7 @@
 
 export enum UserRole {
     SUPER_ADMIN = 'SUPER_ADMIN',
-    SCHOOL_ADMIN = 'SCHOOL_ADMIN',
+    INSTITUTION_ADMIN = 'INSTITUTION_ADMIN',
     PRINCIPAL = 'PRINCIPAL',
     TEACHER = 'TEACHER',
     STUDENT = 'STUDENT',
@@ -90,10 +90,10 @@ export interface IStatCard {
 }
 
 // ============================================
-// School Management
+// Institution Management
 // ============================================
 
-export enum SchoolStatus {
+export enum InstitutionStatus {
     ACTIVE = 'ACTIVE',
     INACTIVE = 'INACTIVE',
     SUSPENDED = 'SUSPENDED',
@@ -101,9 +101,9 @@ export enum SchoolStatus {
 }
 
 // Type alias to support both uppercase enum and lowercase literal values
-export type SchoolStatusString = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'ARCHIVED' | 'active' | 'inactive' | 'suspended' | 'archived';
+export type InstitutionStatusString = 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'ARCHIVED' | 'active' | 'inactive' | 'suspended' | 'archived';
 
-export interface ISchool {
+export interface IInstitution {
     id: string;
     name: string;
     code: string;
@@ -118,7 +118,7 @@ export interface ISchool {
     logo?: string;
     plan?: string;
     skid: string;
-    status: SchoolStatus | SchoolStatusString;
+    status: InstitutionStatus | InstitutionStatusString;
     createdAt: string;
     updatedAt: string;
     created_at?: string;  // Alias for createdAt (snake_case from API)
@@ -229,7 +229,7 @@ export interface ITimeSlotGenerated {
 
 export interface ITimetableConfiguration {
     period_duration: number;          // in minutes (30-90)
-    school_start_time: string;        // HH:mm
+    institution_start_time: string;        // HH:mm
     lunch_start_time: string;         // HH:mm
     lunch_duration: number;           // in minutes
     total_periods: number;            // 4-10

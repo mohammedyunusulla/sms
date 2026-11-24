@@ -5,8 +5,8 @@ from sqlalchemy.orm import relationship
 class Parent(BaseModelTenant, BaseModelTenantMixin): # Inherit from BaseModelTenant
     __tablename__ = 'parent'
     
-    user_id = Column(Integer, ForeignKey('school_users.id'), primary_key=True)
-    user = relationship("SchoolUsers", back_populates="parent")
+    user_id = Column(Integer, ForeignKey('institution_users.id'), primary_key=True)
+    user = relationship("InstitutionUsers", back_populates="parent")
     relation_type = Column(String(50), nullable=True)  # e.g., 'Father', 'Mother', 'Guardian'
     
     # Father's details - making these nullable might be useful if the data is optional

@@ -1,10 +1,10 @@
 from app.models.main.User import User, UserRole
-from app.models.main.School import School
-from app.models.tenant import SchoolUsers, Parent, StudentParent, Student
+from app.models.main.Institution import Institution
+from app.models.tenant import InstitutionUsers, Parent, StudentParent, Student
 from app import db
 from sqlalchemy.exc import IntegrityError
 from flask import jsonify
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from app.services.userRole_service import UserRolesService
 from datetime import datetime, date
 from sqlalchemy.orm import joinedload
@@ -23,22 +23,22 @@ class ParentService:
     def create_parent_user(data, skid):
         """
         Create a new parent user in both main and tenant databases
-        Based on school plan: BASIC (no login), STANDARD/PREMIUM (with login)
+        Based on institution plan: BASIC (no login), STANDARD/PREMIUM (with login)
         """
-        from app.utils.account_create import add_role_link, remove_school_user, role_for
+        from app.utils.account_create import add_role_link, remove_institution_user, role_for
         user = None
-        school_user_id = None
+        institution_user_id = None
         tenant_saved = False
 
         try:
-            # Get school information
-            school = School.query.filter_by(skid=skid).first()
-            if not school:
-                raise ValueError("School not found")
+            # Get institution information
+            institution = Institution.query.filter_by(skid=skid).first()
+            if not institution:
+                raise ValueError("Institution not found")
             
-            # Always the school's own plan: taking it from the request let a BASIC school's parent get a login
-            plan = school.plan
-            # school.plan is a SchoolPlan enum (never equal to a plain string); compare by value
+            # Always the institution's own plan: taking it from the request let a BASIC institution's parent get a login
+            plan = institution.plan
+            # institution.plan is a InstitutionPlan enum (never equal to a plain string); compare by value
             create_login = getattr(plan, 'value', plan) in ('STANDARD', 'PREMIUM')
             
             # Step 1: Create main user (only for STANDARD/PREMIUM)
@@ -52,15 +52,15 @@ class ParentService:
                     role=UserRole.PARENT,
                     skid=skid,
                     plan=getattr(plan, 'value', plan),  # store the plan name, not the enum object
-                    school_id=school.id
+                    institution_id=institution.id
                 )
                 user.set_password(data['password'])
                 db.session.add(user)
                 db.session.flush()  # Get user.id but don't commit yet
             
             # Step 2: Create tenant user (always)
-            with switch_to_school_db(skid) as tenant_session:
-                school_user = SchoolUsers(
+            with switch_to_institution_db(skid) as tenant_session:
+                institution_user = InstitutionUsers(
                     username=data.get('username', data['email']),
                     email=data['email'],
                     first_name=data['first_name'],
@@ -72,15 +72,15 @@ class ParentService:
                     is_active=True
                 )
 
-                tenant_session.add(school_user)
+                tenant_session.add(institution_user)
                 tenant_session.flush()
-                school_user_id = school_user.id
+                institution_user_id = institution_user.id
                 # Parent role, looked up by code and saved in this same transaction
-                add_role_link(tenant_session, school_user, role_for(tenant_session, 'PARENT'))
+                add_role_link(tenant_session, institution_user, role_for(tenant_session, 'PARENT'))
                 
                 # Create parent profile
                 parent_profile = Parent(
-                    user_id=school_user_id,
+                    user_id=institution_user_id,
                     relation_type=data.get('relation_type'),
                     father_full_name=data.get('father_full_name'),
                     father_phone=data.get('father_phone'),
@@ -97,22 +97,22 @@ class ParentService:
                 )
                 tenant_session.add(parent_profile)
                 
-                # School record + profile + role: one commit
+                # Institution record + profile + role: one commit
                 tenant_session.commit()
                 tenant_saved = True
 
             # Step 3: Commit main DB only if login was created
             if create_login and user:
-                user.school_user_id = school_user_id
+                user.institution_user_id = institution_user_id
                 db.session.commit()
             
             # Step 5: Return proper object
             if create_login and user:
                 return user.to_dict()
             else:
-                with switch_to_school_db(skid) as tenant_session:
-                    school_user = tenant_session.get(SchoolUsers, school_user_id)
-                    return school_user.to_dict()
+                with switch_to_institution_db(skid) as tenant_session:
+                    institution_user = tenant_session.get(InstitutionUsers, institution_user_id)
+                    return institution_user.to_dict()
         
         except Exception as e:
             db.session.rollback()
@@ -121,12 +121,12 @@ class ParentService:
             if 'tenant_session' in locals():
                 tenant_session.rollback()
             
-            # The login was never saved (rolled back above); remove the school rows if they were
+            # The login was never saved (rolled back above); remove the institution rows if they were
             if tenant_saved:
                 try:
-                    remove_school_user(skid, school_user_id)
+                    remove_institution_user(skid, institution_user_id)
                 except Exception as cleanup_err:
-                    _log.error(f"[Cleanup failed] Could not remove school user {school_user_id}: {cleanup_err}")
+                    _log.error(f"[Cleanup failed] Could not remove institution user {institution_user_id}: {cleanup_err}")
             raise Exception(f"Failed to create parent user: {str(e)}")
 
 
@@ -149,9 +149,9 @@ class ParentService:
                 return "Parent with this username or email already exists"
             
             # Check tenant DB
-            with switch_to_school_db(skid) as tenant_session:
-                existing_tenant_user = tenant_session.query(SchoolUsers).filter(
-                    (SchoolUsers.username == username) | (SchoolUsers.email == email)
+            with switch_to_institution_db(skid) as tenant_session:
+                existing_tenant_user = tenant_session.query(InstitutionUsers).filter(
+                    (InstitutionUsers.username == username) | (InstitutionUsers.email == email)
                 ).first()
                 
                 if existing_tenant_user:
@@ -170,40 +170,40 @@ class ParentService:
             if 'email' in data and data['email']:
                 existing = User.query.filter(
                     User.email == data['email'],
-                    User.school_user_id != parent_id
+                    User.institution_user_id != parent_id
                 ).first()
                 if existing:
                     raise ValueError("Email already exists in the system")
 
-                with switch_to_school_db(skid) as tenant_session:
-                    existing_tenant = tenant_session.query(SchoolUsers).filter(
-                        SchoolUsers.email == data['email'],
-                        SchoolUsers.id != parent_id
+                with switch_to_institution_db(skid) as tenant_session:
+                    existing_tenant = tenant_session.query(InstitutionUsers).filter(
+                        InstitutionUsers.email == data['email'],
+                        InstitutionUsers.id != parent_id
                     ).first()
                     if existing_tenant:
-                        raise ValueError("Email already exists in this school")
+                        raise ValueError("Email already exists in this institution")
 
             # Validate username uniqueness if being changed
             if 'username' in data and data['username']:
                 existing = User.query.filter(
                     User.username == data['username'],
-                    User.school_user_id != parent_id
+                    User.institution_user_id != parent_id
                 ).first()
                 if existing:
                     raise ValueError("Username already exists in the system")
 
-                with switch_to_school_db(skid) as tenant_session:
-                    existing_tenant = tenant_session.query(SchoolUsers).filter(
-                        SchoolUsers.username == data['username'],
-                        SchoolUsers.id != parent_id
+                with switch_to_institution_db(skid) as tenant_session:
+                    existing_tenant = tenant_session.query(InstitutionUsers).filter(
+                        InstitutionUsers.username == data['username'],
+                        InstitutionUsers.id != parent_id
                     ).first()
                     if existing_tenant:
-                        raise ValueError("Username already exists in this school")
+                        raise ValueError("Username already exists in this institution")
 
-            with switch_to_school_db(skid) as tenant_session:
-                # Get school user
-                school_user = tenant_session.query(SchoolUsers).filter_by(id=parent_id).first()
-                if not school_user:
+            with switch_to_institution_db(skid) as tenant_session:
+                # Get institution user
+                institution_user = tenant_session.query(InstitutionUsers).filter_by(id=parent_id).first()
+                if not institution_user:
                     return None
 
                 # Get parent profile
@@ -222,7 +222,7 @@ class ParentService:
                     if key in parent_fields and hasattr(parent, key):
                         setattr(parent, key, value)
                 
-                # Update SchoolUsers fields
+                # Update InstitutionUsers fields
                 user_fields = ['first_name', 'last_name', 'email', 'username', 'phone', 'gender', 'date_of_birth']
                 # Required account columns: never overwrite them with an empty value
                 required_user_fields = {'first_name', 'email', 'username'}
@@ -231,16 +231,16 @@ class ParentService:
                         continue
                     if key == 'last_name' and value is None:
                         continue
-                    if key in user_fields and hasattr(school_user, key):
-                        setattr(school_user, key, value)
+                    if key in user_fields and hasattr(institution_user, key):
+                        setattr(institution_user, key, value)
                 
                 tenant_session.add(parent)
-                tenant_session.add(school_user)
+                tenant_session.add(institution_user)
                 tenant_session.commit()
                 
                 # Update main DB if user exists
                 main_user = db.session.query(User).filter_by(
-                    school_user_id=school_user.id,
+                    institution_user_id=institution_user.id,
                     skid=skid
                 ).first()
                 
@@ -257,7 +257,7 @@ class ParentService:
                     db.session.add(main_user)
                     db.session.commit()
                 
-                return school_user.to_dict()
+                return institution_user.to_dict()
         
         except Exception as e:
             try:
@@ -272,10 +272,10 @@ class ParentService:
     def delete_parent_user(parent_id, skid):
         """Delete parent from tenant DB and main DB""" 
         try:
-            with switch_to_school_db(skid) as tenant_session:
-                # Get school user
-                school_user = tenant_session.query(SchoolUsers).filter_by(id=parent_id).first()
-                if not school_user:
+            with switch_to_institution_db(skid) as tenant_session:
+                # Get institution user
+                institution_user = tenant_session.query(InstitutionUsers).filter_by(id=parent_id).first()
+                if not institution_user:
                     return None
                 
                 # Get parent profile
@@ -285,12 +285,12 @@ class ParentService:
                 
                 # Delete from tenant DB (parent first due to FK constraint)
                 tenant_session.delete(parent)
-                tenant_session.delete(school_user)
+                tenant_session.delete(institution_user)
                 tenant_session.commit()
                 
                 # Delete from main DB if exists
                 main_user = db.session.query(User).filter_by(
-                    school_user_id=parent_id,
+                    institution_user_id=parent_id,
                     skid=skid,
                     role=UserRole.PARENT
                 ).first()
@@ -316,32 +316,32 @@ class ParentService:
         Get paginated list of parents with filtering
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Base query
                 query = (
-                    tenant_session.query(SchoolUsers)
-                    .join(Parent, SchoolUsers.id == Parent.user_id)
+                    tenant_session.query(InstitutionUsers)
+                    .join(Parent, InstitutionUsers.id == Parent.user_id)
                 )
 
                 # Apply filters
                 if search:
                     search_term = f"%{search}%"
                     query = query.filter(
-                        (SchoolUsers.first_name.ilike(search_term)) |
-                        (SchoolUsers.last_name.ilike(search_term)) |
-                        (SchoolUsers.email.ilike(search_term)) |
-                        (SchoolUsers.phone.ilike(search_term))
+                        (InstitutionUsers.first_name.ilike(search_term)) |
+                        (InstitutionUsers.last_name.ilike(search_term)) |
+                        (InstitutionUsers.email.ilike(search_term)) |
+                        (InstitutionUsers.phone.ilike(search_term))
                     )
 
                 if status:
-                    query = query.filter(SchoolUsers.is_active == (status.lower() == 'active'))
+                    query = query.filter(InstitutionUsers.is_active == (status.lower() == 'active'))
 
                 if gender:
-                    query = query.filter(SchoolUsers.gender == gender)
+                    query = query.filter(InstitutionUsers.gender == gender)
 
                 # A teacher sees only parents of students in the sections they teach
                 if section_ids is not None:
-                    query = query.filter(SchoolUsers.id.in_(
+                    query = query.filter(InstitutionUsers.id.in_(
                         tenant_session.query(StudentParent.parent_user_id)
                         .join(Student, Student.user_id == StudentParent.student_user_id)
                         .filter(Student.section_id.in_(list(section_ids)))
@@ -360,13 +360,13 @@ class ParentService:
                 total_pages = (total + limit - 1) // limit
 
             # Enrich with login info from main DB (outside tenant session)
-            school_user_ids = [p['id'] for p in parent_list]
-            if school_user_ids:
+            institution_user_ids = [p['id'] for p in parent_list]
+            if institution_user_ids:
                 main_users = User.query.filter(
-                    User.school_user_id.in_(school_user_ids),
+                    User.institution_user_id.in_(institution_user_ids),
                     User.skid == skid
                 ).all()
-                main_user_map = {mu.school_user_id: mu for mu in main_users}
+                main_user_map = {mu.institution_user_id: mu for mu in main_users}
                 for p in parent_list:
                     main_user = main_user_map.get(p['id'])
                     p['has_login'] = main_user is not None
@@ -389,20 +389,20 @@ class ParentService:
     @staticmethod
     def get_all_parents(skid):
         """
-        Get all parents for a school (legacy method)
+        Get all parents for an institution (legacy method)
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 parents = (
-                    tenant_session.query(SchoolUsers)
+                    tenant_session.query(InstitutionUsers)
                     .options(
-                        joinedload(SchoolUsers.parent),
-                        joinedload(SchoolUsers.role_obj)
+                        joinedload(InstitutionUsers.parent),
+                        joinedload(InstitutionUsers.role_obj)
                     )
-                    .join(Parent, SchoolUsers.id == Parent.user_id)
+                    .join(Parent, InstitutionUsers.id == Parent.user_id)
                     .filter(
-                        SchoolUsers.role_id == 5,  # Parent role
-                        SchoolUsers.is_active == True
+                        InstitutionUsers.role_id == 5,  # Parent role
+                        InstitutionUsers.is_active == True
                     )
                     .all()
                 )
@@ -417,7 +417,7 @@ class ParentService:
         Get parent details by ID
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 parent = tenant_session.query(Parent).filter(
                     Parent.user_id == parent_id
                 ).first()
@@ -427,7 +427,7 @@ class ParentService:
 
                 # The profile used to be all there was: no username / email / active status (the detail showed
                 # "Inactive", editing showed a blank username) and no children (QA A23/A25/A26).
-                user = tenant_session.query(SchoolUsers).filter_by(id=parent.user_id).first()
+                user = tenant_session.query(InstitutionUsers).filter_by(id=parent.user_id).first()
                 result = parent.to_dict()
                 if user:
                     result.update({
@@ -439,10 +439,10 @@ class ParentService:
                 from app.models.tenant import Class
                 from app.models.tenant.Sections import Section
                 children = []
-                for link, child, child_user in tenant_session.query(StudentParent, Student, SchoolUsers).join(
+                for link, child, child_user in tenant_session.query(StudentParent, Student, InstitutionUsers).join(
                     Student, Student.user_id == StudentParent.student_user_id
                 ).join(
-                    SchoolUsers, SchoolUsers.id == Student.user_id
+                    InstitutionUsers, InstitutionUsers.id == Student.user_id
                 ).filter(StudentParent.parent_user_id == parent.user_id).all():
                     cls = tenant_session.query(Class).filter_by(id=child.class_id).first() if child.class_id else None
                     sec = tenant_session.query(Section).filter_by(id=child.section_id).first() if child.section_id else None
@@ -468,7 +468,7 @@ class ParentService:
         Link existing student to existing parent
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Check if relationship already exists
                 existing_link = tenant_session.query(StudentParent).filter(
                     StudentParent.student_user_id == student_user_id,
@@ -510,7 +510,7 @@ class ParentService:
         Get all parents linked to a student
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 parents = tenant_session.query(Parent, StudentParent.relation_type).join(
                     StudentParent, Parent.user_id == StudentParent.parent_user_id
                 ).filter(
@@ -540,7 +540,7 @@ class ParentService:
         Unlink student from parent
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 student_parent = tenant_session.query(StudentParent).filter(
                     StudentParent.student_user_id == student_user_id,
                     StudentParent.parent_user_id == parent_user_id
@@ -562,7 +562,7 @@ class ParentService:
         Update parent information
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 parent = tenant_session.query(Parent).filter(
                     Parent.user_id == parent_id
                 ).first()
@@ -578,16 +578,16 @@ class ParentService:
                 parent.occupation = data.get('occupation', parent.occupation)
                 parent.education_level = data.get('education_level', parent.education_level)
                 
-                # Update school user
-                school_user = tenant_session.query(SchoolUsers).filter(
-                    SchoolUsers.id == parent_id
+                # Update institution user
+                institution_user = tenant_session.query(InstitutionUsers).filter(
+                    InstitutionUsers.id == parent_id
                 ).first()
                 
-                if school_user:
-                    school_user.first_name = data.get('first_name', school_user.first_name)
-                    school_user.last_name = data.get('last_name', school_user.last_name)
-                    school_user.email = data.get('email', school_user.email)
-                    school_user.phone_number = data.get('phone', school_user.phone_number)
+                if institution_user:
+                    institution_user.first_name = data.get('first_name', institution_user.first_name)
+                    institution_user.last_name = data.get('last_name', institution_user.last_name)
+                    institution_user.email = data.get('email', institution_user.email)
+                    institution_user.phone_number = data.get('phone', institution_user.phone_number)
                 
                 tenant_session.commit()
                 

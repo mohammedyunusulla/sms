@@ -105,8 +105,8 @@ def create_super_admin():
                 last_name=last_name,
                 phone=phone if phone else None,
                 role=UserRole.SUPER_ADMIN,
-                school_id=None,  # Super admin doesn't belong to any school
-                school_user_id=None
+                institution_id=None,  # Super admin doesn't belong to any institution
+                institution_user_id=None
             )
             
             admin.set_password(password)

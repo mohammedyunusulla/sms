@@ -61,7 +61,7 @@ export default function AdminDashboard() {
         announcementService.getAnnouncements(skid, {
           academicYearId,
           userRole: user?.role,
-          schoolUserId: user?.school_user_id,
+          institutionUserId: user?.institution_user_id,
           limit: 5,
         }),
       ]);
@@ -81,7 +81,7 @@ export default function AdminDashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [skid, academicYearId, user?.role, user?.school_user_id]);
+  }, [skid, academicYearId, user?.role, user?.institution_user_id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -153,7 +153,7 @@ export default function AdminDashboard() {
             {getGreeting()} 👋
           </Text>
           <Text className="font-lexend text-sm text-dark-500 mt-1">
-            Here's your school overview
+            Here's your institution overview
           </Text>
         </View>
 

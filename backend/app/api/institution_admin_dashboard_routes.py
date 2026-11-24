@@ -1,14 +1,14 @@
 from flask import Blueprint, request, jsonify
-from app.services.school_admin_dashboard_service import SchoolAdminDashboardService
+from app.services.institution_admin_dashboard_service import InstitutionAdminDashboardService
 from app.services.announcement_service import AnnouncementService
 from app.decorators import login_required
 
-school_admin_dashboard_bp = Blueprint('schoolAdminDashboard', __name__)
+institution_admin_dashboard_bp = Blueprint('institutionAdminDashboard', __name__)
 
-@school_admin_dashboard_bp.route('/stats/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], self_service=True)
+@institution_admin_dashboard_bp.route('/stats/<skid>', methods=['GET'])
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL'], self_service=True)
 def get_dashboard_stats(skid):
-    """Get school admin dashboard stats"""
+    """Get institution admin dashboard stats"""
     try:
         academic_year_id = request.args.get('academic_year_id', type=int)
         
@@ -19,7 +19,7 @@ def get_dashboard_stats(skid):
                 'message': 'academic_year_id is required'
             }), 400
         
-        stats = SchoolAdminDashboardService.get_dashboard_stats(
+        stats = InstitutionAdminDashboardService.get_dashboard_stats(
             skid, academic_year_id
         )
         
@@ -44,10 +44,10 @@ def get_dashboard_stats(skid):
         }), 500
 
 
-@school_admin_dashboard_bp.route('/announcements/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], self_service=True)
+@institution_admin_dashboard_bp.route('/announcements/<skid>', methods=['GET'])
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL'], self_service=True)
 def get_announcements(skid):
-    """Get announcements for school admin dashboard"""
+    """Get announcements for institution admin dashboard"""
     try:
         academic_year_id = request.args.get('academic_year_id', type=int)
         
@@ -62,7 +62,7 @@ def get_announcements(skid):
         user = request.current_user
         user_info = {
             'role': user.role.value if hasattr(user.role, 'value') else user.role,
-            'school_user_id': user.school_user_id
+            'institution_user_id': user.institution_user_id
         }
         
         announcements = AnnouncementService.get_announcements(
@@ -86,8 +86,8 @@ def get_announcements(skid):
         }), 500
 
 
-@school_admin_dashboard_bp.route('/breakdown/monthly/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], self_service=True)
+@institution_admin_dashboard_bp.route('/breakdown/monthly/<skid>', methods=['GET'])
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL'], self_service=True)
 def get_monthly_expense_breakdown(skid):
     try:
         academic_year_id = request.args.get('academic_year_id')
@@ -95,7 +95,7 @@ def get_monthly_expense_breakdown(skid):
         if month is not None and not 1 <= month <= 12:
             return jsonify({'message': 'Choose a month from 1 to 12', 'status': 'error', 'code': 400}), 400
 
-        breakdown = SchoolAdminDashboardService.get_monthly_expenses_by_category(
+        breakdown = InstitutionAdminDashboardService.get_monthly_expenses_by_category(
             skid, 
             academic_year_id, 
             month
@@ -110,8 +110,8 @@ def get_monthly_expense_breakdown(skid):
         return jsonify({'message': f'Failed to get expense breakdown: {str(e)}'}), 500
 
 
-@school_admin_dashboard_bp.route('/attendance-overview/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], self_service=True)
+@institution_admin_dashboard_bp.route('/attendance-overview/<skid>', methods=['GET'])
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL'], self_service=True)
 def get_attendance_overview(skid):
     """Get attendance overview for the current week"""
     try:
@@ -126,7 +126,7 @@ def get_attendance_overview(skid):
                 'message': 'academic_year_id is required'
             }), 400
 
-        data = SchoolAdminDashboardService.get_attendance_overview(
+        data = InstitutionAdminDashboardService.get_attendance_overview(
             skid, academic_year_id, class_id=class_id, section_id=section_id
         )
 
@@ -144,10 +144,10 @@ def get_attendance_overview(skid):
         }), 500
 
 
-@school_admin_dashboard_bp.route('/finance-summary/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], self_service=True)
+@institution_admin_dashboard_bp.route('/finance-summary/<skid>', methods=['GET'])
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL'], self_service=True)
 def get_finance_summary(skid):
-    """Get finance summary for school admin dashboard"""
+    """Get finance summary for institution admin dashboard"""
     try:
         academic_year_id = request.args.get('academic_year_id', type=int)
 
@@ -158,7 +158,7 @@ def get_finance_summary(skid):
                 'message': 'academic_year_id is required'
             }), 400
 
-        data = SchoolAdminDashboardService.get_finance_summary(
+        data = InstitutionAdminDashboardService.get_finance_summary(
             skid, academic_year_id
         )
 
@@ -176,8 +176,8 @@ def get_finance_summary(skid):
         }), 500
 
 
-@school_admin_dashboard_bp.route('/timetable/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], self_service=True)
+@institution_admin_dashboard_bp.route('/timetable/<skid>', methods=['GET'])
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL'], self_service=True)
 def get_timetable(skid):
     """Get timetable for a class and section"""
     try:
@@ -192,7 +192,7 @@ def get_timetable(skid):
                 'message': 'academic_year_id is required'
             }), 400
             
-        timetable_data = SchoolAdminDashboardService.get_timetable(
+        timetable_data = InstitutionAdminDashboardService.get_timetable(
             skid, 
             academic_year_id, 
             class_id, 

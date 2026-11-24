@@ -93,7 +93,7 @@ export default function TimetableScreen() {
     const [refreshing, setRefreshing] = useState(false);
 
     const skid = user?.skid;
-    const teacherId = user?.school_user_id;
+    const teacherId = user?.institution_user_id;
 
     const weekDays = useMemo(() => getWeekDays(selectedDate), [
         selectedDate.getFullYear(),

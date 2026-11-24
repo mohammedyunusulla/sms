@@ -18,12 +18,12 @@ class MarksEntry(BaseModelTenant, BaseModelTenantMixin):
     # Additional fields
     is_absent = Column(Boolean, default=False)
     remarks = Column(Text)
-    entered_by = Column(Integer, ForeignKey('school_users.id'), nullable=True)
+    entered_by = Column(Integer, ForeignKey('institution_users.id'), nullable=True)
     
     exam_config = relationship("ExamSubjectConfig", back_populates="marks_entries")
     academic_year = relationship("AcademicYear", back_populates="marks_entries")
     student = relationship("Student")
-    entered_by_user = relationship("SchoolUsers", foreign_keys=[entered_by])
+    entered_by_user = relationship("InstitutionUsers", foreign_keys=[entered_by])
     
     # Add constraint to prevent duplicate entries
     __table_args__ = (

@@ -31,7 +31,7 @@ class Announcement(BaseModelTenant, BaseModelTenantMixin):
     expiry_date = Column(DateTime)
     
     # Metadata
-    created_by = Column(Integer, ForeignKey('school_users.id'), nullable=False)
+    created_by = Column(Integer, ForeignKey('institution_users.id'), nullable=False)
     is_active = Column(Boolean, default=True)
     
     # Timestamps

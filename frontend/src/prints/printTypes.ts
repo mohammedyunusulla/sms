@@ -4,14 +4,14 @@
  */
 
 // ============================================
-// School Data (passed to all report headers)
+// Institution Data (passed to all report headers)
 // ============================================
 
-export interface SchoolData {
-    schoolName: string;
-    schoolAddress: string;
-    schoolPhone: string;
-    schoolEmail: string;
+export interface InstitutionData {
+    institutionName: string;
+    institutionAddress: string;
+    institutionPhone: string;
+    institutionEmail: string;
     logo?: string | null; // Base64 image or URL
     generatedBy?: string;
 }
@@ -141,7 +141,7 @@ export interface TimetableEntry {
 
 export interface TimetableConfiguration {
     period_duration: number;
-    school_start_time: string;
+    institution_start_time: string;
     lunch_start_time: string;
     lunch_duration: number;
     total_periods: number;

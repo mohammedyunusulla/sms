@@ -12,7 +12,7 @@ import { Modal, LoadingSpinner, EmptyState, Button, PrintActions } from '@/compo
 import { seatingService } from '@/services/modules/seatingService';
 import { generateSeatingArrangementPdf } from '@/prints';
 import { useAuthStore } from '@/stores/authStore';
-import type { SchoolData, PdfAction } from '@/prints';
+import type { InstitutionData, PdfAction } from '@/prints';
 import type { ISeatingConfig, ISeatingPlan } from '../types';
 import { CLASS_COLORS } from '../types';
 import { formatDate, formatTime } from '../utils';
@@ -322,13 +322,13 @@ const SeatingGridModal: FC<SeatingGridModalProps> = ({ isOpen, onClose, configs,
         setPendingChanges([]);
     };
 
-    const getSchoolData = (): SchoolData => {
+    const getInstitutionData = (): InstitutionData => {
         const authUser = useAuthStore.getState().user;
         return {
-            schoolName: authUser?.school_name || 'School Name',
-            schoolAddress: '',
-            schoolPhone: '',
-            schoolEmail: authUser?.email || '',
+            institutionName: authUser?.institution_name || 'Institution Name',
+            institutionAddress: '',
+            institutionPhone: '',
+            institutionEmail: authUser?.email || '',
             logo: null,
             generatedBy: authUser?.full_name || authUser?.name || 'System',
         };
@@ -351,7 +351,7 @@ const SeatingGridModal: FC<SeatingGridModalProps> = ({ isOpen, onClose, configs,
                     seatingGrid: config.seating_grid || [],
                     classAssignmentDetails: config.class_assignment_details,
                 },
-                getSchoolData(),
+                getInstitutionData(),
                 action
             );
             toast.success(action === 'download' ? 'PDF downloaded' : action === 'print' ? 'Sent to printer' : 'PDF opened');

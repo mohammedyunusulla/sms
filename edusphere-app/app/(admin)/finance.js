@@ -139,7 +139,7 @@ export default function FinanceHub() {
           </Text>
           <FinanceCard
             title="Expenses"
-            subtitle="View and track school expenses"
+            subtitle="View and track institution expenses"
             color="bg-rose-500"
             onPress={() => router.push("/(admin)/expense-list")}
           />

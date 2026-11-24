@@ -7,8 +7,8 @@ from app.models.tenant.SeatingArrangement import ExamSeatingConfig, SeatingPlan
 from app.models.tenant.StudentEnrollment import StudentEnrollment
 from app.models.tenant.Room import Room
 from app.models.tenant.Teacher import Teacher
-from app.models.tenant.SchoolUsers import SchoolUsers
-from app.utils.db_manager import switch_to_school_db
+from app.models.tenant.InstitutionUsers import InstitutionUsers
+from app.utils.db_manager import switch_to_institution_db
 from datetime import datetime, date, time
 
 def _check_exam_slot(session, academic_year_id, class_id, section_id, subject_id, exam_date, start_time, end_time,
@@ -53,7 +53,7 @@ class ExamService:
     def create_exam_type(data, skid):
         """Create a new exam type"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Check for duplicate exam code
                 existing = tenant_session.query(ExamType).filter_by(
                     exam_code=data['exam_code']
@@ -83,7 +83,7 @@ class ExamService:
     def get_all_exam_types(skid):
         """Get all exam types ordered by sequence"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 exam_types = tenant_session.query(ExamType).order_by(
                     ExamType.sequence_order
                 ).all()
@@ -96,7 +96,7 @@ class ExamService:
     def get_exam_type_by_id(exam_id, skid):
         """Get a single exam type by ID"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 exam = tenant_session.query(ExamType).filter_by(id=exam_id).first()
 
                 if not exam:
@@ -110,7 +110,7 @@ class ExamService:
     def update_exam_type(exam_id, data, skid):
         """Update an existing exam type"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 exam = tenant_session.query(ExamType).filter_by(id=exam_id).first()
                 
                 if not exam:
@@ -149,7 +149,7 @@ class ExamService:
         from app.models.tenant.MarksModels import MarksEntry
         from app.utils.usage_check import blocked_message
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 exam = tenant_session.query(ExamType).filter_by(id=exam_id).first()
 
                 if not exam:
@@ -188,7 +188,7 @@ class ExamService:
     def create_exam_config(data, skid):
         """Create exam subject configuration"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Check for duplicate configuration
                 existing = tenant_session.query(ExamSubjectConfig).filter_by(
                     exam_type_id=data['exam_type_id'],
@@ -235,7 +235,7 @@ class ExamService:
     def get_exam_configs(filters, skid):
         """Get exam configurations with filters"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 query = tenant_session.query(ExamSubjectConfig)
 
                 if filters.get('exam_type_id'):
@@ -256,7 +256,7 @@ class ExamService:
     def get_exam_config_by_id(config_id, skid):
         """Get a single exam configuration by ID"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 config = tenant_session.query(ExamSubjectConfig).filter_by(id=config_id).first()
 
                 if not config:
@@ -270,7 +270,7 @@ class ExamService:
     def update_exam_config(config_id, data, skid):
         """Update exam configuration"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 config = tenant_session.query(ExamSubjectConfig).filter_by(id=config_id).first()
                 
                 if not config:
@@ -320,7 +320,7 @@ class ExamService:
     def delete_exam_config(config_id, skid):
         """Delete exam configuration"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 config = tenant_session.query(ExamSubjectConfig).filter_by(id=config_id).first()
                 
                 if not config:
@@ -349,7 +349,7 @@ class ExamService:
     def bulk_copy_configurations(data, skid):
         """Bulk copy configurations from one exam/class to another"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Fetch source configurations
                 source_configs = tenant_session.query(ExamSubjectConfig).filter_by(
                     exam_type_id=data['from_exam_type_id'],
@@ -440,7 +440,7 @@ class ExamService:
     def create_exam_timetable(data, skid):
         """Create an exam timetable entry"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 if not data.get('academic_year_id'):
                     raise ValueError("academic_year_id is required")
 
@@ -508,7 +508,7 @@ class ExamService:
     def get_exam_timetables(filters, skid):
         """Get exam timetable entries with filters"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 query = tenant_session.query(ExamTimetable)
 
                 if filters.get('academic_year_id'):
@@ -529,7 +529,7 @@ class ExamService:
     def get_exam_timetable_by_id(entry_id, skid):
         """Get a single exam timetable entry"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 entry = tenant_session.query(ExamTimetable).filter_by(id=entry_id).first()
                 if not entry:
                     return None
@@ -541,7 +541,7 @@ class ExamService:
     def update_exam_timetable(entry_id, data, skid):
         """Update an exam timetable entry"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 entry = tenant_session.query(ExamTimetable).filter_by(id=entry_id).first()
 
                 if not entry:
@@ -588,7 +588,7 @@ class ExamService:
     def delete_exam_timetable(entry_id, skid):
         """Delete an exam timetable entry"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 entry = tenant_session.query(ExamTimetable).filter_by(id=entry_id).first()
 
                 if not entry:
@@ -607,7 +607,7 @@ class ExamService:
     def bulk_delete_exam_timetables(entry_ids, skid):
         """Bulk delete exam timetable entries"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 deleted = 0
                 for eid in entry_ids:
                     entry = tenant_session.query(ExamTimetable).filter_by(id=eid).first()
@@ -655,7 +655,7 @@ class ExamService:
         from the seating arrangement.
         """
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 # Get student's enrollment to know their class/section
                 enrollment_query = session.query(StudentEnrollment).filter(
                     StudentEnrollment.student_id == student_id,
@@ -744,7 +744,7 @@ class ExamService:
         Returns each config enriched with exam timetable subject info.
         """
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 query = session.query(ExamSeatingConfig).filter(
                     ExamSeatingConfig.invigilator_id == teacher_id,
                     ExamSeatingConfig.exam_type_id == exam_type_id,

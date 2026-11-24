@@ -37,8 +37,8 @@ def _role(user):
     return user.role.value if hasattr(user.role, 'value') else str(user.role)
 
 
-def _same_school(user, skid):
-    """Super admins may watch any school; everyone else only their own."""
+def _same_institution(user, skid):
+    """Super admins may watch any institution; everyone else only their own."""
     return _role(user) == 'SUPER_ADMIN' or str(skid) == str(user.skid)
 
 
@@ -70,9 +70,9 @@ def handle_join_room(data):
     bus_staff_user_id = data.get('bus_staff_user_id')
     if not skid or not bus_staff_user_id:
         return
-    if not _same_school(user, skid):
-        current_app.logger.warning(f"WS cross-school join blocked: user {user.id} (skid={user.skid}) -> {skid}")
-        emit('error', {'message': 'Access denied: you can only track buses of your own school'})
+    if not _same_institution(user, skid):
+        current_app.logger.warning(f"WS cross-institution join blocked: user {user.id} (skid={user.skid}) -> {skid}")
+        emit('error', {'message': 'Access denied: you can only track buses of your own institution'})
         return
     room = f"bus_{skid}_{bus_staff_user_id}"
     join_room(room)
@@ -100,18 +100,18 @@ def handle_location_update(data):
         emit('error', {'message': 'Only bus staff can send bus locations'})
         return
 
-    # The school always comes from the user's own record, never from the client.
+    # The institution always comes from the user's own record, never from the client.
     skid = user.skid
     if data.get('skid') and str(data.get('skid')) != str(skid):
-        current_app.logger.warning(f"WS cross-school location update blocked: user {user.id} (skid={skid}) -> {data.get('skid')}")
-        emit('error', {'message': 'Access denied: you can only update buses of your own school'})
+        current_app.logger.warning(f"WS cross-institution location update blocked: user {user.id} (skid={skid}) -> {data.get('skid')}")
+        emit('error', {'message': 'Access denied: you can only update buses of your own institution'})
         return
     lat = data.get('latitude')
     lng = data.get('longitude')
     if not skid or lat is None or lng is None:
         return
 
-    bus_staff_user_id = user.school_user_id
+    bus_staff_user_id = user.institution_user_id
 
     # Persist (overwrite single row)
     try:
@@ -146,13 +146,13 @@ def handle_stop_tracking(data):
 
     skid = user.skid
     if data.get('skid') and str(data.get('skid')) != str(skid):
-        current_app.logger.warning(f"WS cross-school stop blocked: user {user.id} (skid={skid}) -> {data.get('skid')}")
-        emit('error', {'message': 'Access denied: you can only update buses of your own school'})
+        current_app.logger.warning(f"WS cross-institution stop blocked: user {user.id} (skid={skid}) -> {data.get('skid')}")
+        emit('error', {'message': 'Access denied: you can only update buses of your own institution'})
         return
     if not skid:
         return
 
-    bus_staff_user_id = user.school_user_id
+    bus_staff_user_id = user.institution_user_id
 
     try:
         BusLocationService.stop_tracking(skid, bus_staff_user_id)
@@ -174,10 +174,10 @@ def handle_disconnect():
         return
     if user.role.value == 'BUS_STAFF' and user.skid:
         try:
-            BusLocationService.stop_tracking(user.skid, user.school_user_id)
-            room = f"bus_{user.skid}_{user.school_user_id}"
+            BusLocationService.stop_tracking(user.skid, user.institution_user_id)
+            room = f"bus_{user.skid}_{user.institution_user_id}"
             emit('bus_stopped', {
-                'bus_staff_user_id': user.school_user_id,
+                'bus_staff_user_id': user.institution_user_id,
             }, to=room)
         except Exception:
             pass

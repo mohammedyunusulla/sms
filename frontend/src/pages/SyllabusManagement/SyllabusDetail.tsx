@@ -260,7 +260,7 @@ const SyllabusDetail: FC = () => {
     const navigate = useNavigate();
     const { user, academicYearVersion } = useAuthStore();
     const isTeacher = user?.role === 'TEACHER';
-    const isAdminOrPrincipal = user?.role === 'SCHOOL_ADMIN' || user?.role === 'PRINCIPAL';
+    const isAdminOrPrincipal = user?.role === 'INSTITUTION_ADMIN' || user?.role === 'PRINCIPAL';
     const { hasPermission } = usePermissions();
 
     const [syllabus, setSyllabus] = useState<ISyllabus | null>(null);

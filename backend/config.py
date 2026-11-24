@@ -41,12 +41,12 @@ class Config:
     _PG_PWD_ENC = quote_plus(POSTGRES_PASSWORD)
     _PG_BASE = f'postgresql://{POSTGRES_USER}:{_PG_PWD_ENC}@{POSTGRES_HOST}:{POSTGRES_PORT}'
 
-    # Super Admin Database (for managing schools/users in main DB)
+    # Super Admin Database (for managing institutions/users in main DB)
     SUPER_ADMIN_DATABASE_URL = os.environ.get('SUPER_ADMIN_DATABASE_URL') or \
         f'{_PG_BASE}/sms_dev'
 
-    # Template for school databases (use .format(skid=...) to substitute)
-    SCHOOL_DATABASE_TEMPLATE = f'{_PG_BASE}/skool_{{skid}}'
+    # Template for institution databases (use .format(skid=...) to substitute)
+    INSTITUTION_DATABASE_TEMPLATE = f'{_PG_BASE}/eduspyre_{{skid}}'
 
     # Logging configuration
     LOG_LEVEL = os.environ.get('LOG_LEVEL') or 'INFO'

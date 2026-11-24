@@ -12,19 +12,19 @@ import QuickActionButton from '../../components/dashboard/QuickActionButton';
 import { dashboardService } from '../../services/dashboard/dashboardService';
 
 interface DashboardStats {
-  total_schools: number;
-  active_schools: number;
-  inactive_schools: number;
+  total_institutions: number;
+  active_institutions: number;
+  inactive_institutions: number;
   total_users: number;
   active_users: number;
   total_super_admins: number;
-  total_school_admins: number;
+  total_institution_admins: number;
   plan_distribution: {
     BASIC: number;
     STANDARD: number;
     PREMIUM: number;
   };
-  recent_schools: any[];
+  recent_institutions: any[];
   recent_admins: any[];
 }
 
@@ -68,8 +68,8 @@ const SuperAdminDashboard: FC = () => {
     );
   }
 
-  const avgUsersPerSchool = stats.total_schools > 0
-    ? Math.round(stats.total_users / stats.total_schools)
+  const avgUsersPerInstitution = stats.total_institutions > 0
+    ? Math.round(stats.total_users / stats.total_institutions)
     : 0;
 
   return (
@@ -88,20 +88,20 @@ const SuperAdminDashboard: FC = () => {
       {/* Key Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <StatCard
-          title="Total Schools"
-          value={stats.total_schools}
+          title="Total Institutions"
+          value={stats.total_institutions}
           icon="🏫"
           color="blue"
         />
         <StatCard
-          title="Active Schools"
-          value={stats.active_schools}
+          title="Active Institutions"
+          value={stats.active_institutions}
           icon="✅"
           color="green"
         />
         <StatCard
-          title="Inactive Schools"
-          value={stats.inactive_schools}
+          title="Inactive Institutions"
+          value={stats.inactive_institutions}
           icon="🚫"
           color="red"
         />
@@ -124,14 +124,14 @@ const SuperAdminDashboard: FC = () => {
           color="yellow"
         />
         <StatCard
-          title="School Admins"
-          value={stats.total_school_admins}
+          title="Institution Admins"
+          value={stats.total_institution_admins}
           icon="👨‍💼"
           color="blue"
         />
         <StatCard
-          title="Avg Users / School"
-          value={avgUsersPerSchool}
+          title="Avg Users / Institution"
+          value={avgUsersPerInstitution}
           icon="📊"
           color="purple"
         />
@@ -147,7 +147,7 @@ const SuperAdminDashboard: FC = () => {
           <div className="space-y-4">
             {(['BASIC', 'STANDARD', 'PREMIUM'] as const).map((plan) => {
               const count = stats.plan_distribution[plan] || 0;
-              const total = stats.active_schools || 1;
+              const total = stats.active_institutions || 1;
               const pct = Math.round((count / total) * 100);
               const colors = {
                 BASIC: { bar: 'bg-gray-500', text: 'text-gray-600 dark:text-gray-400' },
@@ -159,7 +159,7 @@ const SuperAdminDashboard: FC = () => {
                   <div className="flex items-center justify-between mb-1">
                     <span className={`text-sm font-medium ${colors[plan].text}`}>{plan}</span>
                     <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {count} school{count !== 1 ? 's' : ''} ({pct}%)
+                      {count} institution{count !== 1 ? 's' : ''} ({pct}%)
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
@@ -182,21 +182,21 @@ const SuperAdminDashboard: FC = () => {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <QuickActionButton
               icon="🏫"
-              label="Add School"
+              label="Add Institution"
               variant="primary"
-              onClick={() => navigate('/schools/new')}
+              onClick={() => navigate('/institutions/new')}
             />
             <QuickActionButton
               icon="📋"
-              label="List Schools"
+              label="List Institutions"
               variant="success"
-              onClick={() => navigate('/schools')}
+              onClick={() => navigate('/institutions')}
             />
             <QuickActionButton
               icon="👨‍💼"
-              label="School Admins"
+              label="Institution Admins"
               variant="info"
-              onClick={() => navigate('/school-admins')}
+              onClick={() => navigate('/institution-admins')}
             />
             <QuickActionButton
               icon="🛡️"
@@ -208,44 +208,44 @@ const SuperAdminDashboard: FC = () => {
         </div>
       </div>
 
-      {/* Recent Schools + Recent Admins */}
+      {/* Recent Institutions + Recent Admins */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Schools */}
+        {/* Recent Institutions */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Recent Schools
+              Recent Institutions
             </h2>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/schools')}>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/institutions')}>
               View All
             </Button>
           </div>
-          {stats.recent_schools.length === 0 ? (
-            <p className="text-gray-500 dark:text-gray-400 text-sm">No schools registered yet.</p>
+          {stats.recent_institutions.length === 0 ? (
+            <p className="text-gray-500 dark:text-gray-400 text-sm">No institutions registered yet.</p>
           ) : (
             <div className="space-y-3">
-              {stats.recent_schools.map((school: any) => (
+              {stats.recent_institutions.map((institution: any) => (
                 <div
-                  key={school.id}
+                  key={institution.id}
                   className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
                 >
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                      {school.name}
+                      {institution.name}
                     </p>
                     <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="secondary">{school.code}</Badge>
-                      <Badge variant={school.is_active ? 'success' : 'danger'}>
-                        {school.is_active ? 'Active' : 'Inactive'}
+                      <Badge variant="secondary">{institution.code}</Badge>
+                      <Badge variant={institution.is_active ? 'success' : 'danger'}>
+                        {institution.is_active ? 'Active' : 'Inactive'}
                       </Badge>
-                      {school.plan && (
-                        <Badge variant="info">{school.plan}</Badge>
+                      {institution.plan && (
+                        <Badge variant="info">{institution.plan}</Badge>
                       )}
                     </div>
                   </div>
                   <div className="text-right ml-4 shrink-0">
                     <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                      {school.user_count || 0}
+                      {institution.user_count || 0}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">users</p>
                   </div>
@@ -262,15 +262,15 @@ const SuperAdminDashboard: FC = () => {
           </h2>
           <div className="space-y-3">
             <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <span className="text-gray-700 dark:text-gray-300">Active Schools</span>
+              <span className="text-gray-700 dark:text-gray-300">Active Institutions</span>
               <span className="text-lg font-bold text-green-600 dark:text-green-400">
-                {stats.active_schools}
+                {stats.active_institutions}
               </span>
             </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <span className="text-gray-700 dark:text-gray-300">Inactive Schools</span>
+              <span className="text-gray-700 dark:text-gray-300">Inactive Institutions</span>
               <span className="text-lg font-bold text-red-600 dark:text-red-400">
-                {stats.inactive_schools}
+                {stats.inactive_institutions}
               </span>
             </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
@@ -286,29 +286,29 @@ const SuperAdminDashboard: FC = () => {
               </span>
             </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <span className="text-gray-700 dark:text-gray-300">School Admins</span>
+              <span className="text-gray-700 dark:text-gray-300">Institution Admins</span>
               <span className="text-lg font-bold text-purple-600 dark:text-purple-400">
-                {stats.total_school_admins}
+                {stats.total_institution_admins}
               </span>
             </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-              <span className="text-gray-700 dark:text-gray-300">Avg Users / School</span>
+              <span className="text-gray-700 dark:text-gray-300">Avg Users / Institution</span>
               <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
-                {avgUsersPerSchool}
+                {avgUsersPerInstitution}
               </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Recent School Admins */}
+      {/* Recent Institution Admins */}
       {stats.recent_admins.length > 0 && (
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Recently Added School Admins
+              Recently Added Institution Admins
             </h2>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/school-admins')}>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/institution-admins')}>
               View All
             </Button>
           </div>
@@ -318,7 +318,7 @@ const SuperAdminDashboard: FC = () => {
                 <tr className="border-b border-gray-200 dark:border-gray-700">
                   <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400 font-medium">Name</th>
                   <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400 font-medium">Email</th>
-                  <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400 font-medium">School</th>
+                  <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400 font-medium">Institution</th>
                   <th className="text-left py-2 px-3 text-gray-600 dark:text-gray-400 font-medium">Status</th>
                 </tr>
               </thead>
@@ -332,8 +332,8 @@ const SuperAdminDashboard: FC = () => {
                       {admin.email}
                     </td>
                     <td className="py-2 px-3">
-                      {admin.school_name ? (
-                        <Badge variant="secondary">{admin.school_name}</Badge>
+                      {admin.institution_name ? (
+                        <Badge variant="secondary">{admin.institution_name}</Badge>
                       ) : (
                         <span className="text-gray-400">-</span>
                       )}

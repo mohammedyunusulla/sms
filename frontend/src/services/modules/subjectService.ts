@@ -3,7 +3,7 @@
  * Handles API calls for subject management operations
  */
 
-import { getApiClient, getSchoolId } from '../api/client';
+import { getApiClient, getInstitutionId } from '../api/client';
 import { ISubject } from '../../types/index';
 
 class SubjectService {
@@ -14,13 +14,13 @@ class SubjectService {
      */
     async listAll(): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/list/${schoolId}`);
+        const response = await api.get(`${this.baseUrl}/list/${institutionId}`);
         return response.data;
     }
 
@@ -29,13 +29,13 @@ class SubjectService {
      */
     async listByClass(classId: string): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/list/${schoolId}/${classId}`);
+        const response = await api.get(`${this.baseUrl}/list/${institutionId}/${classId}`);
         return response.data;
     }
 
@@ -44,13 +44,13 @@ class SubjectService {
      */
     async getBySection(sectionId: string): Promise<ISubject[]> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/section/${schoolId}/${sectionId}`);
+        const response = await api.get(`${this.baseUrl}/section/${institutionId}/${sectionId}`);
         return response.data || [];
     }
 
@@ -59,13 +59,13 @@ class SubjectService {
      */
     async getById(id: string): Promise<ISubject> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/${id}/${schoolId}`);
+        const response = await api.get(`${this.baseUrl}/${id}/${institutionId}`);
         return response.data?.data || response.data;
     }
 
@@ -74,13 +74,13 @@ class SubjectService {
      */
     async create(data: Omit<ISubject, 'id' | 'createdAt'>): Promise<ISubject> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/create/${schoolId}`, data);
+        const response = await api.post(`${this.baseUrl}/create/${institutionId}`, data);
         if (response.code === 200 && response.status === 'success') {
             return response?.data;
         }
@@ -92,13 +92,13 @@ class SubjectService {
      */
     async update(id: string, data: Partial<ISubject>): Promise<ISubject> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.put(`${this.baseUrl}/update/${id}/${schoolId}`, data);
+        const response = await api.put(`${this.baseUrl}/update/${id}/${institutionId}`, data);
         if (response.code === 200 && response.status === 'success') {
             return response?.data;
         }
@@ -110,13 +110,13 @@ class SubjectService {
      */
     async delete(id: string): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.delete(`${this.baseUrl}/delete/${id}/${schoolId}`);
+        const response = await api.delete(`${this.baseUrl}/delete/${id}/${institutionId}`);
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.data?.message || 'Failed to delete subject');
         }

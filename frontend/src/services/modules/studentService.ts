@@ -3,7 +3,7 @@
 // Handles API calls for student management operations
 
 
-import { getApiClient, getSchoolId } from '../api/client';
+import { getApiClient, getInstitutionId } from '../api/client';
 
 interface IStudentListParams {
     search?: string;
@@ -32,14 +32,14 @@ class StudentService {
     // Get list of students with pagination
     async list(params?: IStudentListParams): Promise<IStudentListResponse> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         try {
-            const response = await api.get(`${this.baseUrl}/list/${schoolId}`, { params });
+            const response = await api.get(`${this.baseUrl}/list/${institutionId}`, { params });
 
             // Handle both old and new response formats
             if (response?.data && response?.meta) {
@@ -68,13 +68,13 @@ class StudentService {
     // Get single student by ID 
     async getById(id: string): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/get-by-id/${schoolId}/${id}`);
+        const response = await api.get(`${this.baseUrl}/get-by-id/${institutionId}/${id}`);
         return response.student;
     }
 
@@ -82,13 +82,13 @@ class StudentService {
     // Create new student - Single
     async create(data: any): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/create/${schoolId}`, data);
+        const response = await api.post(`${this.baseUrl}/create/${institutionId}`, data);
         if (response.code === 200 && response.status === 'success') {
             return response?.data;
         }
@@ -99,13 +99,13 @@ class StudentService {
     // Update student 
     async update(id: string, data: any): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.put(`${this.baseUrl}/update/${schoolId}/${id}`, data);
+        const response = await api.put(`${this.baseUrl}/update/${institutionId}/${id}`, data);
         if (response.code === 200 && response.status === 'success') {
             return response.data;
         }
@@ -116,14 +116,14 @@ class StudentService {
     // Delete student 
     async delete(id: string): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         // Soft delete: the student becomes inactive and can't log in; all records are kept.
-        const response = await api.delete(`${this.baseUrl}/delete/${id}/${schoolId}`);
+        const response = await api.delete(`${this.baseUrl}/delete/${id}/${institutionId}`);
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.message || response.data?.message || 'Failed to delete student');
         }
@@ -134,13 +134,13 @@ class StudentService {
      */
     async reactivate(id: string): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.patch(`${this.baseUrl}/reactivate/${id}/${schoolId}`);
+        const response = await api.patch(`${this.baseUrl}/reactivate/${id}/${institutionId}`);
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.message || response.data?.message || 'Failed to reactivate student');
         }
@@ -150,13 +150,13 @@ class StudentService {
     // Bulk create students 
     async bulkCreate(studentsData: any[], defaultPassword: string = 'Admin@123'): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/bulk-create/${schoolId}`, {
+        const response = await api.post(`${this.baseUrl}/bulk-create/${institutionId}`, {
             students: studentsData,
             default_password: defaultPassword,
         });
@@ -178,14 +178,14 @@ class StudentService {
         status: string = ''
     ): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const response = await api.get(
-            `${this.baseUrl}/list/inSection/${schoolId}/${academicYearId}/${sectionId}`,
+            `${this.baseUrl}/list/inSection/${institutionId}/${academicYearId}/${sectionId}`,
             {
                 params: {
                     page,
@@ -203,13 +203,13 @@ class StudentService {
     // Promote student to another class/section/academic year
     async promoteStudent(data: any): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/promote/${schoolId}`, data);
+        const response = await api.post(`${this.baseUrl}/promote/${institutionId}`, data);
         if (response.code === 200 && response.status === 'success') {
             return response?.data;
         }

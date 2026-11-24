@@ -2,7 +2,7 @@
 
 ## Overview
 
-Edusphere Frontend is a **React + TypeScript** web application for the multi-tenant School Management System. It replaces the older `school-management-frontend` (React + MUI + Redux) with a modern stack.
+Edusphere Frontend is a **React + TypeScript** web application for the multi-tenant Institution Management System. It replaces the older `institution-management-frontend` (React + MUI + Redux) with a modern stack.
 
 ## Tech Stack
 
@@ -58,7 +58,7 @@ src/
   pages/
     AuthPages/         # SignIn, SignUp
     Dashboard/         # Role-based dashboards (SuperAdmin, Administrator, Educator, Learner, Guardian)
-    SchoolManagement/  # School CRUD (SuperAdmin)
+    InstitutionManagement/  # Institution CRUD (SuperAdmin)
     UserManagement/    # Users, Teachers, Students, Parents, Roles
     ClassManagement/   # Classes, Sections
     AttendanceManagement/
@@ -115,7 +115,7 @@ src/
 ### API Layer
 - **Response interceptor returns `response.data` directly** - services receive the data object, not AxiosResponse
 - All endpoints defined in `API_ENDPOINTS` constant (`src/services/api/config.ts`)
-- School ID (`skid`) retrieved from `localStorage` logged user for multi-tenant calls
+- Institution ID (`skid`) retrieved from `localStorage` logged user for multi-tenant calls
 - Base URL configured via `VITE_API_BASE_URL` env var (default: `http://localhost:5000/api`)
 
 ### Sidebar Navigation
@@ -131,7 +131,7 @@ VITE_API_BASE_URL=http://localhost:5000/api
 
 ## Important Notes
 
-- This is a **separate project** from the older `school-management-frontend` - do not confuse them
+- This is a **separate project** from the older `institution-management-frontend` - do not confuse them
 - Uses TailwindCSS v4 (not v3) - different config approach via `@tailwindcss/postcss`
 - No Redux - uses Zustand for state management
 - No Material-UI - uses TailwindCSS for all styling

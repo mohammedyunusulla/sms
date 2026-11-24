@@ -28,8 +28,8 @@ const ExamList: FC = () => {
     const { hasPermission } = usePermissions();
     const user = useAuthStore((s) => s.user);
     const academicYear = user?.current_academic_year;
-    // Publishing results is for the school's admins (the backend allows School Admin and Principal)
-    const canPublish = ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'].includes(String(user?.role || ''));
+    // Publishing results is for the institution's admins (the backend allows Institution Admin and Principal)
+    const canPublish = ['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL'].includes(String(user?.role || ''));
     const [published, setPublished] = useState<Record<number, string>>({});
     const [publishTarget, setPublishTarget] = useState<IExamConfig | null>(null);
     const [publishing, setPublishing] = useState(false);

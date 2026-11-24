@@ -1,19 +1,19 @@
 from app.models.main.User import User, UserRole
-from app.models.main.School import School
-from app.models.tenant import Student, Teacher, SchoolUsers, SchoolAdmin
+from app.models.main.Institution import Institution
+from app.models.tenant import Student, Teacher, InstitutionUsers, InstitutionAdmin
 from app.models.tenant.Roles import Role
 from app import db
 from sqlalchemy.exc import IntegrityError
 from flask import jsonify
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from app.utils.helpers import generate_student_id
 
 class UserService:
 
     @staticmethod
-    def create_school_admin(data):
+    def create_institution_admin(data):
         try:
-            required_fields = ['username', 'email', 'password', 'first_name', 'last_name', 'skid', 'school_id']
+            required_fields = ['username', 'email', 'password', 'first_name', 'last_name', 'skid', 'institution_id']
             for field in required_fields:
                 if not data.get(field):
                     raise ValueError(f"Missing required field: {field}")
@@ -26,9 +26,9 @@ class UserService:
             if User.get_by_email(data['email']):
                 raise ValueError("Email already exists")
 
-            school = School.query.get(data['school_id'])
-            if not school:
-                raise ValueError("Invalid school_id")
+            institution = Institution.query.get(data['institution_id'])
+            if not institution:
+                raise ValueError("Invalid institution_id")
 
             # Create in main users table
             user = User(
@@ -37,22 +37,22 @@ class UserService:
                 first_name=data['first_name'],
                 last_name=data['last_name'],
                 phone=data.get('phone'),
-                role=UserRole.SCHOOL_ADMIN,
+                role=UserRole.INSTITUTION_ADMIN,
                 skid=skid,
-                school_id=school.id
+                institution_id=institution.id
             )
             user.set_password(data['password'])
             user.save()
             saved_user_id = user.id
 
-            # Set this user as admin of the school
-            previous_admin_id = school.school_admin_id
-            school.school_admin_id = user.id
+            # Set this user as admin of the institution
+            previous_admin_id = institution.institution_admin_id
+            institution.institution_admin_id = user.id
             db.session.commit()
 
-            # Create in tenant DB: school_users and school_admins
-            with switch_to_school_db(skid) as session:
-                school_user = SchoolUsers(
+            # Create in tenant DB: institution_users and institution_admins
+            with switch_to_institution_db(skid) as session:
+                institution_user = InstitutionUsers(
                     username=data['username'],
                     email=data['email'],
                     first_name=data['first_name'],
@@ -60,22 +60,22 @@ class UserService:
                     skid=skid,
                     is_active=True
                 )
-                session.add(school_user)
+                session.add(institution_user)
                 session.flush()
-                # Give the tenant record its School Admin role (it used to be left empty, QA A35)
+                # Give the tenant record its Institution Admin role (it used to be left empty, QA A35)
                 from app.utils.account_create import role_for, add_role_link
-                add_role_link(session, school_user, role_for(session, 'SCHOOL_ADMIN'))
+                add_role_link(session, institution_user, role_for(session, 'INSTITUTION_ADMIN'))
 
-                school_admin_profile = SchoolAdmin(
-                    user_id=school_user.id,
-                    # str(UserRole.SCHOOL_ADMIN) stored the text "UserRole.SCHOOL_ADMIN"
-                    designation=(str(data.get('designation') or '').strip() or 'School Admin')[:100]
+                institution_admin_profile = InstitutionAdmin(
+                    user_id=institution_user.id,
+                    # str(UserRole.INSTITUTION_ADMIN) stored the text "UserRole.INSTITUTION_ADMIN"
+                    designation=(str(data.get('designation') or '').strip() or 'Institution Admin')[:100]
                 )
-                session.add(school_admin_profile)
+                session.add(institution_admin_profile)
                 session.commit()
 
-                # Link back school_user_id to main DB
-                user.school_user_id = school_user.id
+                # Link back institution_user_id to main DB
+                user.institution_user_id = institution_user.id
                 db.session.commit()
 
             return user
@@ -86,7 +86,7 @@ class UserService:
             if 'saved_user_id' in locals():
                 try:
                     if 'previous_admin_id' in locals():
-                        school.school_admin_id = previous_admin_id
+                        institution.institution_admin_id = previous_admin_id
                     leftover = User.query.get(saved_user_id)
                     if leftover:
                         db.session.delete(leftover)
@@ -95,13 +95,13 @@ class UserService:
                     db.session.rollback()
             if isinstance(e, ValueError):
                 raise
-            raise Exception(f"Failed to create school admin: {str(e)}")
+            raise Exception(f"Failed to create institution admin: {str(e)}")
 
     
     @staticmethod
-    def create_school_user(data):
+    def create_institution_user(data):
         try:
-            required_fields = ['username', 'email', 'password', 'first_name', 'last_name', 'role', 'skid', 'school_id']
+            required_fields = ['username', 'email', 'password', 'first_name', 'last_name', 'role', 'skid', 'institution_id']
             for field in required_fields:
                 if not data.get(field):
                     raise ValueError(f"Missing required field: {field}")
@@ -109,11 +109,11 @@ class UserService:
             skid = data['skid']
             
             if data['role'] not in ['TEACHER', 'STUDENT', 'PARENT', 'STAFF']:
-                raise ValueError("Invalid school user role")
+                raise ValueError("Invalid institution user role")
 
-            school = School.query.get(data['school_id'])
-            if not school:
-                raise ValueError("Invalid school_id")
+            institution = Institution.query.get(data['institution_id'])
+            if not institution:
+                raise ValueError("Invalid institution_id")
 
             # Create in main DB
             user = User(
@@ -124,14 +124,14 @@ class UserService:
                 phone=data.get('phone'),
                 role=UserRole(data['role']),
                 skid=skid,
-                school_id=school.id
+                institution_id=institution.id
             )
             user.set_password(data['password'])
             user.save()
 
             # Insert into tenant DB
-            with switch_to_school_db(skid) as tenant_session:
-                school_user = SchoolUsers(
+            with switch_to_institution_db(skid) as tenant_session:
+                institution_user = InstitutionUsers(
                     username=data['username'],
                     email=data['email'],
                     first_name=data['first_name'],
@@ -140,13 +140,13 @@ class UserService:
                     skid=skid,
                     is_active=True
                 )
-                tenant_session.add(school_user)
+                tenant_session.add(institution_user)
                 tenant_session.flush()
 
                 # Create respective profile
                 if user.role == UserRole.TEACHER:
                     profile = Teacher(
-                        user_id=school_user.id,
+                        user_id=institution_user.id,
                         employee_id=data.get('employee_id'),
                         designation=data.get('designation'),
                         date_of_joining=data.get('date_of_joining'),
@@ -155,7 +155,7 @@ class UserService:
                     )
                 elif user.role == UserRole.STUDENT:
                     profile = Student(
-                        user_id=school_user.id,
+                        user_id=institution_user.id,
                         student_id=data.get('student_id'),
                         admission_date=data.get('admission_date'),
                         class_id=data.get('class_id'),
@@ -167,14 +167,14 @@ class UserService:
                 tenant_session.add(profile)
                 tenant_session.commit()
 
-                user.school_user_id = school_user.id
+                user.institution_user_id = institution_user.id
                 db.session.commit()
 
             return user
 
         except Exception as e:
             db.session.rollback()
-            raise Exception(f"Failed to create school user: {str(e)}")
+            raise Exception(f"Failed to create institution user: {str(e)}")
 
     
     @staticmethod
@@ -188,7 +188,7 @@ class UserService:
                 raise ValueError("User not found")
             
             # Update fields if provided
-            updatable_fields = ['email', 'first_name', 'last_name', 'phone', 'role', 'school_id']
+            updatable_fields = ['email', 'first_name', 'last_name', 'phone', 'role', 'institution_id']
             
             for field in updatable_fields:
                 if field in user_data:
@@ -207,12 +207,12 @@ class UserService:
                             raise ValueError("Invalid role")
                         continue
                     
-                    elif field == 'school_id':
-                        # Validate school
-                        if user_data['school_id']:
-                            school = School.get_by_id(user_data['school_id'])
-                            if not school:
-                                raise ValueError("Invalid school_id")
+                    elif field == 'institution_id':
+                        # Validate institution
+                        if user_data['institution_id']:
+                            institution = Institution.get_by_id(user_data['institution_id'])
+                            if not institution:
+                                raise ValueError("Invalid institution_id")
                     
                     setattr(user, field, user_data[field])
             
@@ -266,26 +266,26 @@ class UserService:
             raise Exception(f"Failed to activate user: {str(e)}")
     
     @staticmethod
-    def get_users_by_school(skid, page=1, limit=10, search='', gender='', role='', status=''):
+    def get_users_by_institution(skid, page=1, limit=10, search='', gender='', role='', status=''):
         """
-        Get paginated users for a specific school with filtering and sorting
+        Get paginated users for a specific institution with filtering and sorting
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Build base query
-                query = tenant_session.query(SchoolUsers).join(Role, SchoolUsers.role_id == Role.id)
+                query = tenant_session.query(InstitutionUsers).join(Role, InstitutionUsers.role_id == Role.id)
 
                 # Filter by status (active/inactive)
                 if status.lower() == 'active':
-                    query = query.filter(SchoolUsers.is_active == True)
+                    query = query.filter(InstitutionUsers.is_active == True)
                 elif status.lower() == 'inactive':
-                    query = query.filter(SchoolUsers.is_active == False)
+                    query = query.filter(InstitutionUsers.is_active == False)
                 else:
-                    query = query.filter(SchoolUsers.is_active == True)  # Default to active
+                    query = query.filter(InstitutionUsers.is_active == True)  # Default to active
 
                 # Filter by gender
                 if gender:
-                    query = query.filter(SchoolUsers.gender == gender)
+                    query = query.filter(InstitutionUsers.gender == gender)
 
                 # Filter by role
                 if role:
@@ -297,10 +297,10 @@ class UserService:
                 if search:
                     search_term = f"%{search}%"
                     query = query.filter(
-                        (SchoolUsers.first_name.ilike(search_term)) |
-                        (SchoolUsers.last_name.ilike(search_term)) |
-                        (SchoolUsers.email.ilike(search_term)) |
-                        (SchoolUsers.phone.ilike(search_term))
+                        (InstitutionUsers.first_name.ilike(search_term)) |
+                        (InstitutionUsers.last_name.ilike(search_term)) |
+                        (InstitutionUsers.email.ilike(search_term)) |
+                        (InstitutionUsers.phone.ilike(search_term))
                     )
 
                 # Get total count before pagination
@@ -312,21 +312,21 @@ class UserService:
 
                 # Order by name and apply pagination
                 users = query.order_by(
-                    SchoolUsers.first_name,
-                    SchoolUsers.last_name
+                    InstitutionUsers.first_name,
+                    InstitutionUsers.last_name
                 ).offset(offset).limit(limit).all()
 
                 users_data = [user.to_dict() for user in users]
 
             # Enrich with login info from main DB (outside tenant session)
-            school_user_ids = [u['id'] for u in users_data]
-            if school_user_ids:
+            institution_user_ids = [u['id'] for u in users_data]
+            if institution_user_ids:
                 main_users = User.query.filter(
-                    User.school_user_id.in_(school_user_ids),
+                    User.institution_user_id.in_(institution_user_ids),
                     User.skid == skid
                 ).all()
-                # Map school_user_id -> main User
-                main_user_map = {mu.school_user_id: mu for mu in main_users}
+                # Map institution_user_id -> main User
+                main_user_map = {mu.institution_user_id: mu for mu in main_users}
                 for u in users_data:
                     main_user = main_user_map.get(u['id'])
                     u['has_login'] = main_user is not None
@@ -344,23 +344,23 @@ class UserService:
             raise Exception(f"Failed to get users: {str(e)}")
 
     @staticmethod
-    def get_staff_by_school(skid):
+    def get_staff_by_institution(skid):
         """
-        Get all staff users with role information (excludes School Admin, Student, Parent)
+        Get all staff users with role information (excludes Institution Admin, Student, Parent)
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Define roles to exclude
-                excluded_role_codes = ['SCHOOL_ADMIN', 'STUDENT', 'PARENT']
+                excluded_role_codes = ['INSTITUTION_ADMIN', 'STUDENT', 'PARENT']
                 
                 users = (
-                    tenant_session.query(SchoolUsers)
-                    .join(Role, SchoolUsers.role_id == Role.id)
+                    tenant_session.query(InstitutionUsers)
+                    .join(Role, InstitutionUsers.role_id == Role.id)
                     .filter(
-                        SchoolUsers.is_active == True,
+                        InstitutionUsers.is_active == True,
                         Role.role_code.notin_(excluded_role_codes)
                     )
-                    .order_by(SchoolUsers.first_name, SchoolUsers.last_name)
+                    .order_by(InstitutionUsers.first_name, InstitutionUsers.last_name)
                     .all()
                 )
                 
@@ -437,8 +437,8 @@ class UserService:
                 last_name=data.get('last_name', ''),
                 phone=data.get('phone'),
                 role=UserRole.SUPER_ADMIN,
-                school_id=None,
-                school_user_id=None
+                institution_id=None,
+                institution_user_id=None
             )
             admin.set_password(password)
             admin.save()
@@ -482,9 +482,9 @@ class UserService:
             raise Exception("Failed to change password")
 
     @staticmethod
-    def provision_single_login(school_user_id, skid, school_id, password):
+    def provision_single_login(institution_user_id, skid, institution_id, password):
         """
-        Create a login (User record in main DB) for an existing SchoolUsers record.
+        Create a login (User record in main DB) for an existing InstitutionUsers record.
         Used when upgrading from BASIC plan or manually granting login access.
         """
         try:
@@ -494,25 +494,25 @@ class UserService:
                 raise ValueError(problem)
 
             # Check if already provisioned
-            existing = User.query.filter_by(school_user_id=school_user_id, skid=skid).first()
+            existing = User.query.filter_by(institution_user_id=institution_user_id, skid=skid).first()
             if existing:
                 raise ValueError("User already has login access")
 
-            # Get school for school_code
-            school = School.query.get(school_id)
-            if not school:
-                raise ValueError("Invalid school_id")
+            # Get institution for institution_code
+            institution = Institution.query.get(institution_id)
+            if not institution:
+                raise ValueError("Invalid institution_id")
 
-            # Read SchoolUsers + role from tenant DB
-            with switch_to_school_db(skid) as tenant_session:
-                school_user = tenant_session.query(SchoolUsers).filter_by(id=school_user_id).first()
-                if not school_user:
-                    raise ValueError("School user not found")
-                if not school_user.is_active:
-                    raise ValueError("School user is inactive")
+            # Read InstitutionUsers + role from tenant DB
+            with switch_to_institution_db(skid) as tenant_session:
+                institution_user = tenant_session.query(InstitutionUsers).filter_by(id=institution_user_id).first()
+                if not institution_user:
+                    raise ValueError("Institution user not found")
+                if not institution_user.is_active:
+                    raise ValueError("Institution user is inactive")
 
                 # Get role code
-                role_obj = tenant_session.query(Role).filter_by(id=school_user.role_id).first()
+                role_obj = tenant_session.query(Role).filter_by(id=institution_user.role_id).first()
                 role_code = role_obj.role_code if role_obj else None
 
                 if role_code not in ('STUDENT', 'PARENT'):
@@ -520,13 +520,13 @@ class UserService:
 
                 # Extract user data while session is open
                 user_data = {
-                    'username': school_user.username,
-                    'email': school_user.email,
-                    'first_name': school_user.first_name,
-                    'last_name': school_user.last_name,
-                    'phone': school_user.phone,
+                    'username': institution_user.username,
+                    'email': institution_user.email,
+                    'first_name': institution_user.first_name,
+                    'last_name': institution_user.last_name,
+                    'phone': institution_user.phone,
                     'role_code': role_code,
-                    'school_user_id': school_user.id,
+                    'institution_user_id': institution_user.id,
                 }
 
             # Validate required fields
@@ -537,16 +537,16 @@ class UserService:
             if not user_data['first_name']:
                 raise ValueError("Missing required field: first_name")
 
-            # Check username uniqueness - append school_code if conflict
+            # Check username uniqueness - append institution_code if conflict
             username = user_data['username']
             if User.query.filter_by(username=username).first():
-                username = f"{username}_{school.code}"
+                username = f"{username}_{institution.code}"
                 if User.query.filter_by(username=username).first():
-                    raise ValueError(f"Username '{user_data['username']}' already exists even with school code suffix")
+                    raise ValueError(f"Username '{user_data['username']}' already exists even with institution code suffix")
 
             # Check email uniqueness
             if User.query.filter_by(email=user_data['email']).first():
-                raise ValueError(f"Email '{user_data['email']}' is already registered in another school")
+                raise ValueError(f"Email '{user_data['email']}' is already registered in another institution")
 
             # Create User record in main DB
             user = User(
@@ -557,8 +557,8 @@ class UserService:
                 phone=user_data['phone'],
                 role=UserRole(user_data['role_code']),
                 skid=skid,
-                school_id=school_id,
-                school_user_id=user_data['school_user_id']
+                institution_id=institution_id,
+                institution_user_id=user_data['institution_user_id']
             )
             user.set_password(password)
             user.save()
@@ -572,9 +572,9 @@ class UserService:
             raise Exception(f"Failed to provision login: {str(e)}")
 
     @staticmethod
-    def provision_bulk_logins(skid, school_id, default_password, role_filter=None):
+    def provision_bulk_logins(skid, institution_id, default_password, role_filter=None):
         """
-        Bulk create logins for STUDENT/PARENT SchoolUsers who don't have User records.
+        Bulk create logins for STUDENT/PARENT InstitutionUsers who don't have User records.
         Returns a detailed report of results.
         """
         try:
@@ -583,14 +583,14 @@ class UserService:
             if not ok:
                 raise ValueError(f"Default password: {problem}")
 
-            # Get school for school_code
-            school = School.query.get(school_id)
-            if not school:
-                raise ValueError("Invalid school_id")
+            # Get institution for institution_code
+            institution = Institution.query.get(institution_id)
+            if not institution:
+                raise ValueError("Invalid institution_id")
 
-            # Read eligible SchoolUsers from tenant DB
-            with switch_to_school_db(skid) as tenant_session:
-                query = tenant_session.query(SchoolUsers).join(Role, SchoolUsers.role_id == Role.id)
+            # Read eligible InstitutionUsers from tenant DB
+            with switch_to_institution_db(skid) as tenant_session:
+                query = tenant_session.query(InstitutionUsers).join(Role, InstitutionUsers.role_id == Role.id)
 
                 # Filter to STUDENT/PARENT roles
                 eligible_roles = ['STUDENT', 'PARENT']
@@ -599,14 +599,14 @@ class UserService:
                 else:
                     query = query.filter(Role.role_code.in_(eligible_roles))
 
-                query = query.filter(SchoolUsers.is_active == True)
-                all_school_users = query.all()
+                query = query.filter(InstitutionUsers.is_active == True)
+                all_institution_users = query.all()
 
                 # Collect user data while session is open
-                school_users_data = []
-                for su in all_school_users:
+                institution_users_data = []
+                for su in all_institution_users:
                     role_obj = tenant_session.query(Role).filter_by(id=su.role_id).first()
-                    school_users_data.append({
+                    institution_users_data.append({
                         'id': su.id,
                         'username': su.username,
                         'email': su.email,
@@ -618,15 +618,15 @@ class UserService:
                         'role_name': role_obj.role_name if role_obj else None,
                     })
 
-            total_eligible = len(school_users_data)
+            total_eligible = len(institution_users_data)
 
             # Find which ones already have a User record
-            school_user_ids = [su['id'] for su in school_users_data]
+            institution_user_ids = [su['id'] for su in institution_users_data]
             existing_users = User.query.filter(
-                User.school_user_id.in_(school_user_ids),
+                User.institution_user_id.in_(institution_user_ids),
                 User.skid == skid
-            ).all() if school_user_ids else []
-            already_provisioned_ids = {u.school_user_id for u in existing_users}
+            ).all() if institution_user_ids else []
+            already_provisioned_ids = {u.institution_user_id for u in existing_users}
 
             # Pre-fetch all existing usernames and emails for conflict checking
             existing_usernames = {u.username for u in User.query.with_entities(User.username).all()}
@@ -638,7 +638,7 @@ class UserService:
             failures = []
             successes = []
 
-            for su_data in school_users_data:
+            for su_data in institution_users_data:
                 # Skip already provisioned
                 if su_data['id'] in already_provisioned_ids:
                     continue
@@ -655,7 +655,7 @@ class UserService:
                 if missing_fields:
                     failed_count += 1
                     failures.append({
-                        'school_user_id': su_data['id'],
+                        'institution_user_id': su_data['id'],
                         'name': su_data['full_name'],
                         'role': su_data['role_name'],
                         'reason': f"Missing required fields: {', '.join(missing_fields)}"
@@ -665,14 +665,14 @@ class UserService:
                 # Check username uniqueness
                 username = su_data['username']
                 if username in existing_usernames:
-                    username = f"{username}_{school.code}"
+                    username = f"{username}_{institution.code}"
                     if username in existing_usernames:
                         failed_count += 1
                         failures.append({
-                            'school_user_id': su_data['id'],
+                            'institution_user_id': su_data['id'],
                             'name': su_data['full_name'],
                             'role': su_data['role_name'],
-                            'reason': f"Username '{su_data['username']}' conflict even with school code suffix"
+                            'reason': f"Username '{su_data['username']}' conflict even with institution code suffix"
                         })
                         continue
 
@@ -680,10 +680,10 @@ class UserService:
                 if su_data['email'] in existing_emails:
                     failed_count += 1
                     failures.append({
-                        'school_user_id': su_data['id'],
+                        'institution_user_id': su_data['id'],
                         'name': su_data['full_name'],
                         'role': su_data['role_name'],
-                        'reason': f"Email '{su_data['email']}' already registered in another school"
+                        'reason': f"Email '{su_data['email']}' already registered in another institution"
                     })
                     continue
 
@@ -697,8 +697,8 @@ class UserService:
                         phone=su_data['phone'],
                         role=UserRole(su_data['role_code']),
                         skid=skid,
-                        school_id=school_id,
-                        school_user_id=su_data['id']
+                        institution_id=institution_id,
+                        institution_user_id=su_data['id']
                     )
                     user.set_password(default_password)
                     db.session.add(user)
@@ -710,7 +710,7 @@ class UserService:
 
                     success_count += 1
                     successes.append({
-                        'school_user_id': su_data['id'],
+                        'institution_user_id': su_data['id'],
                         'name': su_data['full_name'],
                         'role': su_data['role_name'],
                         'username': username,
@@ -719,7 +719,7 @@ class UserService:
                 except Exception as e:
                     failed_count += 1
                     failures.append({
-                        'school_user_id': su_data['id'],
+                        'institution_user_id': su_data['id'],
                         'name': su_data['full_name'],
                         'role': su_data['role_name'],
                         'reason': str(e)
@@ -744,24 +744,24 @@ class UserService:
             raise Exception(f"Failed to provision bulk logins: {str(e)}")
 
     @staticmethod
-    def get_provisioning_report(skid, school_id):
+    def get_provisioning_report(skid, institution_id):
         """
-        Get a full report of all users in a school with their login status.
+        Get a full report of all users in an institution with their login status.
         Used for export after provisioning.
         """
         try:
-            # Get school info
-            school = School.query.get(school_id)
-            if not school:
-                raise ValueError("Invalid school_id")
+            # Get institution info
+            institution = Institution.query.get(institution_id)
+            if not institution:
+                raise ValueError("Invalid institution_id")
 
-            # Read all SchoolUsers from tenant DB
-            with switch_to_school_db(skid) as tenant_session:
+            # Read all InstitutionUsers from tenant DB
+            with switch_to_institution_db(skid) as tenant_session:
                 all_users = (
-                    tenant_session.query(SchoolUsers)
-                    .join(Role, SchoolUsers.role_id == Role.id)
-                    .filter(SchoolUsers.is_active == True)
-                    .order_by(Role.role_code, SchoolUsers.first_name, SchoolUsers.last_name)
+                    tenant_session.query(InstitutionUsers)
+                    .join(Role, InstitutionUsers.role_id == Role.id)
+                    .filter(InstitutionUsers.is_active == True)
+                    .order_by(Role.role_code, InstitutionUsers.first_name, InstitutionUsers.last_name)
                     .all()
                 )
 
@@ -769,7 +769,7 @@ class UserService:
                 for u in all_users:
                     role_obj = tenant_session.query(Role).filter_by(id=u.role_id).first()
                     users_data.append({
-                        'school_user_id': u.id,
+                        'institution_user_id': u.id,
                         'username': u.username,
                         'email': u.email,
                         'first_name': u.first_name,
@@ -782,22 +782,22 @@ class UserService:
                     })
 
             # Enrich with login info from main DB
-            school_user_ids = [u['school_user_id'] for u in users_data]
-            if school_user_ids:
+            institution_user_ids = [u['institution_user_id'] for u in users_data]
+            if institution_user_ids:
                 main_users = User.query.filter(
-                    User.school_user_id.in_(school_user_ids),
+                    User.institution_user_id.in_(institution_user_ids),
                     User.skid == skid
                 ).all()
-                main_user_map = {mu.school_user_id: mu for mu in main_users}
+                main_user_map = {mu.institution_user_id: mu for mu in main_users}
                 for u in users_data:
-                    main_user = main_user_map.get(u['school_user_id'])
+                    main_user = main_user_map.get(u['institution_user_id'])
                     u['has_login'] = main_user is not None
                     u['login_active'] = main_user.is_active if main_user else False
                     u['login_username'] = main_user.username if main_user else None
 
             return {
-                'school_name': school.name,
-                'school_code': school.code,
+                'institution_name': institution.name,
+                'institution_code': institution.code,
                 'users': users_data,
                 'total': len(users_data)
             }
@@ -805,13 +805,13 @@ class UserService:
         except Exception as e:
             raise Exception(f"Failed to get provisioning report: {str(e)}")
     # ------------------------------------------------------------------
-    # School-user based view/edit (the Users list shows tenant school_users)
+    # Institution-user based view/edit (the Users list shows tenant institution_users)
     # ------------------------------------------------------------------
     @staticmethod
-    def get_school_user(skid, school_user_id):
-        """Return a tenant school user with role and login info, or None."""
-        with switch_to_school_db(skid) as tenant_session:
-            su = tenant_session.query(SchoolUsers).filter_by(id=int(school_user_id)).first()
+    def get_institution_user(skid, institution_user_id):
+        """Return a tenant institution user with role and login info, or None."""
+        with switch_to_institution_db(skid) as tenant_session:
+            su = tenant_session.query(InstitutionUsers).filter_by(id=int(institution_user_id)).first()
             if not su:
                 return None
             role = tenant_session.query(Role).filter_by(id=su.role_id).first() if su.role_id else None
@@ -828,16 +828,16 @@ class UserService:
                 'date_of_birth': su.date_of_birth.isoformat() if su.date_of_birth else None,
                 'address': su.address,
                 'role': role.role_code if role else (
-                    'SCHOOL_ADMIN' if tenant_session.query(SchoolAdmin).filter_by(user_id=su.id).first() else None),
+                    'INSTITUTION_ADMIN' if tenant_session.query(InstitutionAdmin).filter_by(user_id=su.id).first() else None),
                 'role_name': role.role_name if role else None,
                 'is_active': bool(su.is_active),
                 'status': 'active' if su.is_active else 'inactive',
                 'created_at': su.created_at.isoformat() if getattr(su, 'created_at', None) else None,
                 'updated_at': su.updated_at.isoformat() if getattr(su, 'updated_at', None) else None,
             }
-        main_user = User.query.filter_by(school_user_id=int(school_user_id), skid=skid).first()
+        main_user = User.query.filter_by(institution_user_id=int(institution_user_id), skid=skid).first()
         if not data['role'] and main_user:
-            # School admins have no tenant role row; their role lives on the main login
+            # Institution admins have no tenant role row; their role lives on the main login
             data['role'] = main_user.role.value if hasattr(main_user.role, 'value') else str(main_user.role)
             data['role_name'] = data['role'].replace('_', ' ').title()
         data['has_login'] = main_user is not None
@@ -846,9 +846,9 @@ class UserService:
         return data
 
     @staticmethod
-    def update_school_user(skid, school_user_id, data):
+    def update_institution_user(skid, institution_user_id, data):
         """
-        Update a tenant school user's personal details and keep their login (if any) in sync.
+        Update a tenant institution user's personal details and keep their login (if any) in sync.
         Role and active status are NOT changed here (status uses delete/reactivate).
         """
         editable = ['username', 'first_name', 'last_name', 'email', 'phone', 'gender', 'date_of_birth', 'address']
@@ -857,17 +857,17 @@ class UserService:
             raise ValueError('First name is required')
         if 'email' in changes and not changes['email']:
             raise ValueError('Email is required')
-        school_user_id = int(school_user_id)
-        main_user = User.query.filter_by(school_user_id=school_user_id, skid=skid).first()
+        institution_user_id = int(institution_user_id)
+        main_user = User.query.filter_by(institution_user_id=institution_user_id, skid=skid).first()
 
-        with switch_to_school_db(skid) as tenant_session:
-            su = tenant_session.query(SchoolUsers).filter_by(id=school_user_id).first()
+        with switch_to_institution_db(skid) as tenant_session:
+            su = tenant_session.query(InstitutionUsers).filter_by(id=institution_user_id).first()
             if not su:
                 raise LookupError('User not found')
             for field in ('username', 'email'):
                 value = changes.get(field)
                 if value and value != getattr(su, field):
-                    clash = tenant_session.query(SchoolUsers).filter(getattr(SchoolUsers, field) == value, SchoolUsers.id != school_user_id).first()
+                    clash = tenant_session.query(InstitutionUsers).filter(getattr(InstitutionUsers, field) == value, InstitutionUsers.id != institution_user_id).first()
                     main_clash = User.query.filter(getattr(User, field) == value, User.id != (main_user.id if main_user else 0)).first()
                     if clash or main_clash:
                         raise ValueError(f"That {field} is already in use")
@@ -879,4 +879,4 @@ class UserService:
                 if key in changes and hasattr(main_user, key):
                     setattr(main_user, key, changes[key] or None if key == 'phone' else changes[key])
             db.session.commit()
-        return UserService.get_school_user(skid, school_user_id)
+        return UserService.get_institution_user(skid, institution_user_id)

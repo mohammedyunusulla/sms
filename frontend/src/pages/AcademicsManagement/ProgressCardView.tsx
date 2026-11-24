@@ -13,7 +13,7 @@ import { academicsService } from '../../services/modules/academicsService';
 import { IProgressCard, IProgressCardSubject } from '../../types/index';
 import { useAuthStore } from '../../stores/authStore';
 import { generateProgressCardPdf } from '../../prints';
-import type { SchoolData, PdfAction } from '../../prints';
+import type { InstitutionData, PdfAction } from '../../prints';
 import { formatDateRange } from '../../utils/dateRange';
 
 type GradeBadgeVariant = 'success' | 'primary' | 'warning' | 'danger' | 'secondary';
@@ -68,14 +68,14 @@ const ProgressCardView: FC = () => {
         }
     };
 
-    // Build school data for PDF header
-    const getSchoolData = useCallback((): SchoolData => {
+    // Build institution data for PDF header
+    const getInstitutionData = useCallback((): InstitutionData => {
         const authUser = useAuthStore.getState().user;
         return {
-            schoolName: authUser?.school_name || 'School Name',
-            schoolAddress: '',
-            schoolPhone: '',
-            schoolEmail: authUser?.email || '',
+            institutionName: authUser?.institution_name || 'Institution Name',
+            institutionAddress: '',
+            institutionPhone: '',
+            institutionEmail: authUser?.email || '',
             logo: null,
             generatedBy: authUser?.full_name || authUser?.name || 'System',
         };
@@ -85,13 +85,13 @@ const ProgressCardView: FC = () => {
     const handlePrintReport = useCallback(async (action: PdfAction) => {
         if (!progressCard) return;
         try {
-            await generateProgressCardPdf(progressCard, getSchoolData(), action);
+            await generateProgressCardPdf(progressCard, getInstitutionData(), action);
             toast.success(`Progress card ${action === 'download' ? 'downloaded' : action === 'print' ? 'sent to printer' : 'opened'} successfully`);
         } catch (err: any) {
             console.error('Error generating progress card PDF:', err);
             toast.error('Failed to generate progress card PDF');
         }
-    }, [progressCard, getSchoolData]);
+    }, [progressCard, getInstitutionData]);
 
     const hasInternalExternal = progressCard?.subject_details?.some(s => s.has_internal_external);
 

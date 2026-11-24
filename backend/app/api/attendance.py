@@ -3,7 +3,7 @@ from flask import Blueprint, request, jsonify
 from app.services.attendance_service import AttendanceService
 from app.decorators import log_actions, login_required
 from app.decorators.auth import student_access_required
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from app.utils.teaching_scope import current_teacher_id, forbidden, is_class_teacher, student_section_id
 
 
@@ -12,7 +12,7 @@ def _class_teacher_guard(skid, records, default_section_id=None):
     teacher_id = current_teacher_id()
     if teacher_id is None:
         return None
-    with switch_to_school_db(skid) as session:
+    with switch_to_institution_db(skid) as session:
         for r in records or []:
             # record/bulk sends section_id per record; update/bulk sends it once at the top level
             section_id = r.get('section_id', default_section_id)
@@ -27,7 +27,7 @@ from datetime import datetime
 attendance_bp = Blueprint('attendance', __name__)
 
 @attendance_bp.route('/record/bulk/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission='manage_attendance')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER'], permission='manage_attendance')
 @log_actions('RECORD-ATTENDANCE')
 def record_attendance_bulk(skid):
     """
@@ -39,12 +39,12 @@ def record_attendance_bulk(skid):
         if not data:
             return jsonify({'message': 'No data provided'}), 400
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
             
         denied = _class_teacher_guard(skid, data.get('records'), data.get('section_id'))
         if denied:
             return denied
-        attendance = AttendanceService.record_attendance_bulk(data, skid, getattr(request.current_user, 'school_user_id', None))
+        attendance = AttendanceService.record_attendance_bulk(data, skid, getattr(request.current_user, 'institution_user_id', None))
         
         return jsonify({
             'message': 'Attendance recorded successfully',
@@ -60,7 +60,7 @@ def record_attendance_bulk(skid):
 
 
 @attendance_bp.route('/update/bulk/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission='manage_attendance')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER'], permission='manage_attendance')
 @log_actions('UPDATE-ATTENDANCE-BULK')
 def update_attendance_bulk(skid):
     """
@@ -77,12 +77,12 @@ def update_attendance_bulk(skid):
             }), 400
         
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
         
         denied = _class_teacher_guard(skid, data.get('records'), data.get('section_id'))
         if denied:
             return denied
-        updated_records = AttendanceService.update_attendance_bulk(data, skid, getattr(request.current_user, 'school_user_id', None))
+        updated_records = AttendanceService.update_attendance_bulk(data, skid, getattr(request.current_user, 'institution_user_id', None))
         
         return jsonify({
             'message': 'Attendance updated successfully',
@@ -106,14 +106,14 @@ def update_attendance_bulk(skid):
 
 
 @attendance_bp.route('/<skid>/<section_id>/<date>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_attendance', 'manage_attendance'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER'], permission=('view_attendance', 'manage_attendance'))
 def get_attendance(skid, section_id, date):
     """
     Get attendance records for a specific section and date
     """
     try:
         if not skid or not section_id or not date:
-            raise ValueError("School ID, Section ID, and Date are required")
+            raise ValueError("Institution ID, Section ID, and Date are required")
         to_date(date, "Date")  # plain message instead of Python's parser text (QA D25)
 
         attendance = AttendanceService.get_attendance(skid, section_id, date)
@@ -132,7 +132,7 @@ def get_attendance(skid, section_id, date):
 
 
 @attendance_bp.route('/view/<skid>/<academic_year_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_attendance', 'manage_attendance'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER'], permission=('view_attendance', 'manage_attendance'))
 @log_actions('VIEW-SINGLE-DAY-ATTENDANCE')
 def view_single_day_attendance(skid, academic_year_id):
     """
@@ -190,7 +190,7 @@ def view_single_day_attendance(skid, academic_year_id):
 
 
 @attendance_bp.route('/monthly/<skid>/<academic_year_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_attendance', 'manage_attendance'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER'], permission=('view_attendance', 'manage_attendance'))
 @log_actions('VIEW-MONTHLY-ATTENDANCE')
 def view_monthly_attendance(skid, academic_year_id):
     """
@@ -260,7 +260,7 @@ def view_monthly_attendance(skid, academic_year_id):
 
 
 @attendance_bp.route('/range/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_attendance', 'manage_attendance'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER'], permission=('view_attendance', 'manage_attendance'))
 @log_actions('VIEW-DATE-RANGE-ATTENDANCE')
 def view_date_range_attendance(skid):
     """
@@ -323,7 +323,7 @@ def view_date_range_attendance(skid):
 
 @attendance_bp.route('/student/<skid>/<int:student_id>', methods=['GET'])
 # students too (their own only): student_access_required limits students to themselves, parents to their children
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'PARENT', 'STUDENT'], permission=('view_attendance', 'manage_attendance'), own_roles=('STUDENT', 'PARENT'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PARENT', 'STUDENT'], permission=('view_attendance', 'manage_attendance'), own_roles=('STUDENT', 'PARENT'))
 @student_access_required('student_id')
 @log_actions('VIEW-STUDENT-ATTENDANCE')
 def view_student_attendance(skid, student_id):

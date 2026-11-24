@@ -1,12 +1,12 @@
-# app/models/school_users.py
+# app/models/institution_users.py
 from app.models.base import BaseModelTenant, BaseModelTenantMixin
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Text, Date
 from sqlalchemy.orm import relationship
 from .UserRoles import UserRoles
 
-# --- User Table (Tenant DB - consolidated users for a specific school) ---
-class SchoolUsers(BaseModelTenant, BaseModelTenantMixin):
-    __tablename__ = 'school_users'
+# --- User Table (Tenant DB - consolidated users for a specific institution) ---
+class InstitutionUsers(BaseModelTenant, BaseModelTenantMixin):
+    __tablename__ = 'institution_users'
     id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(255), unique=True, nullable=False)
     email = Column(String(255), unique=True, nullable=False)
@@ -21,7 +21,7 @@ class SchoolUsers(BaseModelTenant, BaseModelTenantMixin):
     is_active = Column(Boolean, default=True)
 
     # Relationships to profile tables (one-to-one with cascade for deletion)
-    school_admin = relationship("SchoolAdmin", uselist=False, back_populates="user", cascade="all, delete-orphan")
+    institution_admin = relationship("InstitutionAdmin", uselist=False, back_populates="user", cascade="all, delete-orphan")
     teacher = relationship("Teacher", uselist=False, back_populates="user", cascade="all, delete-orphan")
     student = relationship("Student", uselist=False, back_populates="user", cascade="all, delete-orphan")
     staff = relationship("Staff", uselist=False, back_populates="user", cascade="all, delete-orphan")
@@ -31,7 +31,7 @@ class SchoolUsers(BaseModelTenant, BaseModelTenantMixin):
 
     def __repr__(self):
         role_name = self.role_obj.role_name if self.role_obj else "No Role"
-        return f"<SchoolUser {self.username} Role: {role_name}>"
+        return f"<InstitutionUser {self.username} Role: {role_name}>"
 
     @property
     def full_name(self):
@@ -45,8 +45,8 @@ class SchoolUsers(BaseModelTenant, BaseModelTenantMixin):
         data['role'] = self.roles[0].role.to_dict() if self.roles else None
 
         # Add profile data if exists
-        if self.school_admin:
-            data['profile'] = self.school_admin.to_dict()
+        if self.institution_admin:
+            data['profile'] = self.institution_admin.to_dict()
         elif self.teacher:
             data['profile'] = self.teacher.to_dict()
         elif self.student:

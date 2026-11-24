@@ -232,7 +232,7 @@ const UserForm: FC = () => {
                 role: formData.role.toUpperCase(),
                 status: formData.status,
                 skid: authUser?.skid,
-                school_id: authUser?.school_id,
+                institution_id: authUser?.institution_id,
             };
 
             if (!isEditMode) {
@@ -243,11 +243,11 @@ const UserForm: FC = () => {
                 const { userService } = await import('../../services/modules/userService');
                 await userService.update(id, submitData);
                 toast.success('User updated successfully');
-            } else if (submitData.role === 'SCHOOL_ADMIN') {
-                // SCHOOL_ADMIN uses the existing dedicated endpoint
+            } else if (submitData.role === 'INSTITUTION_ADMIN') {
+                // INSTITUTION_ADMIN uses the existing dedicated endpoint
                 const { userService } = await import('../../services/modules/userService');
                 await userService.create(submitData);
-                toast.success('School admin created successfully');
+                toast.success('Institution admin created successfully');
             } else {
                 // All other staff roles (PRINCIPAL, BUS_STAFF, etc.)
                 await staffService.create(submitData);
@@ -297,7 +297,7 @@ const UserForm: FC = () => {
                 subtitle={
                     isEditMode
                         ? `Update details for ${selectedUser?.name}`
-                        : 'Create a new school staff account (Principal, Bus Staff, etc.)'
+                        : 'Create a new institution staff account (Principal, Bus Staff, etc.)'
                 }
                 breadcrumbs={[
                     { label: 'Dashboard', href: '/dashboard' },

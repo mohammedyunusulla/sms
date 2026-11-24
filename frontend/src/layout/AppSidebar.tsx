@@ -35,24 +35,24 @@ const allMenuItems: NavItem[] = [
         name: "Dashboard",
         path: "/dashboard",
     },
-    // School Management (SuperAdmin Only)
+    // Institution Management (SuperAdmin Only)
     {
         icon: <BoxCubeIcon />,
-        name: "School Management",
+        name: "Institution Management",
         subItems: [
-            { name: "List Schools", path: "/schools", pro: false },
-            { name: "Create School", path: "/schools/new", pro: false },
-            { name: "School Admins", path: "/school-admins", pro: false },
+            { name: "List Institutions", path: "/institutions", pro: false },
+            { name: "Create Institution", path: "/institutions/new", pro: false },
+            { name: "Institution Admins", path: "/institution-admins", pro: false },
             { name: "System Admins", path: "/system-admins", pro: false },
         ],
     },
-    // Announcements (SchoolAdmin, Principal, Teacher, Student)
+    // Announcements (InstitutionAdmin, Principal, Teacher, Student)
     {
         icon: <TableIcon />,
         name: "Announcements",
         path: "/announcements",
     },
-    // Timetable (SchoolAdmin, Principal, Teacher)
+    // Timetable (InstitutionAdmin, Principal, Teacher)
     {
         icon: <CalenderIcon />,
         name: "Timetable",
@@ -136,7 +136,7 @@ const allMenuItems: NavItem[] = [
         name: "Homework AI",
         path: "/homework",
     },
-    // Attendance (SchoolAdmin, Principal, Teacher)
+    // Attendance (InstitutionAdmin, Principal, Teacher)
     {
         icon: <ListIcon />,
         name: "Attendance",
@@ -145,7 +145,7 @@ const allMenuItems: NavItem[] = [
             { name: "Attendance Report", path: "/attendance/report", pro: false },
         ],
     },
-    // Class Management (SchoolAdmin, Principal)
+    // Class Management (InstitutionAdmin, Principal)
     {
         icon: <PageIcon />,
         name: "Class Management",
@@ -154,7 +154,7 @@ const allMenuItems: NavItem[] = [
             { name: "Rooms", path: "/rooms", pro: false },
         ],
     },
-    // Exam Management (SchoolAdmin, Principal)
+    // Exam Management (InstitutionAdmin, Principal)
     {
         icon: <PieChartIcon />,
         name: "Exam Management",
@@ -177,7 +177,7 @@ const allMenuItems: NavItem[] = [
         name: "My Invigilator Schedule",
         path: "/exams/invigilator-schedule",
     },
-    // Academics Management (SchoolAdmin, Principal, Teacher)
+    // Academics Management (InstitutionAdmin, Principal, Teacher)
     {
         icon: <PlugInIcon />,
         name: "Academics Management",
@@ -188,7 +188,7 @@ const allMenuItems: NavItem[] = [
             { name: "Class Progress", path: "/academics/progress/class", pro: false },
         ],
     },
-    // Syllabus Management (SchoolAdmin, Principal, Teacher)
+    // Syllabus Management (InstitutionAdmin, Principal, Teacher)
     {
         icon: <PageIcon />,
         name: "Syllabus Management",
@@ -198,7 +198,7 @@ const allMenuItems: NavItem[] = [
             { name: "My Syllabus Progress", path: "/syllabus/my-progress", pro: false },
         ],
     },
-    // Bus Management (SchoolAdmin, Principal, Bus Staff)
+    // Bus Management (InstitutionAdmin, Principal, Bus Staff)
     {
         icon: <TaskIcon />,
         name: "Bus Management",
@@ -207,7 +207,7 @@ const allMenuItems: NavItem[] = [
             { name: "Tracking Report", path: "/bus-scan/report", pro: false },
         ],
     },
-    // Finance Management (SchoolAdmin)
+    // Finance Management (InstitutionAdmin)
     {
         icon: <GridIcon />,
         name: "Finance Management",
@@ -221,7 +221,7 @@ const allMenuItems: NavItem[] = [
             { name: "Salary Payments", path: "/finance/salary-payments", pro: false },
         ],
     },
-    // User Management (SchoolAdmin, Principal)
+    // User Management (InstitutionAdmin, Principal)
     {
         icon: <UserCircleIcon />,
         name: "User Management",
@@ -322,11 +322,11 @@ const AppSidebar: React.FC = () => {
                 return acc;
             }
 
-            // SuperAdmin only sees Dashboard + superAdmin-only groups (School Management)
-            // All other groups are school-specific and not relevant to SuperAdmin
+            // SuperAdmin only sees Dashboard + superAdmin-only groups (Institution Management)
+            // All other groups are institution-specific and not relevant to SuperAdmin
             if (isSuperAdmin) return acc;
 
-            // Full-access roles (SCHOOL_ADMIN) see everything, except excluded paths
+            // Full-access roles (INSTITUTION_ADMIN) see everything, except excluded paths
             if (isFullAccess) {
                 const excluded = sidebarConfig.excludeFromFullAccess;
                 if (excluded && excluded.length > 0) {

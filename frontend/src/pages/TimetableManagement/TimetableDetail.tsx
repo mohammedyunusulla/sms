@@ -20,7 +20,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { usePermissions } from '../../hooks/usePermissions';
 import { Permission } from '../../config/permissions';
 import { generateTimetablePdf } from '../../prints';
-import type { SchoolData, PdfAction, TimetableReportData } from '../../prints';
+import type { InstitutionData, PdfAction, TimetableReportData } from '../../prints';
 
 const TimetableDetail: FC = () => {
     const navigate = useNavigate();
@@ -51,14 +51,14 @@ const TimetableDetail: FC = () => {
         fetchTimetable();
     }, [id, navigate, academicYearVersion]);
 
-    // Build school data for PDF header
-    const getSchoolData = useCallback((): SchoolData => {
+    // Build institution data for PDF header
+    const getInstitutionData = useCallback((): InstitutionData => {
         const authUser = useAuthStore.getState().user;
         return {
-            schoolName: authUser?.school_name || 'School Name',
-            schoolAddress: '',
-            schoolPhone: '',
-            schoolEmail: authUser?.email || '',
+            institutionName: authUser?.institution_name || 'Institution Name',
+            institutionAddress: '',
+            institutionPhone: '',
+            institutionEmail: authUser?.email || '',
             logo: null,
             generatedBy: authUser?.full_name || authUser?.name || 'System',
         };
@@ -78,13 +78,13 @@ const TimetableDetail: FC = () => {
                 entries: timetable.entries || {},
                 isDraft: timetable.is_draft,
             };
-            await generateTimetablePdf(reportData, getSchoolData(), action);
+            await generateTimetablePdf(reportData, getInstitutionData(), action);
             toast.success(`Timetable ${action === 'download' ? 'downloaded' : action === 'print' ? 'sent to printer' : 'opened'} successfully`);
         } catch (err: any) {
             console.error('Error generating timetable PDF:', err);
             toast.error('Failed to generate timetable PDF');
         }
-    }, [timetable, getSchoolData]);
+    }, [timetable, getInstitutionData]);
 
     // Handle edit draft
     const handleEditDraft = () => {
@@ -186,14 +186,14 @@ const TimetableDetail: FC = () => {
                         </div>
                     )}
 
-                    {/* School Start Time */}
+                    {/* Institution Start Time */}
                     {timetable.configuration && (
                         <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800 print:bg-white print:p-3 print:border-gray-400 print:rounded-none">
                             <p className="text-xs text-green-600 dark:text-green-400 font-medium uppercase print:text-gray-600 print:text-xs">
-                                School Start
+                                Day Start
                             </p>
                             <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1 print:text-sm print:mt-1">
-                                {timetable.configuration.school_start_time}
+                                {timetable.configuration.institution_start_time}
                             </p>
                         </div>
                     )}

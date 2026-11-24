@@ -207,13 +207,13 @@ export default function TeacherHomeworkPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI Homework & Efficiency (Teacher)</h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Create homework and review class efficiency. Students start each homework on a notebook page with a school QR sticker.
+          Create homework and review class efficiency. Students start each homework on a notebook page with an institution QR sticker.
         </p>
       </div>
 
       {scopeLoaded && scopeSections !== null && scopeSections.length === 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-700/40 dark:bg-amber-900/20 dark:text-amber-200">
-          You aren't assigned to any class yet. Ask the school admin to make you a class teacher, assign you subjects, or add you to a published timetable.
+          You aren't assigned to any class yet. Ask the institution admin to make you a class teacher, assign you subjects, or add you to a published timetable.
         </div>
       )}
 

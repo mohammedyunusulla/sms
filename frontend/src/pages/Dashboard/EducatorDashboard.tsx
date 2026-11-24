@@ -62,7 +62,7 @@ const EducatorDashboard: FC = () => {
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
     const skid = user?.skid || '';
-    const teacherId = user?.school_user_id;
+    const teacherId = user?.institution_user_id;
     const academicYearId = user?.current_academic_year?.id;
 
     useEffect(() => {

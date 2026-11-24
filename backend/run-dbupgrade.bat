@@ -1,6 +1,6 @@
 @echo off
 echo ====================================
-echo   School Management System
+echo   Institution Management System
 echo   Database Upgrade
 echo ====================================
 

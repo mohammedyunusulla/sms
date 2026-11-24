@@ -16,8 +16,8 @@ export const MyAttendance: FC = () => {
                 subtitle="Your attendance month by month"
                 breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'My Attendance', href: '#' }]}
             />
-            {user?.role === 'STUDENT' && user.school_user_id
-                ? <StudentAttendanceView studentId={user.school_user_id} />
+            {user?.role === 'STUDENT' && user.institution_user_id
+                ? <StudentAttendanceView studentId={user.institution_user_id} />
                 : <p className="text-sm text-gray-500 dark:text-gray-400">This page is for student accounts.</p>}
         </div>
     );

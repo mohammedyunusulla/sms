@@ -247,7 +247,7 @@ const TimetableEdit: FC = () => {
                 academic_year_id: timetable?.academic_year_id,
                 semester: timetable?.semester,
                 period_duration: timetable?.configuration.period_duration,
-                school_start_time: timetable?.configuration.school_start_time,
+                institution_start_time: timetable?.configuration.institution_start_time,
                 lunch_start_time: timetable?.configuration.lunch_start_time,
                 lunch_duration: timetable?.configuration.lunch_duration,
                 total_periods: timetable?.configuration.total_periods,
@@ -343,13 +343,13 @@ const TimetableEdit: FC = () => {
                         </p>
                     </div>
 
-                    {/* School Start Time */}
+                    {/* Institution Start Time */}
                     <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
                         <p className="text-xs text-green-600 dark:text-green-400 font-medium uppercase">
-                            School Start
+                            Day Start
                         </p>
                         <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1">
-                            {timetable.configuration.school_start_time}
+                            {timetable.configuration.institution_start_time}
                         </p>
                     </div>
 

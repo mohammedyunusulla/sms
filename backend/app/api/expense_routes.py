@@ -7,7 +7,7 @@ expense_bp = Blueprint('expenses', __name__)
 
 # Salary Setup Routes
 @expense_bp.route('/list/salary-setup/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_salaries')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_salaries')
 @log_actions('GET_SALARY_SETUPS')
 def get_salary_setups(skid):
     try:
@@ -24,7 +24,7 @@ def get_salary_setups(skid):
         return jsonify({'message': f'Failed to get salary setups: {str(e)}'}), 500
 
 @expense_bp.route('/salary-setup/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_salaries')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_salaries')
 @log_actions('CREATE_SALARY_SETUP')
 def create_salary_setup(skid):
     try:
@@ -42,7 +42,7 @@ def create_salary_setup(skid):
 
 
 @expense_bp.route('/salary-setup/update/<skid>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_salaries')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_salaries')
 @log_actions('UPDATE_SALARY_SETUP')
 def update_salary_setup(skid):
     try:
@@ -59,7 +59,7 @@ def update_salary_setup(skid):
 
 
 @expense_bp.route('/salary-setup/delete/<skid>/<int:setup_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_salaries')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_salaries')
 @log_actions('DELETE_SALARY_SETUP')
 def delete_salary_setup(skid, setup_id):
     try:
@@ -77,7 +77,7 @@ def delete_salary_setup(skid, setup_id):
 
 # Salary Payment Routes
 @expense_bp.route('/salary-payments/generate/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_salaries')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_salaries')
 @log_actions('GENERATE_SALARIES')
 def generate_salaries(skid):
     try:
@@ -99,7 +99,7 @@ def generate_salaries(skid):
         return jsonify({'message': f'Failed to generate salaries: {str(e)}'}), 500
 
 @expense_bp.route('/salary-payments/<int:payment_id>/mark-paid/<skid>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_salaries')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_salaries')
 @log_actions('MARK_SALARY_PAID')
 def mark_salary_paid(skid, payment_id):
     try:
@@ -117,7 +117,7 @@ def mark_salary_paid(skid, payment_id):
 
 
 @expense_bp.route('/salary-payments/<skid>/mark-unpaid/<int:payment_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_salaries')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_salaries')
 @log_actions('MARK_SALARY_UNPAID')
 def mark_salary_unpaid(skid, payment_id):
     try:
@@ -135,7 +135,7 @@ def mark_salary_unpaid(skid, payment_id):
 
 # Get salary payments for academic year
 @expense_bp.route('/salary-payments/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_salaries')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_salaries')
 @log_actions('GET_SALARY_PAYMENTS')
 def get_salary_payments(skid):
     try:
@@ -155,7 +155,7 @@ def get_salary_payments(skid):
 
 #-------------------------------------------Expense Routes-----------------------------------------------------------
 @expense_bp.route('/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission=('view_expenses', 'manage_expenses'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission=('view_expenses', 'manage_expenses'))
 @log_actions('GET_EXPENSES')
 def get_expenses(skid):
     try:
@@ -183,7 +183,7 @@ def get_expenses(skid):
 
 
 @expense_bp.route('/create/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_expenses')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_expenses')
 @log_actions('CREATE_EXPENSE')
 def create_expense(skid):
     try:
@@ -201,7 +201,7 @@ def create_expense(skid):
 
 # Get expense categories (constant list)
 @expense_bp.route('/categories', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission=('view_expenses', 'manage_expenses'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission=('view_expenses', 'manage_expenses'))
 def get_expense_categories():
     return jsonify({
         'categories': ExpenseService.EXPENSE_CATEGORIES,
@@ -210,7 +210,7 @@ def get_expense_categories():
 
 
 @expense_bp.route('/update/<skid>/<int:expense_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_expenses')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_expenses')
 @log_actions('UPDATE_EXPENSE')
 def update_expense(skid, expense_id):
     try:
@@ -227,7 +227,7 @@ def update_expense(skid, expense_id):
         return jsonify({'message': f'Failed to update expense: {str(e)}'}), 500
 
 @expense_bp.route('/delete/<skid>/<int:expense_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_expenses')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_expenses')
 @log_actions('DELETE_EXPENSE')
 def delete_expense(skid, expense_id):
     try:

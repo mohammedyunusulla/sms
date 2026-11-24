@@ -12,10 +12,10 @@ export default function ParentLayout() {
 
     useEffect(() => {
         async function fetchChildren() {
-            if (!user?.skid || !user?.school_user_id) return;
+            if (!user?.skid || !user?.institution_user_id) return;
             setLoading(true);
             try {
-                const res = await childrenService.getChildren(user.skid, user.school_user_id);
+                const res = await childrenService.getChildren(user.skid, user.institution_user_id);
                 const data = res?.data?.data || res?.data || [];
                 setChildren(Array.isArray(data) ? data : []);
             } catch (err) {
@@ -26,7 +26,7 @@ export default function ParentLayout() {
             }
         }
         fetchChildren();
-    }, [user?.skid, user?.school_user_id]);
+    }, [user?.skid, user?.institution_user_id]);
 
     return (
         <Tabs

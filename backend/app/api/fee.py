@@ -10,7 +10,7 @@ fee_bp = Blueprint('fee', __name__)
 
 # CREATE FEE STRUCTURE
 @fee_bp.route('/structure/create/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fee_settings')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_fee_settings')
 @log_actions('CREATE_FEE_STRUCTURE')
 def create_fee_structure(skid):
     """
@@ -48,7 +48,7 @@ def create_fee_structure(skid):
 
 # GET FEE STRUCTURES
 @fee_bp.route('/structure/list/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'], permission=('view_fees', 'manage_fees'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'CLERK'], permission=('view_fees', 'manage_fees'))
 def get_fee_structures(skid):
     """Get all fee structures with optional filters"""
     try:
@@ -67,7 +67,7 @@ def get_fee_structures(skid):
 
 # UPDATE FEE STRUCTURE
 @fee_bp.route('/structure/update/<skid>/<int:fee_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fee_settings')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_fee_settings')
 @log_actions('UPDATE_FEE_STRUCTURE')
 def update_fee_structure(skid, fee_id):
     """Update fee structure"""  
@@ -94,7 +94,7 @@ def update_fee_structure(skid, fee_id):
 
 # BULK ASSIGN FEES TO CLASS
 @fee_bp.route('/assign/class/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fee_settings')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_fee_settings')
 @log_actions('BULK_ASSIGN_FEES')
 def bulk_assign_fees_to_class(skid):
     """
@@ -134,7 +134,7 @@ def bulk_assign_fees_to_class(skid):
 
 # RECORD PAYMENT
 @fee_bp.route('/payment/record/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT', 'CLERK'], permission='manage_fees')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'ACCOUNTANT', 'CLERK'], permission='manage_fees')
 @log_actions('RECORD_FEE_PAYMENT')
 def record_payment(skid):
     """
@@ -157,7 +157,7 @@ def record_payment(skid):
             if field not in data:
                 raise ValueError(f"Missing required field: {field}")
         
-        collected_by_id = g.current_user.school_user_id if hasattr(g, 'current_user') else None
+        collected_by_id = g.current_user.institution_user_id if hasattr(g, 'current_user') else None
         
         result = FeeService.record_payment(data, skid, collected_by_id)
         
@@ -175,7 +175,7 @@ def record_payment(skid):
 
 # CANCEL PAYMENT
 @fee_bp.route('/payment/cancel/<skid>/<int:payment_id>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fee_settings')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_fee_settings')
 @log_actions('CANCEL_FEE_PAYMENT')
 def cancel_payment(skid, payment_id):
     """
@@ -189,7 +189,7 @@ def cancel_payment(skid, payment_id):
         
         data = data or {}
         # the logged-in user is request.current_user (g.current_user.get() crashed with a 500)
-        cancelled_by_id = getattr(request.current_user, 'school_user_id', None)
+        cancelled_by_id = getattr(request.current_user, 'institution_user_id', None)
 
         result = FeeService.cancel_payment(payment_id, skid, cancelled_by_id, data.get('reason'))
         
@@ -206,7 +206,7 @@ def cancel_payment(skid, payment_id):
 
 # CONVERT REMAINING INSTALLMENTS TO FULL PAYMENT
 @fee_bp.route('/payment/convert-to-full/<skid>/<int:student_fee_id>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT', 'CLERK'], permission='manage_fees')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'ACCOUNTANT', 'CLERK'], permission='manage_fees')
 def convert_to_full_payment(skid, student_fee_id):
     """Convert remaining installments to full payment option"""
     try:
@@ -224,13 +224,13 @@ def convert_to_full_payment(skid, student_fee_id):
 
 # FULL PAYMENT FOR REMAINING CONVERTED INSTALLMENT AMOUNT
 @fee_bp.route('/payment/record-full-remaining/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT', 'CLERK'], permission='manage_fees')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'ACCOUNTANT', 'CLERK'], permission='manage_fees')
 def record_full_remaining_payment(skid):
     """Record full payment for remaining balance after installments"""
     try:
         from flask import g
         data = request.get_json()
-        collected_by_id = getattr(request.current_user, 'school_user_id', None)
+        collected_by_id = getattr(request.current_user, 'institution_user_id', None)
         result = FeeService.record_full_payment_after_installments(data, skid, collected_by_id)
         return jsonify({
             'message': 'Full payment recorded successfully',
@@ -249,7 +249,7 @@ def record_full_remaining_payment(skid):
 
 # CREATE INSTALLMENTS
 @fee_bp.route('/installments/create/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fee_settings')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_fee_settings')
 @log_actions('CREATE_FEE_INSTALLMENTS')
 def create_installments(skid):
     """
@@ -297,7 +297,7 @@ def create_installments(skid):
 
 # AUTO-GENERATE INSTALLMENTS
 @fee_bp.route('/installments/auto-generate/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fee_settings')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_fee_settings')
 @log_actions('AUTO_GENERATE_INSTALLMENTS')
 def auto_generate_installments(skid):
     """
@@ -335,9 +335,9 @@ def auto_generate_installments(skid):
         return jsonify({'message': str(e), 'status': 'error', 'code': 500}), 500
 
 # RECURRING INSTALLMENTS
-# skid is in the URL like every other route, so login_required checks the user belongs to that school
+# skid is in the URL like every other route, so login_required checks the user belongs to that institution
 @fee_bp.route('/installments/auto-generate-recurring/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fee_settings')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_fee_settings')
 def auto_generate_recurring_installments(skid):
     """Auto-generate installments for recurring fees. Body: {student_fee_id, preview?}"""
     try:
@@ -358,7 +358,7 @@ def auto_generate_recurring_installments(skid):
 
 # GET INSTALLMENTS
 @fee_bp.route('/installments/get/<skid>/<int:student_fee_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'CLERK'], permission=('view_fees', 'manage_fees'), own_roles=('STUDENT', 'PARENT'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'ACCOUNTANT', 'PARENT', 'STUDENT', 'CLERK'], permission=('view_fees', 'manage_fees'), own_roles=('STUDENT', 'PARENT'))
 @student_access_required('student_fee_id', resolver=student_fee_owner)
 def get_installments(skid, student_fee_id):
     """Get all installments for a student fee"""
@@ -378,7 +378,7 @@ def get_installments(skid, student_fee_id):
 
 # RECORD INSTALLMENT PAYMENT
 @fee_bp.route('/installments/payment/<skid>/<int:installment_id>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT', 'CLERK'], permission='manage_fees')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'ACCOUNTANT', 'CLERK'], permission='manage_fees')
 @log_actions('RECORD_INSTALLMENT_PAYMENT')
 def record_installment_payment(skid, installment_id):
     """
@@ -402,7 +402,7 @@ def record_installment_payment(skid, installment_id):
         # Get collected_by_id
         collected_by_id = None
         if hasattr(request, 'current_user') and request.current_user:
-            collected_by_id = request.current_user.school_user_id
+            collected_by_id = request.current_user.institution_user_id
         
         result = FeeService.record_installment_payment(
             installment_id,
@@ -430,7 +430,7 @@ def record_installment_payment(skid, installment_id):
 
 # GET STUDENT FEE SUMMARY
 @fee_bp.route('/summary/student/<skid>/<int:student_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'PARENT', 'STUDENT', 'CLERK'], permission=('view_fees', 'manage_fees'), own_roles=('STUDENT', 'PARENT'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'PARENT', 'STUDENT', 'CLERK'], permission=('view_fees', 'manage_fees'), own_roles=('STUDENT', 'PARENT'))
 @student_access_required('student_id')
 def get_student_fee_summary(skid, student_id):
     """Get complete fee summary for a student"""
@@ -453,7 +453,7 @@ def get_student_fee_summary(skid, student_id):
 
 # FEE COLLECTION REPORT
 @fee_bp.route('/report/collection/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT', 'CLERK'], permission='manage_fees')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'ACCOUNTANT', 'CLERK'], permission='manage_fees')
 def get_fee_collection_report(skid):
     """Get fee collection report with filters"""
     try:
@@ -493,7 +493,7 @@ def get_fee_collection_report(skid):
 
 # DEFAULTERS LIST
 @fee_bp.route('/report/defaulters/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT', 'CLERK'], permission='manage_fees')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'ACCOUNTANT', 'CLERK'], permission='manage_fees')
 def get_defaulters_list(skid):
     """Get list of students with pending fees"""
      
@@ -524,7 +524,7 @@ def get_defaulters_list(skid):
 
 # APPLY DISCOUNT
 @fee_bp.route('/discount/apply/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fee_settings')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_fee_settings')
 @log_actions('APPLY_FEE_DISCOUNT')
 def apply_discount(skid):
     """
@@ -548,7 +548,7 @@ def apply_discount(skid):
             if field not in data:
                 raise ValueError(f"Missing required field: {field}")
 
-        approved_by_id = getattr(request.current_user, 'school_user_id', None)
+        approved_by_id = getattr(request.current_user, 'institution_user_id', None)
         
         result = FeeService.apply_discount(data, skid, approved_by_id)
         
@@ -566,7 +566,7 @@ def apply_discount(skid):
 
 # DELETE SINGLE FEE STRUCTURE
 @fee_bp.route('/structure/delete/<skid>/<int:fee_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fee_settings')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_fee_settings')
 @log_actions('DELETE_FEE_STRUCTURE')
 def delete_single_fee_structure(skid, fee_id):
     """
@@ -590,7 +590,7 @@ def delete_single_fee_structure(skid, fee_id):
 
 # DELETE ALL FEE STRUCTURES FOR A CLASS
 @fee_bp.route('/structure/delete-class/<skid>/<int:class_id>/<academic_year_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_fee_settings')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_fee_settings')
 @log_actions('DELETE_CLASS_FEE_STRUCTURES')
 def delete_class_fee_structures(skid, class_id, academic_year_id):
     """
@@ -616,14 +616,14 @@ def delete_class_fee_structures(skid, class_id, academic_year_id):
 
 # UNIVERSAL STUDENT SEARCH FOR FEE COLLECTION
 @fee_bp.route('/search-student/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'ACCOUNTANT', 'CLERK'], permission='manage_fees')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'ACCOUNTANT', 'CLERK'], permission='manage_fees')
 def search_student_for_fees(skid):
     """
     Universal student search for fee collection
     Query params:
     - q: Search query (name/phone/roll_no)
     - class_id: Filter by class (optional)
-    - academic_year_id: For fee filtering (default: the school's current academic year)
+    - academic_year_id: For fee filtering (default: the institution's current academic year)
     """
     
     try:
@@ -631,10 +631,10 @@ def search_student_for_fees(skid):
         class_id = request.args.get('class_id')
         academic_year_id = request.args.get('academic_year_id')
         if not academic_year_id:
-            # it fell back to the text '2024-25' (QA C29): use the school's current academic year
-            from app.utils.db_manager import switch_to_school_db
+            # it fell back to the text '2024-25' (QA C29): use the institution's current academic year
+            from app.utils.db_manager import switch_to_institution_db
             from app.models.tenant import AcademicYear
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 current = session.query(AcademicYear).filter_by(is_current=True).first()
                 academic_year_id = current.id if current else None
         

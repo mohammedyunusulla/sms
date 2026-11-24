@@ -5,8 +5,8 @@ import SectionHeading from "./SectionHeading";
 const STEPS = [
   {
     icon: BuildingIcon,
-    title: "Your school is set up",
-    body: "Your school is registered on EduSpyre and gets its own dedicated, isolated workspace and database.",
+    title: "Your institution is set up",
+    body: "Your institution is registered on EduSpyre and gets its own dedicated, isolated workspace and database.",
   },
   {
     icon: UploadIcon,
@@ -24,7 +24,7 @@ const SECURITY = [
   {
     icon: DatabaseIcon,
     title: "Isolated by design",
-    body: "Every school's records live in their own database and are never mixed with another school's.",
+    body: "Every institution's records live in their own database and are never mixed with another institution's.",
   },
   {
     icon: ShieldCheckIcon,
@@ -83,7 +83,7 @@ export default function HowItWorksSection() {
                 align="left"
                 inverted
                 eyebrow="Security & privacy"
-                title="Your school's data stays your school's"
+                title="Your institution's data stays your institution's"
               />
               <ul className="grid gap-6 sm:grid-cols-3">
                 {SECURITY.map((item) => (

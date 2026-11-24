@@ -1,12 +1,12 @@
 from app.models.main.User import User, UserRole
-from app.models.main.School import School
-from app.models.tenant import Student, SchoolUsers, StudentEnrollment, Class, StudentParent, Parent, AcademicYear
+from app.models.main.Institution import Institution
+from app.models.tenant import Student, InstitutionUsers, StudentEnrollment, Class, StudentParent, Parent, AcademicYear
 from app.models.tenant.Sections import Section
 from app import db
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
 from flask import jsonify
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from app.services.userRole_service import UserRolesService
 from datetime import datetime, date, timedelta
 import logging
@@ -17,23 +17,23 @@ class StudentService:
     @staticmethod
     def create_student_user(data, skid):
         """
-        All-or-nothing: the login is checked first (not saved), then the school record, profile,
+        All-or-nothing: the login is checked first (not saved), then the institution record, profile,
         enrollment and role link are saved together, then the login. If the login save fails, the
-        school rows are removed again (see app/utils/account_create.py).
+        institution rows are removed again (see app/utils/account_create.py).
         """
-        from app.utils.account_create import add_role_link, remove_school_user, role_for
+        from app.utils.account_create import add_role_link, remove_institution_user, role_for
         user = None
-        school_user_id = None
+        institution_user_id = None
         tenant_saved = False
 
         try:
-            school = School.query.filter_by(skid=skid).first()
-            if not school:
-                raise ValueError("School not found")
+            institution = Institution.query.filter_by(skid=skid).first()
+            if not institution:
+                raise ValueError("Institution not found")
             
-            from app.models.main.School import SchoolPlan
-            plan = school.plan
-            create_login = plan in [SchoolPlan.STANDARD, SchoolPlan.PREMIUM]
+            from app.models.main.Institution import InstitutionPlan
+            plan = institution.plan
+            create_login = plan in [InstitutionPlan.STANDARD, InstitutionPlan.PREMIUM]
     
             # Step 1: Create main user (only for STANDARD/PREMIUM)
             if create_login:
@@ -46,15 +46,15 @@ class StudentService:
                     role=UserRole.STUDENT,  # never from the request
                     skid=skid,
                     plan=plan.value,  # Convert enum to string
-                    school_id=school.id  # from the school itself, never the request
+                    institution_id=institution.id  # from the institution itself, never the request
                 )
                 user.set_password(data['password'])
                 db.session.add(user)
                 db.session.flush()  # Get user.id but don't commit yet
     
             # Step 2: Create tenant user (always)
-            with switch_to_school_db(skid) as tenant_session:
-                school_user = SchoolUsers(
+            with switch_to_institution_db(skid) as tenant_session:
+                institution_user = InstitutionUsers(
                     username=data['username'],
                     email=data['email'],
                     first_name=data['first_name'],
@@ -67,15 +67,15 @@ class StudentService:
                     is_active=True
                 )
 
-                tenant_session.add(school_user)
+                tenant_session.add(institution_user)
                 tenant_session.flush()
-                school_user_id = school_user.id
+                institution_user_id = institution_user.id
                 # Student role, looked up by code and saved in this same transaction
-                add_role_link(tenant_session, school_user, role_for(tenant_session, 'STUDENT'))
+                add_role_link(tenant_session, institution_user, role_for(tenant_session, 'STUDENT'))
     
                 # Create student profile + enrollment
                 student_profile = Student(
-                    user_id=school_user_id,
+                    user_id=institution_user_id,
                     roll_no=data.get('roll_no'),
                     admission_date=data.get('admission_date'),
                     class_id=data.get('class_id'),
@@ -103,7 +103,7 @@ class StudentService:
                         academic_year_id = current_year.id
 
                 enrollment = StudentEnrollment(
-                    student_id=school_user_id,
+                    student_id=institution_user_id,
                     class_id=data.get('class_id'),
                     section_id=data.get('section_id'),
                     academic_year_id=academic_year_id,
@@ -111,58 +111,58 @@ class StudentService:
                 )
                 tenant_session.add(enrollment)
     
-                # School record + profile + enrollment + role: one commit
+                # Institution record + profile + enrollment + role: one commit
                 tenant_session.commit()
                 tenant_saved = True
 
-            # Step 3: Commit main DB and set school_user_id (if login was created)
+            # Step 3: Commit main DB and set institution_user_id (if login was created)
             if create_login and user:
-                user.school_user_id = school_user_id
+                user.institution_user_id = institution_user_id
                 db.session.commit()
 
             # Step 5: Return proper object
             if create_login and user:
                 return user.to_dict()
             else:
-                with switch_to_school_db(skid) as tenant_session:
-                    school_user = tenant_session.get(SchoolUsers, school_user_id)
-                    return school_user.to_dict()
+                with switch_to_institution_db(skid) as tenant_session:
+                    institution_user = tenant_session.get(InstitutionUsers, institution_user_id)
+                    return institution_user.to_dict()
     
         except Exception as e:
             db.session.rollback()
             if 'tenant_session' in locals():
                 tenant_session.rollback()
     
-            # Nothing half-made: remove the school rows if they were already saved
+            # Nothing half-made: remove the institution rows if they were already saved
             if tenant_saved:
                 try:
-                    remove_school_user(skid, school_user_id)
+                    remove_institution_user(skid, institution_user_id)
                 except Exception as cleanup_err:
-                    _log.error(f"[Cleanup failed] Could not remove school user {school_user_id}: {cleanup_err}")
+                    _log.error(f"[Cleanup failed] Could not remove institution user {institution_user_id}: {cleanup_err}")
 
-            raise Exception(f"Failed to create school user: {str(e)}")
+            raise Exception(f"Failed to create institution user: {str(e)}")
 
     
     @staticmethod
     def set_student_active(skid, student_id, active):
         """
         Soft delete / reactivate a student.
-        Only the active flags change (tenant school_users + main-DB login); attendance, marks,
+        Only the active flags change (tenant institution_users + main-DB login); attendance, marks,
         fees, enrollments and parent links are kept, so reactivating restores everything.
         """
-        with switch_to_school_db(skid) as tenant_session:
-            school_user = tenant_session.query(SchoolUsers).filter_by(id=student_id).first()
-            is_student = school_user and tenant_session.query(Student).filter_by(user_id=student_id).first()
+        with switch_to_institution_db(skid) as tenant_session:
+            institution_user = tenant_session.query(InstitutionUsers).filter_by(id=student_id).first()
+            is_student = institution_user and tenant_session.query(Student).filter_by(user_id=student_id).first()
             if not is_student:
                 return {'success': False, 'code': 404, 'message': 'Student not found'}
-            if bool(school_user.is_active) == bool(active):
+            if bool(institution_user.is_active) == bool(active):
                 state = 'active' if active else 'inactive'
                 return {'success': False, 'code': 400, 'message': f'Student is already {state}'}
-            school_user.is_active = bool(active)
-            name = f"{school_user.first_name} {school_user.last_name}".strip()
+            institution_user.is_active = bool(active)
+            name = f"{institution_user.first_name} {institution_user.last_name}".strip()
 
         # Login account (only exists if a login was provisioned)
-        main_user = User.query.filter_by(school_user_id=student_id, skid=skid).first()
+        main_user = User.query.filter_by(institution_user_id=student_id, skid=skid).first()
         if main_user:
             main_user.is_active = bool(active)
             db.session.commit()
@@ -178,8 +178,8 @@ class StudentService:
     def update_student(user_id, skid, data):
         """
         Update student information across main and tenant databases
-        user_id: The school_user_id (ID from SchoolUsers table in tenant DB)
-        skid: School identifier
+        user_id: The institution_user_id (ID from InstitutionUsers table in tenant DB)
+        skid: Institution identifier
         data: Dictionary containing fields to update
 
         Plan-aware update:
@@ -188,38 +188,38 @@ class StudentService:
         """
         main_user = None
         tenant_session = None
-        school_user_id = user_id
+        institution_user_id = user_id
 
         # Define fields that should never be updated
         # is_active is changed only via the delete/reactivate endpoints, never as a side effect of editing.
         PROTECTED_FIELDS = {'id', 'created_at', 'user_id', 'is_active'}
 
         try:
-            # Step 1: Get school info to determine plan
-            school = School.query.filter_by(skid=skid).first()
-            if not school:
-                raise ValueError("School not found")
+            # Step 1: Get institution info to determine plan
+            institution = Institution.query.filter_by(skid=skid).first()
+            if not institution:
+                raise ValueError("Institution not found")
 
-            from app.models.main.School import SchoolPlan
-            plan = school.plan
-            create_login = plan in [SchoolPlan.STANDARD, SchoolPlan.PREMIUM]
+            from app.models.main.Institution import InstitutionPlan
+            plan = institution.plan
+            create_login = plan in [InstitutionPlan.STANDARD, InstitutionPlan.PREMIUM]
 
             # Step 2: Try to fetch from main DB (only if plan allows login)
             if create_login:
                 main_user = db.session.query(User).filter_by(
-                    school_user_id=user_id,
+                    institution_user_id=user_id,
                     skid=skid
                 ).first()
                 if not main_user:
                     raise ValueError("User not found in main database.")
 
             # Step 3: Fetch from tenant DB to get current values
-            with switch_to_school_db(skid) as temp_session:
-                current_school_user = temp_session.query(SchoolUsers).filter_by(
-                    id=school_user_id,
+            with switch_to_institution_db(skid) as temp_session:
+                current_institution_user = temp_session.query(InstitutionUsers).filter_by(
+                    id=institution_user_id,
                     skid=skid
                 ).first()
-                if not current_school_user:
+                if not current_institution_user:
                     raise ValueError("User not found in tenant database.")
 
             # Step 4: Update the main database (if plan allows login)
@@ -237,27 +237,27 @@ class StudentService:
                 db.session.commit()
 
             # Step 5: Update the tenant database (ALWAYS update)
-            with switch_to_school_db(skid) as tenant_session:
-                # Find the SchoolUsers entry
-                school_user = tenant_session.query(SchoolUsers).filter_by(
-                    id=school_user_id,
+            with switch_to_institution_db(skid) as tenant_session:
+                # Find the InstitutionUsers entry
+                institution_user = tenant_session.query(InstitutionUsers).filter_by(
+                    id=institution_user_id,
                     skid=skid
                 ).first()
-                if not school_user:
+                if not institution_user:
                     raise ValueError("User not found in tenant database.")
 
-                # Update SchoolUsers's fields
+                # Update InstitutionUsers's fields
                 for key, value in data.items():
                     # Skip protected fields and password
                     if key in PROTECTED_FIELDS or key == 'password':
                         continue
 
-                    if hasattr(school_user, key):
-                        setattr(school_user, key, value)
+                    if hasattr(institution_user, key):
+                        setattr(institution_user, key, value)
 
                 # Find the Student profile and update its fields
                 student_profile = tenant_session.query(Student).filter_by(
-                    user_id=school_user_id
+                    user_id=institution_user_id
                 ).first()
                 if not student_profile:
                     raise ValueError("Student profile not found in tenant database.")
@@ -299,9 +299,9 @@ class StudentService:
             if create_login and main_user:
                 return main_user.to_dict()
             else:
-                with switch_to_school_db(skid) as temp_session:
-                    school_user = temp_session.query(SchoolUsers).filter_by(id=school_user_id).first()
-                    return school_user.to_dict() if school_user else {}
+                with switch_to_institution_db(skid) as temp_session:
+                    institution_user = temp_session.query(InstitutionUsers).filter_by(id=institution_user_id).first()
+                    return institution_user.to_dict() if institution_user else {}
 
         except ValueError:
             db.session.rollback()
@@ -330,9 +330,9 @@ class StudentService:
                 return "Student with this username or email already exists"
 
             # Check tenant DB
-            with switch_to_school_db(skid) as tenant_session:
-                existing_tenant_user = tenant_session.query(SchoolUsers).filter(
-                    (SchoolUsers.username == data['username']) | (SchoolUsers.email == data['email'])
+            with switch_to_institution_db(skid) as tenant_session:
+                existing_tenant_user = tenant_session.query(InstitutionUsers).filter(
+                    (InstitutionUsers.username == data['username']) | (InstitutionUsers.email == data['email'])
                 ).first()
 
                 if existing_tenant_user:
@@ -340,7 +340,7 @@ class StudentService:
 
             # Check if student ID already exists (if provided)
             if data.get('roll_no'):
-                with switch_to_school_db(skid) as tenant_session:
+                with switch_to_institution_db(skid) as tenant_session:
                     existing_student = tenant_session.query(Student).filter(
                         Student.roll_no == data['roll_no']
                     ).first()
@@ -359,8 +359,8 @@ class StudentService:
 
         Args:
             data: Dictionary containing username, email, roll_no
-            skid: School identifier
-            current_user_id: The school_user_id of the user being updated
+            skid: Institution identifier
+            current_user_id: The institution_user_id of the user being updated
         """
         try:
             # Check username uniqueness if provided and different
@@ -368,46 +368,46 @@ class StudentService:
                 # Check main DB (exclude current user)
                 existing_main_user = User.query.filter(
                     User.username == data['username'],
-                    User.school_user_id != current_user_id
+                    User.institution_user_id != current_user_id
                 ).filter(User.skid == skid).first()
 
                 if existing_main_user:
                     return "Username already exists in the system"
 
                 # Check tenant DB (exclude current user)
-                with switch_to_school_db(skid) as tenant_session:
-                    existing_tenant_user = tenant_session.query(SchoolUsers).filter(
-                        SchoolUsers.username == data['username'],
-                        SchoolUsers.id != current_user_id
+                with switch_to_institution_db(skid) as tenant_session:
+                    existing_tenant_user = tenant_session.query(InstitutionUsers).filter(
+                        InstitutionUsers.username == data['username'],
+                        InstitutionUsers.id != current_user_id
                     ).first()
 
                     if existing_tenant_user:
-                        return "Username already exists in this school"
+                        return "Username already exists in this institution"
 
             # Check email uniqueness if provided and different
             if 'email' in data:
                 # Check main DB (exclude current user)
                 existing_main_user = User.query.filter(
                     User.email == data['email'],
-                    User.school_user_id != current_user_id
+                    User.institution_user_id != current_user_id
                 ).filter(User.skid == skid).first()
 
                 if existing_main_user:
                     return "Email already exists in the system"
 
                 # Check tenant DB (exclude current user)
-                with switch_to_school_db(skid) as tenant_session:
-                    existing_tenant_user = tenant_session.query(SchoolUsers).filter(
-                        SchoolUsers.email == data['email'],
-                        SchoolUsers.id != current_user_id
+                with switch_to_institution_db(skid) as tenant_session:
+                    existing_tenant_user = tenant_session.query(InstitutionUsers).filter(
+                        InstitutionUsers.email == data['email'],
+                        InstitutionUsers.id != current_user_id
                     ).first()
 
                     if existing_tenant_user:
-                        return "Email already exists in this school"
+                        return "Email already exists in this institution"
 
             # Check if roll_no already exists (if provided and different)
             if data.get('roll_no'):
-                with switch_to_school_db(skid) as tenant_session:
+                with switch_to_institution_db(skid) as tenant_session:
                     existing_student = tenant_session.query(Student).filter(
                         Student.roll_no == data['roll_no'],
                         Student.user_id != current_user_id
@@ -427,11 +427,11 @@ class StudentService:
         Get paginated list of students with filtering
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Base query
                 query = (
-                    tenant_session.query(SchoolUsers, Student, Class, Section)
-                    .join(Student, SchoolUsers.id == Student.user_id)
+                    tenant_session.query(InstitutionUsers, Student, Class, Section)
+                    .join(Student, InstitutionUsers.id == Student.user_id)
                     .outerjoin(Class, Student.class_id == Class.id)
                     .outerjoin(Section, Student.section_id == Section.id)
                 )
@@ -440,22 +440,22 @@ class StudentService:
                 if search:
                     search_term = f"%{search}%"
                     # full name ("Asha Patel") and admission / roll number too - the header search uses this (QA A31)
-                    full_name = func.concat(SchoolUsers.first_name, ' ', func.coalesce(SchoolUsers.last_name, ''))
+                    full_name = func.concat(InstitutionUsers.first_name, ' ', func.coalesce(InstitutionUsers.last_name, ''))
                     query = query.filter(
-                        (SchoolUsers.first_name.ilike(search_term)) |
-                        (SchoolUsers.last_name.ilike(search_term)) |
+                        (InstitutionUsers.first_name.ilike(search_term)) |
+                        (InstitutionUsers.last_name.ilike(search_term)) |
                         (full_name.ilike(search_term)) |
-                        (SchoolUsers.email.ilike(search_term)) |
-                        (SchoolUsers.phone.ilike(search_term)) |
+                        (InstitutionUsers.email.ilike(search_term)) |
+                        (InstitutionUsers.phone.ilike(search_term)) |
                         (Student.admission_number.ilike(search_term)) |
                         (Student.roll_no.ilike(search_term))
                     )
 
                 if status:
-                    query = query.filter(SchoolUsers.is_active == (status.lower() == 'active'))
+                    query = query.filter(InstitutionUsers.is_active == (status.lower() == 'active'))
 
                 if gender:
-                    query = query.filter(SchoolUsers.gender == gender)
+                    query = query.filter(InstitutionUsers.gender == gender)
 
                 # A teacher sees only the sections they teach (section_ids=None: everyone)
                 if section_ids is not None:
@@ -474,9 +474,9 @@ class StudentService:
                 students_data = query.offset(offset).limit(limit).all()
 
                 student_list = []
-                for school_user, student, class_, section in students_data:
-                    # Convert base SchoolUser data to dict
-                    user_dict = school_user.to_dict()
+                for institution_user, student, class_, section in students_data:
+                    # Convert base InstitutionUser data to dict
+                    user_dict = institution_user.to_dict()
 
                     # Attach student profile info
                     user_dict["profile"] = student.to_dict() if student else None
@@ -491,13 +491,13 @@ class StudentService:
                 total_pages = (total + limit - 1) // limit
 
             # Enrich with login info from main DB (outside tenant session)
-            school_user_ids = [s['id'] for s in student_list]
-            if school_user_ids:
+            institution_user_ids = [s['id'] for s in student_list]
+            if institution_user_ids:
                 main_users = User.query.filter(
-                    User.school_user_id.in_(school_user_ids),
+                    User.institution_user_id.in_(institution_user_ids),
                     User.skid == skid
                 ).all()
-                main_user_map = {mu.school_user_id: mu for mu in main_users}
+                main_user_map = {mu.institution_user_id: mu for mu in main_users}
                 for s in student_list:
                     main_user = main_user_map.get(s['id'])
                     s['has_login'] = main_user is not None
@@ -520,11 +520,11 @@ class StudentService:
     @staticmethod
     def get_students(skid, academic_year_id):
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Base query
                 query = (
-                    tenant_session.query(SchoolUsers, Student, Class, Section)
-                    .join(Student, SchoolUsers.id == Student.user_id)
+                    tenant_session.query(InstitutionUsers, Student, Class, Section)
+                    .join(Student, InstitutionUsers.id == Student.user_id)
                     .outerjoin(Class, Student.class_id == Class.id)
                     .outerjoin(Section, Student.section_id == Section.id)
                     .outerjoin(
@@ -539,9 +539,9 @@ class StudentService:
                 Students = query.all()
 
                 student_list = []
-                for school_user, student, class_, section in Students:
-                    # Convert base SchoolUser data to dict
-                    user_dict = school_user.to_dict()
+                for institution_user, student, class_, section in Students:
+                    # Convert base InstitutionUser data to dict
+                    user_dict = institution_user.to_dict()
 
                     # Attach student profile info (like your existing "profile" key)
                     user_dict["profile"] = student.to_dict() if student else None
@@ -560,10 +560,10 @@ class StudentService:
     @staticmethod
     def get_student_by_id(skid, id):
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 student = (
-                    tenant_session.query(SchoolUsers, Student, Class, Section)
-                    .join(Student, SchoolUsers.id == Student.user_id)
+                    tenant_session.query(InstitutionUsers, Student, Class, Section)
+                    .join(Student, InstitutionUsers.id == Student.user_id)
                     .outerjoin(Class, Student.class_id == Class.id)
                     .outerjoin(Section, Student.section_id == Section.id)
                     .filter(Student.user_id == id)
@@ -573,10 +573,10 @@ class StudentService:
                 if not student:
                     return None
 
-                school_user, student, class_, section = student
+                institution_user, student, class_, section = student
 
-                # Convert base SchoolUser data to dict
-                user_dict = school_user.to_dict()
+                # Convert base InstitutionUser data to dict
+                user_dict = institution_user.to_dict()
 
                 # Attach student profile info (like your existing "profile" key)
                 user_dict["profile"] = student.to_dict() if student else None
@@ -587,9 +587,9 @@ class StudentService:
                 
                 # Fetch parent information
                 parent_result = (
-                    tenant_session.query(StudentParent, Parent, SchoolUsers)
+                    tenant_session.query(StudentParent, Parent, InstitutionUsers)
                     .join(Parent, StudentParent.parent_user_id == Parent.user_id)
-                    .join(SchoolUsers, Parent.user_id == SchoolUsers.id)
+                    .join(InstitutionUsers, Parent.user_id == InstitutionUsers.id)
                     .filter(StudentParent.student_user_id == id)
                     .first()
                 )
@@ -638,7 +638,7 @@ class StudentService:
         Get students for a specific section with pagination and filtering
 
         Args:
-            skid: School ID
+            skid: Institution ID
             academic_year_id: Academic year ID
             section_id: Section ID
             page: Page number (default 1)
@@ -651,7 +651,7 @@ class StudentService:
             Dictionary with students list and pagination metadata
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Build query with filters
                 query = tenant_session.query(StudentEnrollment).filter_by(
                     section_id=section_id
@@ -665,10 +665,10 @@ class StudentService:
                 students = []
 
                 for enrollment in enrollments:
-                    result = tenant_session.query(SchoolUsers, Student).join(
-                        Student, SchoolUsers.id == Student.user_id
+                    result = tenant_session.query(InstitutionUsers, Student).join(
+                        Student, InstitutionUsers.id == Student.user_id
                     ).filter(
-                        SchoolUsers.id == enrollment.student_id
+                        InstitutionUsers.id == enrollment.student_id
                     ).first()
 
                     if result:
@@ -733,15 +733,15 @@ class StudentService:
         Follows same logic as create_student_user for plan-based login creation
         """
         try:
-            # Get school information
-            school = School.query.filter_by(skid=skid).first()
-            if not school:
-                raise ValueError("School not found")
+            # Get institution information
+            institution = Institution.query.filter_by(skid=skid).first()
+            if not institution:
+                raise ValueError("Institution not found")
             
-            # Determine if we should create logins based on school plan
-            from app.models.main.School import SchoolPlan
-            plan = school.plan
-            create_login = plan in [SchoolPlan.STANDARD, SchoolPlan.PREMIUM]
+            # Determine if we should create logins based on institution plan
+            from app.models.main.Institution import InstitutionPlan
+            plan = institution.plan
+            create_login = plan in [InstitutionPlan.STANDARD, InstitutionPlan.PREMIUM]
     
             # Initialize counters
             successful = 0
@@ -749,10 +749,10 @@ class StudentService:
             errors = []
             created_students = []
     
-            from app.utils.account_create import add_role_link, remove_school_user, role_for
+            from app.utils.account_create import add_role_link, remove_institution_user, role_for
             for idx, student_data in enumerate(students_data):
                 user = None  # Track main DB user
-                school_user_id = None  # Track tenant DB user ID
+                institution_user_id = None  # Track tenant DB user ID
                 tenant_saved = False  # tenant rows saved -> remove them if the login save fails
                 
                 try:
@@ -784,13 +784,13 @@ class StudentService:
                             )
     
                     # Check for duplicates in tenant DB (always check)
-                    with switch_to_school_db(skid) as temp_session:
-                        existing_tenant_user = temp_session.query(SchoolUsers).filter(
-                            (SchoolUsers.username == username) | (SchoolUsers.email == student_data['email'])
+                    with switch_to_institution_db(skid) as temp_session:
+                        existing_tenant_user = temp_session.query(InstitutionUsers).filter(
+                            (InstitutionUsers.username == username) | (InstitutionUsers.email == student_data['email'])
                         ).first()
                         
                         if existing_tenant_user:
-                            raise ValueError("User with this username or email already exists in this school")
+                            raise ValueError("User with this username or email already exists in this institution")
     
                     # Step 1: Create main user (ONLY for STANDARD/PREMIUM plans)
                     if create_login:
@@ -803,15 +803,15 @@ class StudentService:
                             role=UserRole.STUDENT,
                             skid=skid,
                             plan=plan.value,  # Convert enum to string
-                            school_id=school.id
+                            institution_id=institution.id
                         )
                         user.set_password(student_data.get('password', default_password))
                         db.session.add(user)
                         db.session.flush()  # Get user.id but don't commit yet
     
                     # Step 2: Create tenant user (ALWAYS - regardless of plan)
-                    with switch_to_school_db(skid) as tenant_session:
-                        school_user = SchoolUsers(
+                    with switch_to_institution_db(skid) as tenant_session:
+                        institution_user = InstitutionUsers(
                             username=username,
                             email=student_data['email'],
                             first_name=student_data['first_name'],
@@ -824,15 +824,15 @@ class StudentService:
                             is_active=True
                         )
 
-                        tenant_session.add(school_user)
+                        tenant_session.add(institution_user)
                         tenant_session.flush()
-                        school_user_id = school_user.id
+                        institution_user_id = institution_user.id
                         # Student role, looked up by code and saved in this same transaction
-                        add_role_link(tenant_session, school_user, role_for(tenant_session, 'STUDENT'))
+                        add_role_link(tenant_session, institution_user, role_for(tenant_session, 'STUDENT'))
     
                         # Create student profile
                         student_profile = Student(
-                            user_id=school_user_id,
+                            user_id=institution_user_id,
                             roll_no=student_data.get('roll_no'),
                             admission_date=StudentService._parse_excel_date(student_data.get('admission_date'), 'admission_date') or datetime.utcnow().date(),
                             class_id=student_data['class_id'],
@@ -861,7 +861,7 @@ class StudentService:
 
                         # Create enrollment record
                         enrollment = StudentEnrollment(
-                            student_id=school_user_id,
+                            student_id=institution_user_id,
                             class_id=student_data['class_id'],
                             section_id=student_data['section_id'],
                             academic_year_id=bulk_academic_year_id,
@@ -869,13 +869,13 @@ class StudentService:
                         )
                         tenant_session.add(enrollment)
                         
-                        # School record + profile + enrollment + role: one commit
+                        # Institution record + profile + enrollment + role: one commit
                         tenant_session.commit()
                         tenant_saved = True
 
-                    # Step 3: Commit main DB and set school_user_id (if login was created)
+                    # Step 3: Commit main DB and set institution_user_id (if login was created)
                     if create_login and user:
-                        user.school_user_id = school_user_id
+                        user.institution_user_id = institution_user_id
                         db.session.commit()
     
                     successful += 1
@@ -894,19 +894,19 @@ class StudentService:
                     if 'tenant_session' in locals():
                         tenant_session.rollback()
 
-                    # The login was never saved (rolled back above); remove this row's school records if saved
+                    # The login was never saved (rolled back above); remove this row's institution records if saved
                     if tenant_saved:
                         try:
-                            remove_school_user(skid, school_user_id)
+                            remove_institution_user(skid, institution_user_id)
                         except Exception as cleanup_err:
-                            _log.error(f"[Cleanup failed] Could not remove school user {school_user_id}: {cleanup_err}")
+                            _log.error(f"[Cleanup failed] Could not remove institution user {institution_user_id}: {cleanup_err}")
 
                     # Translate noisy DB errors into a friendly message.
                     if isinstance(e, IntegrityError):
                         msg_lower = str(e.orig).lower() if getattr(e, 'orig', None) else str(e).lower()
-                        if 'users_email_key' in msg_lower or 'school_users_email_key' in msg_lower:
+                        if 'users_email_key' in msg_lower or 'institution_users_email_key' in msg_lower:
                             error_msg = f"Email '{student_data.get('email', '')}' is already registered"
-                        elif 'users_username_key' in msg_lower or 'school_users_username_key' in msg_lower:
+                        elif 'users_username_key' in msg_lower or 'institution_users_username_key' in msg_lower:
                             error_msg = f"Username '{student_data.get('username', student_data.get('email', ''))}' is already registered"
                         else:
                             error_msg = 'Duplicate or constraint violation in database'
@@ -1007,13 +1007,13 @@ class StudentService:
         per_student_status = {str(k): str(v).upper() for k, v in (data.get("per_student_status") or {}).items()}
         remarks = (data.get("remarks") or "").strip() or None
 
-        if not School.query.filter_by(skid=skid).first():
-            raise ValueError("School not found")
+        if not Institution.query.filter_by(skid=skid).first():
+            raise ValueError("Institution not found")
         if to_year_id == from_year_id:
             raise ValueError("Choose a different academic year to promote into (use Move to change a section within the year)")
 
         promoted, detained, skipped = [], [], []
-        with switch_to_school_db(skid) as tenant_session:
+        with switch_to_institution_db(skid) as tenant_session:
             target_class = tenant_session.query(Class).filter_by(id=to_class_id).first()
             if not target_class:
                 raise ValueError("Target class not found")

@@ -39,7 +39,7 @@ This repository is a unified SMS monorepo with:
 - `frontend/` (Vite/React build, served by Nginx in container)
 - root deployment orchestration (`docker-compose.yml`) and CI/CD workflow
 
-> Note: earlier naming used `school-management-backend` and `school-management-frontend`. Current live structure is `backend` and `frontend`.
+> Note: earlier naming used `institution-management-backend` and `institution-management-frontend`. Current live structure is `backend` and `frontend`.
 
 ## 2) Monorepo and Environment Strategy
 

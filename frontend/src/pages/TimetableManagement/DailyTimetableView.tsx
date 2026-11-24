@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { Skeleton } from '../../components';
 import { timetableService } from '../../services/modules/timetableService';
 import dashboardService from '../../services/dashboardService';
-import { getSchoolId } from '../../services/api/client';
+import { getInstitutionId } from '../../services/api/client';
 
 export interface Period {
     id?: number | string;
@@ -16,9 +16,9 @@ export interface Period {
 }
 
 interface DailyTimetableViewProps {
-    /** Backend "student_user_id" — for parents this is selectedChild.student_id; for students this is user.school_user_id */
+    /** Backend "student_user_id" — for parents this is selectedChild.student_id; for students this is user.institution_user_id */
     studentId?: number | undefined;
-    /** For a teacher: their own school_user_id. Shows the classes they teach that day instead of a section's day. */
+    /** For a teacher: their own institution_user_id. Shows the classes they teach that day instead of a section's day. */
     teacherId?: number | undefined;
 }
 
@@ -137,7 +137,7 @@ const DailyTimetableView: FC<DailyTimetableViewProps> = ({ studentId, teacherId 
             if (teacherId) {
                 // A teacher's own day: the classes they teach (the page used to call the student view with the
                 // teacher's id, which always failed)
-                const rows = await dashboardService.getTeacherDayTimetable(getSchoolId() || '', teacherId, dateStr);
+                const rows = await dashboardService.getTeacherDayTimetable(getInstitutionId() || '', teacherId, dateStr);
                 setPeriods((rows || []).map((r) => ({
                     ...r,
                     class_label: [r.class_name, r.section_name && `Section ${r.section_name}`].filter(Boolean).join(' · '),

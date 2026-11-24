@@ -43,7 +43,7 @@ export default function TeacherDashboard() {
     const [attendanceTab, setAttendanceTab] = useState("today");
 
     const skid = user?.skid;
-    const teacherId = user?.school_user_id;
+    const teacherId = user?.institution_user_id;
     const academicYearId = academicYear?.id;
 
     const fetchDashboardData = useCallback(async () => {
@@ -61,7 +61,7 @@ export default function TeacherDashboard() {
                 announcementService.getAnnouncements(skid, {
                     academicYearId,
                     userRole: user?.role,
-                    schoolUserId: user?.school_user_id,
+                    institutionUserId: user?.institution_user_id,
                     limit: 5,
                 }),
             ]);
@@ -90,7 +90,7 @@ export default function TeacherDashboard() {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [skid, teacherId, academicYearId, user?.role, user?.school_user_id]);
+    }, [skid, teacherId, academicYearId, user?.role, user?.institution_user_id]);
 
     useFocusEffect(
         useCallback(() => {

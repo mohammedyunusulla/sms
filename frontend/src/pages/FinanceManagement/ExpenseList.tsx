@@ -147,7 +147,7 @@ const ExpenseList: FC = () => {
                 ...formData,
                 amount: parseFloat(String(formData.amount)),
                 academic_year_id: academicYearId,
-                created_by: user?.school_user_id,
+                created_by: user?.institution_user_id,
                 approval_status: 'approved',
             };
             if (isEditMode && selectedExpense) {
@@ -251,7 +251,7 @@ const ExpenseList: FC = () => {
         <div className="space-y-6">
             <PageHeader
                 title="Expense Management"
-                subtitle="Track and manage all school expenses"
+                subtitle="Track and manage all institution expenses"
                 breadcrumbs={breadcrumbs}
                 actions={
                     hasPermission(Permission.MANAGE_EXPENSES) ? (

@@ -318,7 +318,7 @@ class HomeworkGeminiService:
         instruction_images: Optional[Sequence[Image]] = None,
     ) -> str:
         prompt = (
-            "You are a strict Socratic tutor for school homework.\n"
+            "You are a strict Socratic tutor for institution homework.\n"
             "Never provide the final direct answer.\n"
             "Give a concise hint in 3-6 bullets that helps the student progress.\n\n"
             f"Homework: {assignment_title}\n"
@@ -340,7 +340,7 @@ class HomeworkGeminiService:
     def extract_instructions(cls, images: Sequence[Image], subject: str = "") -> str:
         """Draft homework instructions from photos (e.g. of the board) for the teacher to edit."""
         prompt = (
-            "These photos show school homework written on a board or a page.\n"
+            "These photos show institution homework written on a board or a page.\n"
             "Write out the homework exactly as given, as clear plain-text instructions for students:\n"
             "- keep every question, number and formula; number the questions\n"
             "- do not solve anything and do not add your own questions\n"

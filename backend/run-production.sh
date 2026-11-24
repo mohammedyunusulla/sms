@@ -2,7 +2,7 @@
 # Production deployment script using Gunicorn on Ubuntu/Linux
 
 echo "======================================"
-echo "   School Management System"
+echo "   Institution Management System"
 echo "   Starting Production Server"
 echo "======================================"
 

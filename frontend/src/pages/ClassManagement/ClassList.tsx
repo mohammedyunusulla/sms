@@ -170,7 +170,7 @@ const ClassList: FC = () => {
             {/* Page Header */}
             <PageHeader
                 title="Class Management"
-                subtitle="View and manage all school classes"
+                subtitle="View and manage all classes"
                 breadcrumbs={[
                     { label: 'Dashboard', href: '/dashboard' },
                     { label: 'Classes', href: '/classes' },

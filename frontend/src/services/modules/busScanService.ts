@@ -1,4 +1,4 @@
-import { getApiClient, getSchoolId } from '../api/client';
+import { getApiClient, getInstitutionId } from '../api/client';
 import { API_ENDPOINTS } from '../api/config';
 
 export type ScanType = 'CHECK_IN' | 'CHECK_OUT';
@@ -39,7 +39,7 @@ export interface QrScanPayload {
 const busScanService = {
     /** Record a manual check-in / check-out */
     recordScan: async (payload: ScanPayload): Promise<BusScanRecord> => {
-        const skid = getSchoolId();
+        const skid = getInstitutionId();
         const client = getApiClient();
         const res = await client.post(API_ENDPOINTS.BUS_SCAN.SCAN(skid), payload);
         return (res as any).data;
@@ -47,7 +47,7 @@ const busScanService = {
 
     /** Record a scan from a decoded QR payload string */
     scanQr: async (payload: QrScanPayload): Promise<{ student_user_id: number; data: BusScanRecord }> => {
-        const skid = getSchoolId();
+        const skid = getInstitutionId();
         const client = getApiClient();
         const res = await client.post(API_ENDPOINTS.BUS_SCAN.SCAN_QR(skid), payload);
         return res as any;
@@ -55,7 +55,7 @@ const busScanService = {
 
     /** Get all bus scan records for a given date (defaults to today) */
     getToday: async (academicYearId?: number, forDate?: string): Promise<BusScanRecord[]> => {
-        const skid = getSchoolId();
+        const skid = getInstitutionId();
         const client = getApiClient();
         const params: Record<string, unknown> = {};
         if (academicYearId) params.academic_year_id = academicYearId;
@@ -66,7 +66,7 @@ const busScanService = {
 
     /** Get current bus status — last scan per student today */
     getStatus: async (academicYearId?: number): Promise<BusScanRecord[]> => {
-        const skid = getSchoolId();
+        const skid = getInstitutionId();
         const client = getApiClient();
         const params: Record<string, unknown> = {};
         if (academicYearId) params.academic_year_id = academicYearId;
@@ -76,7 +76,7 @@ const busScanService = {
 
     /** Get bus history for a specific student */
     getStudentHistory: async (studentUserId: number, limit = 50): Promise<BusScanRecord[]> => {
-        const skid = getSchoolId();
+        const skid = getInstitutionId();
         const client = getApiClient();
         const res = await client.get(
             API_ENDPOINTS.BUS_SCAN.STUDENT_HISTORY(skid, studentUserId),
@@ -87,7 +87,7 @@ const busScanService = {
 
     /** Search students by name or admission number */
     searchStudents: async (query: string): Promise<StudentSearchResult[]> => {
-        const skid = getSchoolId();
+        const skid = getInstitutionId();
         const client = getApiClient();
         const res = await client.get(API_ENDPOINTS.BUS_SCAN.SEARCH_STUDENTS(skid), { params: { q: query } });
         return (res as any).data ?? [];

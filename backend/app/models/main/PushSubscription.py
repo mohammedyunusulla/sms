@@ -7,7 +7,7 @@ class PushSubscription(BaseModel):
     One browser/device that has turned on push notifications for a signed-in user (Web Push).
 
     Tied to the sign-in session that created it: when that session logs out (or is revoked),
-    the device stops getting this user's notifications - important on shared school computers.
+    the device stops getting this user's notifications - important on shared institution computers.
     New table, so the startup create_all() builds it; no migration needed.
     """
     __tablename__ = 'push_subscriptions'

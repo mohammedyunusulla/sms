@@ -7,22 +7,22 @@ export const useAppStore = create(
     (set) => ({
       academicYear: null,
       academicYears: [],
-      school: null,
+      institution: null,
       theme: "light",
 
       setAcademicYear: (academicYear) => set({ academicYear }),
       setAcademicYears: (academicYears) => set({ academicYears }),
-      setSchool: (school) => set({ school }),
+      setInstitution: (institution) => set({ institution }),
       setTheme: (theme) => set({ theme }),
 
       initFromLogin: (user) =>
         set({
           academicYear: user.current_academic_year || null,
           academicYears: user.academic_years || [],
-          school: {
-            id: user.school_id,
-            name: user.school_name,
-            code: user.school_code,
+          institution: {
+            id: user.institution_id,
+            name: user.institution_name,
+            code: user.institution_code,
             skid: user.skid,
           },
         }),
@@ -31,7 +31,7 @@ export const useAppStore = create(
         set({
           academicYear: null,
           academicYears: [],
-          school: null,
+          institution: null,
           theme: "light",
         }),
     }),

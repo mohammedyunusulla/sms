@@ -1,9 +1,9 @@
-from app.models.tenant import Teacher, Student, SchoolUsers, Subject  
+from app.models.tenant import Teacher, Student, InstitutionUsers, Subject  
 from app.models.tenant.ExamModels import *
 from app.models.tenant.MarksModels import MarksEntry
 from app.models.tenant.Sections import Section
 from app.models.tenant.Class import Class
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from sqlalchemy import func, or_
 from datetime import date
 import logging
@@ -84,7 +84,7 @@ class ProgressCardService:
     def get_teacher_class(teacher_id, skid):
         """Get class assigned to teacher as class teacher"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Find section where this teacher is the class teacher
                 section = tenant_session.query(Section).filter_by(
                     teacher_id=teacher_id  # ✅ Changed from class_teacher_of_section_id
@@ -117,7 +117,7 @@ class ProgressCardService:
     def get_class_progress(exam_id, class_id, section_id, skid, academic_year_id):
         """Calculate complete class progress"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Fetch all exam configs for this class
                 configs = tenant_session.query(ExamSubjectConfig).filter_by(
                     exam_type_id=exam_id,
@@ -130,8 +130,8 @@ class ProgressCardService:
                 ).all()
                 
                 # Fetch all students
-                students = tenant_session.query(Student, SchoolUsers).join(
-                    SchoolUsers, Student.user_id == SchoolUsers.id
+                students = tenant_session.query(Student, InstitutionUsers).join(
+                    InstitutionUsers, Student.user_id == InstitutionUsers.id
                 ).filter(
                     Student.section_id == section_id
                 ).all()
@@ -139,7 +139,7 @@ class ProgressCardService:
                 student_progress = []
                 subject_stats = {}
                 
-                for student, school_user in students:
+                for student, institution_user in students:
                     student_total = 0
                     student_max = 0
                     subject_marks = []
@@ -185,7 +185,7 @@ class ProgressCardService:
                     
                     student_progress.append({
                         'student_id': student.user_id,
-                        'student_name': f"{school_user.first_name} {school_user.last_name}",
+                        'student_name': f"{institution_user.first_name} {institution_user.last_name}",
                         'roll_number': student.roll_no,
                         'total_marks': student_total,
                         'max_marks': student_max,
@@ -248,12 +248,12 @@ class ProgressCardService:
         section_id = data.get('section_id')
         if not exam_id or not section_id:
             raise ValueError("exam_type_id and section_id are required")
-        with switch_to_school_db(skid) as tenant_session:
+        with switch_to_institution_db(skid) as tenant_session:
             rows = tenant_session.query(Student.user_id, Student.roll_no).join(
-                SchoolUsers, Student.user_id == SchoolUsers.id
+                InstitutionUsers, Student.user_id == InstitutionUsers.id
             ).filter(
                 Student.section_id == int(section_id),
-                SchoolUsers.is_active.is_(True),
+                InstitutionUsers.is_active.is_(True),
             ).all()
         rows.sort(key=lambda r: (r.roll_no is None, str(r.roll_no or '').zfill(8)))
         cards, skipped = [], []
@@ -286,7 +286,7 @@ class ProgressCardService:
     def calculate_progress_card(student_id, exam_id, skid):
         """Calculate individual student progress card"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Get student info using user_id as primary key
                 student = tenant_session.query(Student).filter_by(
                     user_id=student_id
@@ -295,10 +295,10 @@ class ProgressCardService:
                 if not student:
                     raise ValueError("Student not found")
                 
-                # Get school user info using the relationship
-                school_user = student.user
+                # Get institution user info using the relationship
+                institution_user = student.user
                 
-                if not school_user:
+                if not institution_user:
                     raise ValueError("Student user information not found")
                 
                 # Get section using the section_obj relationship or query separately
@@ -407,8 +407,8 @@ class ProgressCardService:
                 # Get class teacher info
                 class_teacher_name = 'N/A'
                 if section.teacher_id:
-                    # Get teacher's school user info
-                    teacher_user = tenant_session.query(SchoolUsers).filter_by(
+                    # Get teacher's institution user info
+                    teacher_user = tenant_session.query(InstitutionUsers).filter_by(
                         id=section.teacher_id
                     ).first()
                     if teacher_user:
@@ -416,7 +416,7 @@ class ProgressCardService:
                 
                 return {
                     'student_id': student_id,
-                    'student_name': f"{school_user.first_name} {school_user.last_name}",
+                    'student_name': f"{institution_user.first_name} {institution_user.last_name}",
                     'roll_number': student.roll_no,
                     'class_name': class_info.class_name if class_info else 'Unknown',
                     'section_name': section.section_name,
@@ -445,7 +445,7 @@ class ProgressCardService:
     def get_student_annual_report(student_id, academic_year_id, skid):
         """Get annual report for a student showing all exams"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Get student info
                 student = tenant_session.query(Student).filter_by(
                     user_id=student_id
@@ -454,7 +454,7 @@ class ProgressCardService:
                 if not student:
                     raise ValueError("Student not found")
 
-                school_user = student.user
+                institution_user = student.user
                 section = tenant_session.query(Section).filter_by(
                     id=student.section_id
                 ).first()
@@ -552,7 +552,7 @@ class ProgressCardService:
 
                 return {
                     'student_info': {
-                        'student_name': f"{school_user.first_name} {school_user.last_name}",
+                        'student_name': f"{institution_user.first_name} {institution_user.last_name}",
                         'roll_number': student.roll_no,
                         'class_name': class_info.class_name if class_info else 'Unknown',
                         'section_name': section.section_name if section else 'Unknown'

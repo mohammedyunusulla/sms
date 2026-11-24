@@ -42,7 +42,7 @@ export default function AnnouncementsScreen() {
       const res = await announcementService.getAnnouncements(skid, {
         academicYearId,
         userRole: user?.role,
-        schoolUserId: user?.school_user_id,
+        institutionUserId: user?.institution_user_id,
         announcementType: selectedType,
       });
       const list = res?.data?.announcements || res?.data || [];
@@ -53,7 +53,7 @@ export default function AnnouncementsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [skid, academicYearId, user?.role, user?.school_user_id, selectedType]);
+  }, [skid, academicYearId, user?.role, user?.institution_user_id, selectedType]);
 
   useFocusEffect(
     useCallback(() => {

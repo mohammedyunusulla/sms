@@ -3,7 +3,7 @@ from app.decorators import login_required
 from app.decorators.auth import student_access_required
 from app.services.progress_card_service import ProgressCardService
 from app.services.exam_results_service import RESULT_LIMITED_ROLES, published_exam_ids, current_year_id
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 
 
 def _results_limited():
@@ -33,7 +33,7 @@ def get_my_class(skid, teacher_id):
 
 # GET CLASS PROGRESS
 @progress_card_bp.route('/class-progress/<skid>/<academic_year_id>/<int:exam_id>', methods=['GET'])
-@login_required(['TEACHER', 'SCHOOL_ADMIN'], permission=('view_marks', 'manage_marks'))
+@login_required(['TEACHER', 'INSTITUTION_ADMIN'], permission=('view_marks', 'manage_marks'))
 def get_class_progress(skid, academic_year_id, exam_id):
     """
     Get complete class progress for an exam
@@ -62,7 +62,7 @@ def get_class_progress(skid, academic_year_id, exam_id):
 
 # BULK GENERATE REPORT CARDS
 @progress_card_bp.route('/bulk-generate/<skid>', methods=['POST'])
-@login_required(['TEACHER', 'SCHOOL_ADMIN'], permission=('view_marks', 'manage_marks'))
+@login_required(['TEACHER', 'INSTITUTION_ADMIN'], permission=('view_marks', 'manage_marks'))
 def bulk_generate_report_cards(skid):
     """
     Bulk generate report cards for all students in a class
@@ -89,13 +89,13 @@ def bulk_generate_report_cards(skid):
 
 # VIEW INDIVIDUAL PROGRESS CARD
 @progress_card_bp.route('/view/<skid>/<int:student_id>/<int:exam_id>', methods=['GET'])
-@login_required(['TEACHER', 'TEACHER', 'SCHOOL_ADMIN', 'STUDENT', 'PARENT'], permission=('view_marks', 'manage_marks'), own_roles=('STUDENT', 'PARENT'))
+@login_required(['TEACHER', 'TEACHER', 'INSTITUTION_ADMIN', 'STUDENT', 'PARENT'], permission=('view_marks', 'manage_marks'), own_roles=('STUDENT', 'PARENT'))
 @student_access_required('student_id')
 def view_progress_card(skid, student_id, exam_id):
     """View individual student's progress card"""
     try:
         if _results_limited():
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 year_id = current_year_id(tenant_session)
                 published = year_id is not None and exam_id in published_exam_ids(tenant_session, year_id)
             if not published:
@@ -116,7 +116,7 @@ def view_progress_card(skid, student_id, exam_id):
 
 # VIEW ANNUAL PROGRESS REPORT
 @progress_card_bp.route('/annual/<skid>/<int:student_id>', methods=['GET'])
-@login_required(['TEACHER', 'SCHOOL_ADMIN', 'STUDENT', 'PARENT'], permission=('view_marks', 'manage_marks'), own_roles=('STUDENT', 'PARENT'))
+@login_required(['TEACHER', 'INSTITUTION_ADMIN', 'STUDENT', 'PARENT'], permission=('view_marks', 'manage_marks'), own_roles=('STUDENT', 'PARENT'))
 @student_access_required('student_id')
 def view_annual_report(skid, student_id):
     """View student's annual progress report (all exams)"""
@@ -134,8 +134,8 @@ def view_annual_report(skid, student_id):
             student_id, academic_year_id, skid
         )
         if _results_limited():
-            # only exams the school has published for this year
-            with switch_to_school_db(skid) as tenant_session:
+            # only exams the institution has published for this year
+            with switch_to_institution_db(skid) as tenant_session:
                 published = published_exam_ids(tenant_session, academic_year_id)
             annual_report['exam_results'] = [
                 r for r in annual_report.get('exam_results', []) if int(r.get('exam_id')) in published

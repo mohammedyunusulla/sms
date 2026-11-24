@@ -2,19 +2,19 @@ import re
 import uuid
 import secrets
 from datetime import datetime
-from app.models.main.School import School
+from app.models.main.Institution import Institution
 
 class DatabaseNameGenerator:
     @staticmethod
-    def generate_db_name(school_data):
+    def generate_db_name(institution_data):
         """
-        Generate a unique database name for a school
+        Generate a unique database name for an institution
         """
         # Add random suffix to ensure uniqueness
         random_suffix = secrets.token_hex(8)
 
-        # Database name format: skool_{random_suffix}
-        db_name = f"skool_{random_suffix}"
+        # Database name format: eduspyre_{random_suffix}
+        db_name = f"eduspyre_{random_suffix}"
         
         return db_name
     
@@ -28,18 +28,18 @@ class DatabaseNameGenerator:
     
     @staticmethod
     def _ensure_unique_name(base_name):
-        """Ensure database name is unique by checking existing schools"""
+        """Ensure database name is unique by checking existing institutions"""
         # Check if name already exists
-        existing_school = School.query.filter_by(skid=base_name).first()
+        existing_institution = Institution.query.filter_by(skid=base_name).first()
         
-        if not existing_school:
+        if not existing_institution:
             return base_name
         
         # If exists, append counter
         counter = 1
         while True:
             new_name = f"{base_name}_{counter}"
-            existing = School.query.filter_by(skid=new_name).first()
+            existing = Institution.query.filter_by(skid=new_name).first()
             if not existing:
                 return new_name
             counter += 1

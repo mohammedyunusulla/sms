@@ -1,7 +1,7 @@
 # app/services/announcement_service.py
 
-from app.utils.db_manager import switch_to_school_db
-from app.models.tenant import SchoolUsers, Student, Class, AcademicYear
+from app.utils.db_manager import switch_to_institution_db
+from app.models.tenant import InstitutionUsers, Student, Class, AcademicYear
 from app.models.tenant.Announcement import Announcement
 from sqlalchemy import and_, or_, cast, case, func
 from sqlalchemy.dialects.postgresql import JSONB
@@ -36,7 +36,7 @@ class AnnouncementService:
     def create_announcement(skid, announcement_data):
         """Create a new announcement"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 academic_year = tenant_session.query(AcademicYear).filter_by(
                     id=announcement_data['academic_year_id']
                 ).first()
@@ -88,7 +88,7 @@ class AnnouncementService:
     def get_announcement_by_id(skid, announcement_id):
         """Get a single announcement by ID"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 announcement = tenant_session.query(Announcement).filter_by(
                     id=announcement_id
                 ).first()
@@ -108,9 +108,9 @@ class AnnouncementService:
     def get_announcements(skid, academic_year_id, user_info=None, filters=None):
         """Get announcements with filters"""
         try:    
-            with switch_to_school_db(skid) as tenant_session:
-                query = tenant_session.query(Announcement, SchoolUsers).join(
-                    SchoolUsers, Announcement.created_by == SchoolUsers.id
+            with switch_to_institution_db(skid) as tenant_session:
+                query = tenant_session.query(Announcement, InstitutionUsers).join(
+                    InstitutionUsers, Announcement.created_by == InstitutionUsers.id
                 ).filter(
                     Announcement.academic_year_id == academic_year_id,
                     Announcement.is_active == True,
@@ -127,8 +127,8 @@ class AnnouncementService:
                         Announcement.expiry_date >= today_start
                     )
                 )
-                # Readers only see a post from its publishing date; the school's admins see scheduled ones too
-                if not user_info or user_info.get('role') not in ('SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'):
+                # Readers only see a post from its publishing date; the institution's admins see scheduled ones too
+                if not user_info or user_info.get('role') not in ('SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL'):
                     query = query.filter(or_(Announcement.publish_date == None, Announcement.publish_date <= now))
                 
                 # Apply additional filters
@@ -182,11 +182,11 @@ class AnnouncementService:
         from sqlalchemy import func
         
         user_role = user_info.get('role')
-        school_user_id = user_info.get('school_user_id')
+        institution_user_id = user_info.get('institution_user_id')
         
         
         # Admin/Principal can see all
-        if user_role in ['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL']:
+        if user_role in ['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL']:
             return query
         
         # Build access filters - FIXED: Match exact database values
@@ -196,7 +196,7 @@ class AnnouncementService:
         ]
         
         if user_role == 'STUDENT':
-            student = tenant_session.query(Student).filter_by(user_id=school_user_id).first()
+            student = tenant_session.query(Student).filter_by(user_id=institution_user_id).first()
             if student:
                 access_conditions.extend([
                     Announcement.target_audience == 'ALL_STUDENTS',
@@ -242,7 +242,7 @@ class AnnouncementService:
             from app.models.tenant.StudentParent import StudentParent
             children = tenant_session.query(Student.class_id, Student.section_id).join(
                 StudentParent, StudentParent.student_user_id == Student.user_id
-            ).filter(StudentParent.parent_user_id == school_user_id).all() if school_user_id else []
+            ).filter(StudentParent.parent_user_id == institution_user_id).all() if institution_user_id else []
             for class_id, section_id in children:
                 if class_id:
                     access_conditions.append(and_(
@@ -256,9 +256,9 @@ class AnnouncementService:
                     ))
         
         # Check if user is specifically targeted
-        if school_user_id:
+        if institution_user_id:
             access_conditions.append(
-                cast(Announcement.target_users, JSONB).op('@>')(cast([school_user_id], JSONB))
+                cast(Announcement.target_users, JSONB).op('@>')(cast([institution_user_id], JSONB))
             )
         
         return query.filter(or_(*access_conditions))
@@ -268,7 +268,7 @@ class AnnouncementService:
     def update_announcement(skid, announcement_id, announcement_data):
         """Update an existing announcement"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 announcement = tenant_session.query(Announcement).filter_by(id=announcement_id).first()
                 
                 if not announcement:
@@ -304,7 +304,7 @@ class AnnouncementService:
     def delete_announcement(skid, announcement_id):
         """Soft delete an announcement"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 announcement = tenant_session.query(Announcement).filter_by(id=announcement_id).first()
                 
                 if not announcement:

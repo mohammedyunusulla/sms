@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.services.parent_service import ParentService
 from app.decorators import log_actions, login_required
-from app.utils.user_status import set_school_user_active, status_response
+from app.utils.user_status import set_institution_user_active, status_response
 from app.models.tenant.Parent import Parent
 from app.utils.teaching_scope import (current_teacher_id, forbidden, teacher_scope_sections, strip_fields,
     STUDENT_FIELDS_HIDDEN_FROM_TEACHERS, TEACHER_FIELDS_HIDDEN_FROM_TEACHERS)
@@ -13,12 +13,12 @@ PARENT_OPTIONAL_FIELDS = (
     'mother_phone', 'mother_occupation', 'mother_qualification', 'address', 'city', 'state', 'postal_code',
     'phone', 'gender', 'date_of_birth',
 )
-# Father's name becomes the account's first name (school_users.first_name is NOT NULL)
+# Father's name becomes the account's first name (institution_users.first_name is NOT NULL)
 PARENT_REQUIRED_FIELDS = (('username', 'Username'), ('password', 'Password'), ('father_full_name', "Father's name"))
 
 
 @parent_bp.route('/create/details/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_students')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_students')
 @log_actions('CREATE_PARENT_USER')  
 def create_parent(skid):
     """
@@ -30,7 +30,7 @@ def create_parent(skid):
         if not data:
             return jsonify({'message': 'No data provided'}), 400
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
 
         import re
         from app.utils.form_input import clean_payload, missing_fields_message, error
@@ -78,12 +78,12 @@ def create_parent(skid):
 
 
 @parent_bp.route('/update/<skid>/<parent_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_students')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_students')
 @log_actions('UPDATE_PARENT_USER')
 def update_parent(skid, parent_id):
     """
     Update an existing parent
-    Only super admin and school admin can update users
+    Only super admin and institution admin can update users
     """
     try:
         data = request.get_json()
@@ -91,7 +91,7 @@ def update_parent(skid, parent_id):
         if not data:
             return jsonify({'message': 'No data provided'}), 400
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
         if not parent_id:
             raise ValueError("Parent ID is required")
         
@@ -115,21 +115,21 @@ def update_parent(skid, parent_id):
 
 
 @parent_bp.route('/delete/<skid>/<parent_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission=('delete_students', 'manage_students'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission=('delete_students', 'manage_students'))
 @log_actions('DELETE_PARENT_USER')
 def delete_parent(skid, parent_id):
     """
     Delete a parent
-    Only super admin and school admin can delete users
+    Only super admin and institution admin can delete users
     """
     try:
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
         if not parent_id:
             raise ValueError("Parent ID is required")
         
         # Soft delete: inactive + login disabled; all records are kept and can be reactivated.
-        return status_response(set_school_user_active(skid, parent_id, False, Parent, 'Parent'))
+        return status_response(set_institution_user_active(skid, parent_id, False, Parent, 'Parent'))
         
     except ValueError as e:
         return jsonify({'message': str(e)}), 400
@@ -139,10 +139,10 @@ def delete_parent(skid, parent_id):
 
 
 @parent_bp.route('/list/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_students', 'manage_students'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_students', 'manage_students'))
 def get_parents_paginated(skid):
     """
-    Get paginated list of parents in the specific school with filtering and sorting
+    Get paginated list of parents in the specific institution with filtering and sorting
     Query Parameters:
     - page: Page number (default: 1)
     - limit: Items per page (default: 10)
@@ -152,7 +152,7 @@ def get_parents_paginated(skid):
     """
     try:
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
 
         # Get query parameters
         page = request.args.get('page', 1, type=int)
@@ -195,7 +195,7 @@ def get_parents_paginated(skid):
 
 
 @parent_bp.route('/<skid>/<int:parent_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission=('view_students', 'manage_students'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission=('view_students', 'manage_students'))
 def get_parent_detail(parent_id, skid):
     """
     Get parent details
@@ -221,7 +221,7 @@ def get_parent_detail(parent_id, skid):
 
 
 @parent_bp.route('/link-student/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_students')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_students')
 @log_actions('LINK_PARENT_STUDENT')
 def link_parent_student(skid):
     """
@@ -260,7 +260,7 @@ def link_parent_student(skid):
         }), 500
 
 @parent_bp.route('/student/<int:student_id>/parents/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission=('view_students', 'manage_students'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission=('view_students', 'manage_students'))
 def get_student_parents(student_id, skid):
     """
     Get all parents for a student
@@ -284,11 +284,11 @@ def get_student_parents(student_id, skid):
 
 
 @parent_bp.route('/reactivate/<skid>/<parent_id>', methods=['PATCH'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_students')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_students')
 @log_actions('REACTIVATE_PARENT_USER')
 def reactivate_parent(skid, parent_id):
     """Undo a soft delete: active again and login re-enabled."""
     try:
-        return status_response(set_school_user_active(skid, parent_id, True, Parent, 'Parent'))
+        return status_response(set_institution_user_active(skid, parent_id, True, Parent, 'Parent'))
     except Exception as e:
         return jsonify({'code': 500, 'status': 'error', 'message': f'Failed to reactivate parent: {str(e)}'}), 500

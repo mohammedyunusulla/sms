@@ -60,7 +60,7 @@ export const API_ENDPOINTS = {
     },
     CLASSES: {
         LIST: '/classes',
-        LIST_BY_SCHOOL: (skid: string) => `/classes/list/${skid}`,
+        LIST_BY_INSTITUTION: (skid: string) => `/classes/list/${skid}`,
         SECTIONS: (skid: string, classId: number) => `/classes/sections/${skid}/${classId}`,
         CREATE: '/classes',
         GET_BY_ID: (id: string) => `/classes/${id}`,
@@ -104,11 +104,11 @@ export const API_ENDPOINTS = {
     },
     DASHBOARD: {
         SUPER_ADMIN_STATS: '/super-admin/stats',
-        INSTITUTION_STATS: (skid: string) => `/schoolAdminDashboard/stats/${skid}`,
-        INSTITUTION_ATTENDANCE_OVERVIEW: (skid: string) => `/schoolAdminDashboard/attendance-overview/${skid}`,
-        INSTITUTION_FINANCE_SUMMARY: (skid: string) => `/schoolAdminDashboard/finance-summary/${skid}`,
-        INSTITUTION_EXPENSE_BREAKDOWN: (skid: string) => `/schoolAdminDashboard/breakdown/monthly/${skid}`,
-        INSTITUTION_TIMETABLE: (skid: string) => `/schoolAdminDashboard/timetable/${skid}`,
+        INSTITUTION_STATS: (skid: string) => `/institutionAdminDashboard/stats/${skid}`,
+        INSTITUTION_ATTENDANCE_OVERVIEW: (skid: string) => `/institutionAdminDashboard/attendance-overview/${skid}`,
+        INSTITUTION_FINANCE_SUMMARY: (skid: string) => `/institutionAdminDashboard/finance-summary/${skid}`,
+        INSTITUTION_EXPENSE_BREAKDOWN: (skid: string) => `/institutionAdminDashboard/breakdown/monthly/${skid}`,
+        INSTITUTION_TIMETABLE: (skid: string) => `/institutionAdminDashboard/timetable/${skid}`,
         // Teacher dashboard
         TEACHER_STUDENT_COUNT: (skid: string, teacherId: number) => `/teacherDashboard/students/teacher/count/${skid}/${teacherId}`,
         TEACHER_ABSENTEES: (skid: string, academicYearId: number, date: string) => `/teacherDashboard/attendance/absentees/count/${skid}/${academicYearId}/${date}`,

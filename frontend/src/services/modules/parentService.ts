@@ -1,7 +1,7 @@
 // Parent Service
 // Handles API calls for parent management operations
 
-import { getApiClient, getSchoolId } from '../api/client';
+import { getApiClient, getInstitutionId } from '../api/client';
 
 // Generic API response interface for type assertions
 interface ApiResponse {
@@ -42,14 +42,14 @@ class ParentService {
     // Get list of parents with pagination
     async list(params?: IParentListParams): Promise<IParentListResponse> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         try {
-            const response = (await api.get(`${this.baseUrl}/list/${schoolId}`, { params })) as ApiResponse;
+            const response = (await api.get(`${this.baseUrl}/list/${institutionId}`, { params })) as ApiResponse;
 
             // Handle both old and new response formats
             if (response.data && response.meta) {
@@ -80,22 +80,22 @@ class ParentService {
     // Get single parent by ID
     async getById(id: string): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/${schoolId}/${id}`);
+        const response = await api.get(`${this.baseUrl}/${institutionId}/${id}`);
         return response;
     }
 
     /** Remove the link between a parent and one of their children (QA A23) */
     async unlinkChild(parentUserId: number | string, studentUserId: number | string): Promise<unknown> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
-        if (!schoolId) throw new Error('School ID not found. Please log in again.');
-        return api.delete(`/studentParent/remove/${schoolId}`, {
+        const institutionId = getInstitutionId();
+        if (!institutionId) throw new Error('Institution ID not found. Please log in again.');
+        return api.delete(`/studentParent/remove/${institutionId}`, {
             data: { parent_user_id: Number(parentUserId), student_user_id: Number(studentUserId) },
         });
     }
@@ -103,13 +103,13 @@ class ParentService {
     // Create new parent
     async create(data: any): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = (await api.post(`${this.baseUrl}/create/details/${schoolId}`, data)) as ApiResponse;
+        const response = (await api.post(`${this.baseUrl}/create/details/${institutionId}`, data)) as ApiResponse;
         if (response.code === 200 && response.status === 'success') {
             return response.data;
         }
@@ -119,13 +119,13 @@ class ParentService {
     // Update parent
     async update(id: string, data: any): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = (await api.put(`${this.baseUrl}/update/${schoolId}/${id}`, data)) as ApiResponse;
+        const response = (await api.put(`${this.baseUrl}/update/${institutionId}/${id}`, data)) as ApiResponse;
         if (response.code === 200 && response.status === 'success') {
             return response.data;
         }
@@ -135,13 +135,13 @@ class ParentService {
     // Delete parent
     async delete(id: string): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = (await api.delete(`${this.baseUrl}/delete/${schoolId}/${id}`)) as ApiResponse;
+        const response = (await api.delete(`${this.baseUrl}/delete/${institutionId}/${id}`)) as ApiResponse;
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.message || 'Failed to delete parent');
         }
@@ -150,29 +150,29 @@ class ParentService {
     // Reactivate a (soft-)deleted parent: active again and login re-enabled.
     async reactivate(id: string): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = (await api.patch(`${this.baseUrl}/reactivate/${schoolId}/${id}`)) as ApiResponse;
+        const response = (await api.patch(`${this.baseUrl}/reactivate/${institutionId}/${id}`)) as ApiResponse;
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.message || 'Failed to reactivate parent');
         }
     }
 
     // Get children linked to the currently logged-in parent.
-    // Endpoint: GET /studentParent/children/{parentUserId}/{schoolId}
+    // Endpoint: GET /studentParent/children/{parentUserId}/{institutionId}
     async getMyChildren(parentUserId: number): Promise<any[]> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = (await api.get(`/studentParent/children/${parentUserId}/${schoolId}`)) as ApiResponse;
+        const response = (await api.get(`/studentParent/children/${parentUserId}/${institutionId}`)) as ApiResponse;
         if (response?.data && Array.isArray(response.data)) {
             return response.data;
         }

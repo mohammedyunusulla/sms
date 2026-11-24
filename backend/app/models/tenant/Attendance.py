@@ -15,7 +15,7 @@ class Attendance(BaseModelTenant, BaseModelTenantMixin):
     academic_year_id = Column(Integer, ForeignKey('academic_years.id'))
     created_at = Column(DateTime, default=func.current_timestamp())
     updated_at = Column(DateTime, default=func.current_timestamp())
-    # Who marked it first / who last changed it (school_users.id; NULL on rows saved before this was recorded)
+    # Who marked it first / who last changed it (institution_users.id; NULL on rows saved before this was recorded)
     marked_by = Column(Integer, nullable=True)
     updated_by = Column(Integer, nullable=True)
         

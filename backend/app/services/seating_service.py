@@ -1,9 +1,9 @@
 # ============================================================
 # app/services/seating_service.py
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from app.models.tenant import (
     ExamSeatingConfig, SeatingPlan, Room, Student, StudentEnrollment,
-    SchoolUsers, ExamType, AcademicYear, Class, Section, Teacher
+    InstitutionUsers, ExamType, AcademicYear, Class, Section, Teacher
 )
 
 
@@ -13,7 +13,7 @@ class SeatingService:
     def create_config(data, skid):
         """Create a seating configuration."""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 room = session.query(Room).filter_by(id=data['room_id']).first()
                 if not room:
                     raise ValueError("Room not found")
@@ -62,7 +62,7 @@ class SeatingService:
         Core fields (room, date, time) are locked after generation.
         """
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 config = session.query(ExamSeatingConfig).filter_by(id=config_id).first()
                 if not config:
                     raise ValueError("Seating config not found")
@@ -120,7 +120,7 @@ class SeatingService:
     def delete_config(config_id, skid):
         """Delete a seating config and its generated plans."""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 config = session.query(ExamSeatingConfig).filter_by(id=config_id).first()
                 if not config:
                     raise ValueError("Seating config not found")
@@ -136,7 +136,7 @@ class SeatingService:
     def get_configs(skid, filters=None):
         """Get all seating configs with optional filters."""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 query = session.query(ExamSeatingConfig)
                 if filters:
                     if filters.get('academic_year_id'):
@@ -167,7 +167,7 @@ class SeatingService:
     def get_config_by_id(config_id, skid):
         """Get a single seating config with its generated plan."""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 config = session.query(ExamSeatingConfig).filter_by(id=config_id).first()
                 if not config:
                     raise ValueError("Seating config not found")
@@ -187,7 +187,7 @@ class SeatingService:
                 seating_grid = []
                 for plan in plans:
                     student = session.query(Student).filter_by(user_id=plan.student_id).first()
-                    user = session.query(SchoolUsers).filter_by(id=plan.student_id).first()
+                    user = session.query(InstitutionUsers).filter_by(id=plan.student_id).first()
                     enrollment = session.query(StudentEnrollment).filter_by(
                         student_id=plan.student_id,
                         academic_year_id=config.academic_year_id,
@@ -220,7 +220,7 @@ class SeatingService:
         - Overflow: stops when assigned columns are full; remaining students stay unassigned.
         """
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 config = session.query(ExamSeatingConfig).filter_by(id=config_id).first()
                 if not config:
                     raise ValueError("Seating config not found")
@@ -334,7 +334,7 @@ class SeatingService:
     def clear_seating(config_id, skid):
         """Clear the generated seating plan."""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 config = session.query(ExamSeatingConfig).filter_by(id=config_id).first()
                 if not config:
                     raise ValueError("Seating config not found")
@@ -354,7 +354,7 @@ class SeatingService:
         Returns list of error strings — empty list means no conflicts.
         """
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 return SeatingService._check_conflicts(session, data, exclude_config_id=config_id)
         except Exception as e:
             raise Exception(f"Validation failed: {str(e)}")
@@ -368,7 +368,7 @@ class SeatingService:
           seat_b: { config_id, student_id (optional), seat_row, seat_col, seat_label (optional) }
         """
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 a = data['seat_a']
                 b = data['seat_b']
 

@@ -46,7 +46,7 @@ export default function AssignmentsScreen() {
     const academicYear = useAppStore((s) => s.academicYear);
 
     const skid = user?.skid;
-    const teacherId = user?.school_user_id;
+    const teacherId = user?.institution_user_id;
     const academicYearId = academicYear?.id;
 
     const [selectedDate, setSelectedDate] = useState(formatDate(new Date()));

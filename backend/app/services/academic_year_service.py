@@ -1,6 +1,6 @@
 from datetime import datetime
 from app.models.tenant.AcademicYear import AcademicYear
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from app import db
 
 
@@ -9,10 +9,10 @@ class AcademicYearService:
     @staticmethod
     def get_all_academic_years(skid):
         """
-        Get all academic years for a school
+        Get all academic years for an institution
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 academic_years = (
                     tenant_session.query(AcademicYear)
                     .filter_by(is_active=True)
@@ -40,7 +40,7 @@ class AcademicYearService:
             if end_date <= start_date:
                 raise ValueError("End date must be after start date")
             
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Check for overlapping years
                 existing_year = (
                     tenant_session.query(AcademicYear)
@@ -88,7 +88,7 @@ class AcademicYearService:
         Update an existing academic year
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Get existing academic year
                 academic_year = tenant_session.query(AcademicYear).filter_by(
                     id=year_id,
@@ -147,7 +147,7 @@ class AcademicYearService:
         Refuses to delete the year currently marked as current.
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 academic_year = tenant_session.query(AcademicYear).filter_by(
                     id=year_id,
                     is_active=True
@@ -180,7 +180,7 @@ class AcademicYearService:
         Unsets all other years as current
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Get the target academic year
                 target_year = tenant_session.query(AcademicYear).filter_by(
                     id=year_id,

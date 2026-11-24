@@ -1,7 +1,7 @@
 """
 Teaching scope rules for TEACHER users.
 
-What a teacher teaches is set by the school admin in two places:
+What a teacher teaches is set by the institution admin in two places:
   * Assign Subjects page -> teacher_subjects (teacher -> subject), combined with
     section_subjects (which subjects each section has)
   * a published timetable -> timetable_entries (teacher, subject) in a section's timetable
@@ -11,7 +11,7 @@ Admins, principals and super admins are never restricted by these rules.
 from flask import jsonify, request
 from sqlalchemy import func
 
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from app.models.tenant.StudentEnrollment import StudentEnrollment
 from app.models.tenant.Sections import Section
 from app.models.tenant.TeacherSubject import TeacherSubject
@@ -27,12 +27,12 @@ from app.models.tenant.Subtopic import Subtopic
 
 
 def current_teacher_id():
-    """school_user id of the logged-in user if they are a TEACHER, else None (unrestricted)."""
+    """institution_user id of the logged-in user if they are a TEACHER, else None (unrestricted)."""
     user = getattr(request, 'current_user', None)
     if not user:
         return None
     role = user.role.value if hasattr(user.role, 'value') else str(user.role)
-    return user.school_user_id if role == 'TEACHER' else None
+    return user.institution_user_id if role == 'TEACHER' else None
 
 
 def forbidden(message):
@@ -142,7 +142,7 @@ def check_syllabus_item(skid, item_type, item_id):
     if teacher_id is None:
         return None
     try:
-        with switch_to_school_db(skid) as session:
+        with switch_to_institution_db(skid) as session:
             allowed = can_manage_syllabus(session, teacher_id, syllabus_id_for_item(session, item_type, item_id))
     except (TypeError, ValueError):
         allowed = False
@@ -163,7 +163,7 @@ def teacher_scope_sections(skid):
     teacher_id = current_teacher_id()
     if teacher_id is None:
         return None
-    with switch_to_school_db(skid) as session:
+    with switch_to_institution_db(skid) as session:
         return teacher_section_ids(session, teacher_id)
 
 

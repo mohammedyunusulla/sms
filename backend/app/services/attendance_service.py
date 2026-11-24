@@ -1,11 +1,11 @@
 from app.models.main.User import User, UserRole
-from app.models.main.School import School
+from app.models.main.Institution import Institution
 from app.models.tenant.Attendance import Attendance
-from app.models.tenant import SchoolUsers ,Student
+from app.models.tenant import InstitutionUsers ,Student
 from app import db
 from sqlalchemy.exc import IntegrityError
 from flask import jsonify
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from app.utils.attendance_status import normalize_status, status_key
 from app.utils.helpers import generate_student_id
 from sqlalchemy.dialects.postgresql import insert
@@ -46,7 +46,7 @@ def check_in_section(tenant_session, student_ids, section_id, year_id):
     ).all()}
     missing = wanted - enrolled
     if missing:
-        people = tenant_session.query(SchoolUsers).filter(SchoolUsers.id.in_(missing)).all()
+        people = tenant_session.query(InstitutionUsers).filter(InstitutionUsers.id.in_(missing)).all()
         names = ", ".join(sorted(f"{u.first_name} {u.last_name or ''}".strip() for u in people)) or ", ".join(map(str, sorted(missing)))
         raise ValueError(f"Not in this section for that academic year: {names}")
 
@@ -58,7 +58,7 @@ class AttendanceService:
         Record attendance for multiple students in bulk
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 if not data.get('records'):
                     raise ValueError("No attendance records to save")
                 
@@ -98,7 +98,7 @@ class AttendanceService:
                         'date': datetime.strptime(r['date'], '%Y-%m-%d').date(),
                         'created_at': datetime.utcnow(),
                         'updated_at': datetime.utcnow(),
-                        'marked_by': actor_id,  # who marked it (school_users.id)
+                        'marked_by': actor_id,  # who marked it (institution_users.id)
                     }
                     records.append(record)
                 
@@ -132,7 +132,7 @@ class AttendanceService:
         Update attendance records in bulk
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 records = data['records']
                 if not records:
                     raise ValueError("No attendance records to save")
@@ -215,7 +215,7 @@ class AttendanceService:
         Get attendance records for a specific section and date
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 records = tenant_session.query(Attendance).filter(
                     and_(
                         Attendance.section_id == section_id,
@@ -248,7 +248,7 @@ class AttendanceService:
         Delete attendance records for a specific section and date
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 records = tenant_session.query(Attendance).filter(
                     and_(
                         Attendance.section_id == section_id,
@@ -281,7 +281,7 @@ class AttendanceService:
         Get attendance records for a specific date with statistics
         
         Args:
-            skid: School ID
+            skid: Institution ID
             class_id: Class ID
             section_id: Section ID
             attendance_date: Date object
@@ -293,7 +293,7 @@ class AttendanceService:
             }
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Fetch attendance records with student and user details
                 records = tenant_session.query(Attendance).filter(
                     and_(
@@ -306,10 +306,10 @@ class AttendanceService:
                 
                 # Get total students in section (only active users)
                 total_students = tenant_session.query(Student).join(
-                    SchoolUsers, Student.user_id == SchoolUsers.id
+                    InstitutionUsers, Student.user_id == InstitutionUsers.id
                 ).filter(
                     Student.section_id == section_id,
-                    SchoolUsers.is_active == True
+                    InstitutionUsers.is_active == True
                 ).count()
                 
                 # Calculate statistics
@@ -324,12 +324,12 @@ class AttendanceService:
                 # Names of whoever marked / last changed these records
                 actor_ids = {i for r in records for i in (r.marked_by, r.updated_by) if i}
                 actor_names = {u.id: f"{u.first_name} {u.last_name or ''}".strip()
-                               for u in tenant_session.query(SchoolUsers).filter(SchoolUsers.id.in_(actor_ids)).all()} if actor_ids else {}
+                               for u in tenant_session.query(InstitutionUsers).filter(InstitutionUsers.id.in_(actor_ids)).all()} if actor_ids else {}
 
-                # Format attendance records with student details from SchoolUsers
+                # Format attendance records with student details from InstitutionUsers
                 formatted_records = []
                 for record in records:
-                    # Join Student with SchoolUsers to get complete details
+                    # Join Student with InstitutionUsers to get complete details
                     student = tenant_session.query(Student).filter(
                         Student.user_id == record.student_user_id
                     ).first()
@@ -395,7 +395,7 @@ class AttendanceService:
         Get monthly attendance with day-by-day details for all students
         
         Args:
-            skid: School ID
+            skid: Institution ID
             class_id: Class ID
             section_id: Section ID
             start_date: Date object (start of period)
@@ -409,13 +409,13 @@ class AttendanceService:
             }
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Get all active students in the section with user details
                 students = tenant_session.query(Student).join(
-                    SchoolUsers, Student.user_id == SchoolUsers.id
+                    InstitutionUsers, Student.user_id == InstitutionUsers.id
                 ).filter(
                     Student.section_id == section_id,
-                    SchoolUsers.is_active == True
+                    InstitutionUsers.is_active == True
                 ).order_by(Student.roll_no).all()
                 
                 # Generate all dates in the range (excluding weekends if needed)
@@ -553,7 +553,7 @@ class AttendanceService:
         Get attendance records for a date range (for detailed view)
         
         Args:
-            skid: School ID
+            skid: Institution ID
             class_id: Class ID
             section_id: Section ID
             start_date: Date object
@@ -563,7 +563,7 @@ class AttendanceService:
             list: Attendance records grouped by date
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 records = tenant_session.query(Attendance).filter(
                     and_(
                         Attendance.class_id == class_id,
@@ -631,7 +631,7 @@ class AttendanceService:
         Update an existing attendance record
         
         Args:
-            skid: School ID
+            skid: Institution ID
             attendance_id: Attendance record ID
             status: New status
             remarks: Updated remarks (optional)
@@ -640,7 +640,7 @@ class AttendanceService:
             dict: Updated attendance record
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 record = tenant_session.query(Attendance).filter(
                     Attendance.id == attendance_id
                 ).first()
@@ -693,7 +693,7 @@ class AttendanceService:
         Get attendance records for a specific student
         
         Args:
-            skid: School ID
+            skid: Institution ID
             student_id: Student user ID
             start_date: Optional start date
             end_date: Optional end date
@@ -702,7 +702,7 @@ class AttendanceService:
             dict: Student attendance details with statistics
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Build query
                 query = tenant_session.query(Attendance).filter(
                     Attendance.student_user_id == student_id
@@ -717,7 +717,7 @@ class AttendanceService:
                 
                 # Get student details with user information
                 student = tenant_session.query(Student).join(
-                    SchoolUsers, Student.user_id == SchoolUsers.id
+                    InstitutionUsers, Student.user_id == InstitutionUsers.id
                 ).filter(
                     Student.user_id == student_id
                 ).first()
@@ -788,7 +788,7 @@ class AttendanceService:
         Get list of all students in a class/section for attendance marking
         
         Args:
-            skid: School ID
+            skid: Institution ID
             class_id: Class ID
             section_id: Section ID
             
@@ -796,13 +796,13 @@ class AttendanceService:
             list: List of students with their details
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 students = tenant_session.query(Student).join(
-                    SchoolUsers, Student.user_id == SchoolUsers.id
+                    InstitutionUsers, Student.user_id == InstitutionUsers.id
                 ).filter(
                     Student.class_id == class_id,
                     Student.section_id == section_id,
-                    SchoolUsers.is_active == True
+                    InstitutionUsers.is_active == True
                 ).order_by(Student.roll_no).all()
                 
                 student_list = []

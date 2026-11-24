@@ -18,7 +18,7 @@ export default defineConfig({
       },
     }),
     // Installable app (PWA). The service worker caches only the app shell (HTML/JS/CSS/icons):
-    // API calls are never cached, so no school's data is ever kept on a (possibly shared) device.
+    // API calls are never cached, so no institution's data is ever kept on a (possibly shared) device.
     VitePWA({
       registerType: "prompt", // a new deploy shows a "New version - Reload" toast (src/components/pwa/PwaUpdater.tsx)
       injectRegister: false, // registered from PwaUpdater

@@ -191,7 +191,15 @@ export const authService = {
         const userStr = localStorage.getItem('loggedUser');
         if (!userStr) return null;
         try {
-            return JSON.parse(userStr);
+            const user = JSON.parse(userStr);
+            // A sign-in saved before the "school" -> "institution" rename has old field names and an old
+            // role code: treat it as signed out so the person signs in again (the old name is spelled in
+            // two parts so a future text rename can't change this check).
+            if (user && typeof user === 'object' && ('sch' + 'ool_id') in user) {
+                ['authToken', 'refreshToken', 'loggedUser', 'parentSelectedChild'].forEach((k) => localStorage.removeItem(k));
+                return null;
+            }
+            return user;
         } catch {
             return null;
         }

@@ -7,7 +7,7 @@ from app.models.tenant.UserRoles import UserRoles
 from app.models.tenant.AcademicYear import AcademicYear
 from app.decorators.logging import log_login_attempt, log_logout
 from datetime import datetime, timedelta
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from app.utils.security import validate_password_strength, get_client_ip
 import uuid
 
@@ -93,23 +93,23 @@ class AuthService:
             )
             session.save()
 
-            # Fetch role data from the tenant (school) DB
+            # Fetch role data from the tenant (institution) DB
             role_data = None
             academic_years_data = []
             current_academic_year = None
 
             if user.skid:
-                with switch_to_school_db(user.skid) as school_session:
+                with switch_to_institution_db(user.skid) as institution_session:
                     # the person's one role (same lookup the server's permission check uses)
                     from app.utils.role_permissions import account_role
-                    user_role = account_role(school_session, user.school_user_id)
+                    user_role = account_role(institution_session, user.institution_user_id)
 
                     if user_role:
                         role_data = {
                             "id": user_role.id,
                             "role_name": user_role.role_name,
                             "role_code": user_role.role_code,
-                            "school_id": user_role.school_id,
+                            "institution_id": user_role.institution_id,
                             "is_active": user_role.is_active,
                             "is_system_role": user_role.is_system_role,
                             "permissions": user_role.permissions
@@ -117,7 +117,7 @@ class AuthService:
 
                     # Fetch academic years
                     academic_years = (
-                        school_session.query(AcademicYear)
+                        institution_session.query(AcademicYear)
                         .filter(AcademicYear.is_active == True)
                         .order_by(AcademicYear.start_date.desc())
                         .all()
@@ -272,7 +272,7 @@ class AuthService:
     # Fields a user is allowed to update on their own profile.
     # NOT included (and never editable via this path):
     #   - email, username (login identity)
-    #   - role, school_id, is_active, plan, password_hash
+    #   - role, institution_id, is_active, plan, password_hash
     SELF_EDITABLE_FIELDS = ('first_name', 'last_name', 'phone')
 
     @staticmethod
@@ -302,16 +302,16 @@ class AuthService:
 
         if changed:
             db.session.commit()
-            # Keep the school's record of the person in step (names in lists, timetables, etc.
-            # come from the tenant school_users row). Super admins have no school record.
-            if user.school_user_id and user.skid:
-                from app.models.tenant import SchoolUsers
-                from app.utils.db_manager import switch_to_school_db
-                with switch_to_school_db(user.skid) as tenant_session:
-                    school_user = tenant_session.query(SchoolUsers).filter_by(id=user.school_user_id).first()
-                    if school_user:
+            # Keep the institution's record of the person in step (names in lists, timetables, etc.
+            # come from the tenant institution_users row). Super admins have no institution record.
+            if user.institution_user_id and user.skid:
+                from app.models.tenant import InstitutionUsers
+                from app.utils.db_manager import switch_to_institution_db
+                with switch_to_institution_db(user.skid) as tenant_session:
+                    institution_user = tenant_session.query(InstitutionUsers).filter_by(id=user.institution_user_id).first()
+                    if institution_user:
                         for field in AuthService.SELF_EDITABLE_FIELDS:
-                            setattr(school_user, field, getattr(user, field))
+                            setattr(institution_user, field, getattr(user, field))
 
         return user.to_dict()
 

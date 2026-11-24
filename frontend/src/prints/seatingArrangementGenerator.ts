@@ -11,7 +11,7 @@ import {
     commonPdfStyles,
     loadPdfFonts,
 } from './HeaderAndFooterComponent';
-import type { SchoolData, PdfAction } from './printTypes';
+import type { InstitutionData, PdfAction } from './printTypes';
 
 export interface SeatingPlanStudent {
     student_name: string;
@@ -66,7 +66,7 @@ const CLASS_BORDER_COLORS = ['#93C5FD', '#86EFAC', '#FDE047', '#C4B5FD', '#F9A8D
  */
 export const generateSeatingArrangementPdf = async (
     data: SeatingArrangementReportData,
-    schoolData: SchoolData,
+    institutionData: InstitutionData,
     action: PdfAction = 'download'
 ): Promise<void> => {
     await loadPdfFonts();
@@ -276,7 +276,7 @@ export const generateSeatingArrangementPdf = async (
 
     // Content
     const content: any[] = [
-        getReportHeader(schoolData, title, subtitle, 'landscape', true),
+        getReportHeader(institutionData, title, subtitle, 'landscape', true),
         summarySection,
         legendSection,
         seatingSection,
@@ -297,7 +297,7 @@ export const generateSeatingArrangementPdf = async (
             };
         },
         footer: (currentPage: number, pageCount: number) => {
-            return getReportFooter(currentPage, pageCount, schoolData?.generatedBy);
+            return getReportFooter(currentPage, pageCount, institutionData?.generatedBy);
         },
         content,
         styles: commonPdfStyles,
