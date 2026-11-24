@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { NAV_LINKS, scrollToSection, scrollToTop, useLoginCta } from "../landingNav";
 import { ArrowRightIcon, CloseIcon, MenuIcon } from "../../../components/common/StrokeIcons";
 import Logo from "../../../components/common/BrandLogo";
+import InstallAppButton from "../../../components/pwa/InstallAppButton";
 
 function NavBadge({ children }: { children: string }) {
   return (
@@ -83,6 +84,9 @@ export default function LandingNavbar() {
         </ul>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* only shown where the browser can install it, and not inside the installed app.
+              Under 380px wide there's no room next to "Log in": it moves into the mobile menu below. */}
+          <InstallAppButton variant="landing" className="max-[379px]:hidden" />
           <Link
             to={cta.to}
             className="group inline-flex items-center gap-1.5 rounded-full bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-brand-500/25 transition hover:bg-brand-600 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/30 sm:px-5"
@@ -124,6 +128,9 @@ export default function LandingNavbar() {
               </a>
             </li>
           ))}
+          <li className="min-[380px]:hidden">
+            <InstallAppButton variant="menu" />
+          </li>
         </ul>
       </div>
     </header>

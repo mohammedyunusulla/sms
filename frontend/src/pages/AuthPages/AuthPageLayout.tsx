@@ -3,6 +3,7 @@ import React from "react";
 import { Link } from "react-router";
 import { ArrowLeftIcon, LockIcon } from "../../components/common/StrokeIcons";
 import AuthShowcase from "./AuthShowcase";
+import InstallAppButton from "../../components/pwa/InstallAppButton";
 
 /**
  * Shared shell for sign in, sign up and forgot password.
@@ -28,7 +29,7 @@ export default function AuthLayout({
           className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-gradient-to-b from-brand-50/80 to-transparent dark:from-brand-500/[0.07]"
         />
 
-        <header className="relative z-10 flex min-h-12 items-center px-5 py-3 short:py-2 sm:px-10 sm:py-5">
+        <header className="relative z-10 flex min-h-12 items-center justify-between gap-3 px-5 py-3 short:py-2 sm:px-10 sm:py-5">
           <Link
             to="/"
             className="group -ml-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-gray-500 transition-colors hover:text-gray-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-500/20 dark:text-gray-400 dark:hover:text-white"
@@ -36,6 +37,7 @@ export default function AuthLayout({
             <ArrowLeftIcon className="size-4 transition-transform group-hover:-translate-x-0.5" />
             Back to home
           </Link>
+          <InstallAppButton />
         </header>
 
         <main className="relative z-1 flex flex-1 flex-col">{children}</main>
