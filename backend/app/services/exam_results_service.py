@@ -1,5 +1,5 @@
 """
-Exam results publishing: students and parents only see an exam's marks once the school publishes them
+Exam results publishing: students and parents only see an exam's marks once the institution publishes them
 for that academic year. Staff always see everything.
 """
 from datetime import datetime
@@ -7,14 +7,14 @@ from datetime import datetime
 from app.models.tenant.AcademicYear import AcademicYear
 from app.models.tenant.ExamModels import ExamType
 from app.models.tenant.ExamResultPublication import ExamResultPublication
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 
 # Roles that only see published results
 RESULT_LIMITED_ROLES = ('STUDENT', 'PARENT')
 
 
 def ensure_table(tenant_session):
-    """Existing schools: create the table on first use (new schools get it from create_all)."""
+    """Existing institutions: create the table on first use (new institutions get it from create_all)."""
     ExamResultPublication.__table__.create(bind=tenant_session.bind, checkfirst=True)
 
 
@@ -36,7 +36,7 @@ class ExamResultsService:
 
     @staticmethod
     def list_publications(skid, academic_year_id):
-        with switch_to_school_db(skid) as tenant_session:
+        with switch_to_institution_db(skid) as tenant_session:
             ensure_table(tenant_session)
             rows = tenant_session.query(ExamResultPublication).filter(
                 ExamResultPublication.academic_year_id == int(academic_year_id)
@@ -45,7 +45,7 @@ class ExamResultsService:
 
     @staticmethod
     def set_published(skid, exam_type_id, academic_year_id, published, user_id):
-        with switch_to_school_db(skid) as tenant_session:
+        with switch_to_institution_db(skid) as tenant_session:
             ensure_table(tenant_session)
             if not tenant_session.query(ExamType).filter_by(id=exam_type_id).first():
                 raise ValueError("Exam not found")

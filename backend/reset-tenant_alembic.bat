@@ -1,5 +1,5 @@
 @echo off
-REM Resets the alembic_version table on every tenant (skool_*) database.
+REM Resets the alembic_version table on every tenant (eduspyre_*) database.
 REM
 REM Usage:
 REM   reset-tenant_alembic.bat                 - clears alembic_version (no revision stamped)

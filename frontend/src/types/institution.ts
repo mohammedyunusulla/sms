@@ -1,12 +1,12 @@
 /**
  * Institution Types
- * Previously "School" - now "Institution" for generic education platforms
+ * Previously "Institution" - now "Institution" for generic education platforms
  */
 
 import { BaseEntity } from './common';
 
 /**
- * Institution (School, College, Coaching Institute, etc.)
+ * Institution (Institution, College, Coaching Institute, etc.)
  */
 export interface Institution extends BaseEntity {
   code: string;

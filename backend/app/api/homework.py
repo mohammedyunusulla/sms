@@ -7,7 +7,7 @@ from app.services.homework_service import MAX_HOMEWORK_PHOTOS, MAX_SUBMISSION_PA
 
 homework_bp = Blueprint("homework", __name__)
 
-TEACHER_ROLES = ["SUPER_ADMIN", "TEACHER", "PRINCIPAL", "SCHOOL_ADMIN"]
+TEACHER_ROLES = ["SUPER_ADMIN", "TEACHER", "PRINCIPAL", "INSTITUTION_ADMIN"]
 STUDENT_ROLES = ["STUDENT"]
 ALL_HOMEWORK_ROLES = TEACHER_ROLES + STUDENT_ROLES
 
@@ -131,7 +131,7 @@ def start_session():
         return _error("assignment_id is required", 422)
     body, status = HomeworkService.start_session(
         request.current_user.skid,
-        request.current_user.school_user_id,
+        request.current_user.institution_user_id,
         assignment_id,
         photos[0] if photos else None,
     )
@@ -147,7 +147,7 @@ def latest_session():
         return _error("assignment_id is required", 422)
     body, status = HomeworkService.latest_session(
         request.current_user.skid,
-        request.current_user.school_user_id,
+        request.current_user.institution_user_id,
         assignment_id,
     )
     return jsonify(body), status
@@ -159,7 +159,7 @@ def latest_session():
 def toggle_pause(session_id: int):
     body, status = HomeworkService.toggle_pause(
         request.current_user.skid,
-        request.current_user.school_user_id,
+        request.current_user.institution_user_id,
         session_id,
     )
     return jsonify(body), status
@@ -177,7 +177,7 @@ def hint(session_id: int):
         return _error("Write your question or add a photo of your work", 422)
     body, status = HomeworkService.request_hint(
         request.current_user.skid,
-        request.current_user.school_user_id,
+        request.current_user.institution_user_id,
         session_id,
         student_doubt or PHOTO_ONLY_DOUBT,
         student_images=images,
@@ -195,7 +195,7 @@ def submit_session(session_id: int):
         return _error(error, 422)
     body, status = HomeworkService.submit_session(
         request.current_user.skid,
-        request.current_user.school_user_id,
+        request.current_user.institution_user_id,
         session_id,
         images,
     )

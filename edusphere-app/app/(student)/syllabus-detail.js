@@ -33,7 +33,7 @@ export default function StudentSyllabusDetailScreen() {
     const academicYear = useAppStore((s) => s.academicYear);
 
     const skid = user?.skid;
-    const studentId = user?.school_user_id;
+    const studentId = user?.institution_user_id;
     const teacherId = params.teacher_id ? parseInt(params.teacher_id) : null;
     const subjectName = params.subject_name || "Subject";
 

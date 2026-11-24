@@ -19,7 +19,7 @@ import {
 import { examService } from '@/services/modules/examService';
 import { useAuthStore } from '@/stores/authStore';
 import { generateExamTimetablePdf } from '@/prints';
-import type { SchoolData, PdfAction } from '@/prints';
+import type { InstitutionData, PdfAction } from '@/prints';
 
 interface IStudentExamEntry {
     id: number;
@@ -47,7 +47,7 @@ interface IStudentExamTimetableProps {
 
 const StudentExamTimetable: FC<IStudentExamTimetableProps> = ({ studentId, title, subtitle }) => {
     const user = useAuthStore((s) => s.user);
-    const forStudentId = studentId ?? user?.school_user_id;
+    const forStudentId = studentId ?? user?.institution_user_id;
     const currentAcademicYear = useAuthStore((s) => s.user?.current_academic_year);
     const academicYearVersion = useAuthStore((s) => s.academicYearVersion);
 
@@ -112,12 +112,12 @@ const StudentExamTimetable: FC<IStudentExamTimetableProps> = ({ studentId, title
         return `${h12}:${m} ${ampm}`;
     };
 
-    const getSchoolData = (): SchoolData => {
+    const getInstitutionData = (): InstitutionData => {
         return {
-            schoolName: user?.school_name || 'School Name',
-            schoolAddress: '',
-            schoolPhone: '',
-            schoolEmail: user?.email || '',
+            institutionName: user?.institution_name || 'Institution Name',
+            institutionAddress: '',
+            institutionPhone: '',
+            institutionEmail: user?.email || '',
             logo: null,
             generatedBy: user?.full_name || user?.name || 'System',
         };
@@ -142,7 +142,7 @@ const StudentExamTimetable: FC<IStudentExamTimetableProps> = ({ studentId, title
                         seat_label: e.seat_label || undefined,
                     })),
                 },
-                getSchoolData(),
+                getInstitutionData(),
                 action
             );
             toast.success(

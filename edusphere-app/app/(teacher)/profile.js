@@ -58,9 +58,9 @@ export default function ProfileScreen() {
           <Text className="font-lexend text-sm text-dark-500 mt-1">
             {user?.email || ""}
           </Text>
-          {user?.school_name && (
+          {user?.institution_name && (
             <Text className="font-lexend text-xs text-dark-400 mt-0.5">
-              {user.school_name}
+              {user.institution_name}
             </Text>
           )}
           <View className="bg-primary-100 px-3 py-1 rounded-full mt-2">

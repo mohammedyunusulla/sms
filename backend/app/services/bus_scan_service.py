@@ -2,10 +2,10 @@ import json
 from datetime import datetime, date, timezone, timedelta
 from sqlalchemy import func, cast, Date, or_
 from app.models.tenant.BusScan import BusScan, BusScanType
-from app.models.tenant.SchoolUsers import SchoolUsers
+from app.models.tenant.InstitutionUsers import InstitutionUsers
 from app.models.tenant.Student import Student
 from app.models.tenant.Roles import Role
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 
 
 def _enrich_records(session, records):
@@ -21,7 +21,7 @@ def _enrich_records(session, records):
             r['staff_name'] = None
         return records
 
-    users = session.query(SchoolUsers).filter(SchoolUsers.id.in_(all_ids)).all()
+    users = session.query(InstitutionUsers).filter(InstitutionUsers.id.in_(all_ids)).all()
     name_map = {u.id: u.full_name for u in users}
 
     for r in records:
@@ -38,26 +38,26 @@ class BusScanService:
         Record a bus check-in or check-out scan.
 
         Expected data keys:
-            student_user_id  (int)  – school_users.id of the student
+            student_user_id  (int)  – institution_users.id of the student
             scan_type        (str)  – 'CHECK_IN' or 'CHECK_OUT'
-            scanned_by       (int)  – school_users.id of bus staff
+            scanned_by       (int)  – institution_users.id of bus staff
             academic_year_id (int, optional)
             location         (str, optional)
         """
-        with switch_to_school_db(skid) as session:
+        with switch_to_institution_db(skid) as session:
             try:
                 student_id = int(data['student_user_id'])
             except (TypeError, ValueError):
                 raise ValueError("Invalid student")
             # Only active students can be scanned (a teacher's or anyone else's id used to be accepted)
             student = (
-                session.query(Student, SchoolUsers)
-                .join(SchoolUsers, SchoolUsers.id == Student.user_id)
+                session.query(Student, InstitutionUsers)
+                .join(InstitutionUsers, InstitutionUsers.id == Student.user_id)
                 .filter(Student.user_id == student_id)
                 .first()
             )
             if not student or not student[1].is_active:
-                raise ValueError("This isn't an active student of this school")
+                raise ValueError("This isn't an active student of this institution")
 
             # Check-ins and check-outs must alternate (a student could be checked out twice)
             now = datetime.now(timezone(timedelta(hours=5, minutes=30))).replace(tzinfo=None)
@@ -90,7 +90,7 @@ class BusScanService:
     def get_today_records(skid, academic_year_id=None, for_date=None):
         """Return all bus scan records for a given date (defaults to today), enriched with student and staff names."""
         target_date = for_date if for_date else date.today()
-        with switch_to_school_db(skid) as session:
+        with switch_to_institution_db(skid) as session:
             query = session.query(BusScan).filter(
                 cast(BusScan.scanned_at, Date) == target_date
             )
@@ -102,7 +102,7 @@ class BusScanService:
     @staticmethod
     def get_student_history(skid, student_user_id, limit=50):
         """Return recent bus scan history for a specific student."""
-        with switch_to_school_db(skid) as session:
+        with switch_to_institution_db(skid) as session:
             rows = (
                 session.query(BusScan)
                 .filter(BusScan.student_user_id == student_user_id)
@@ -120,7 +120,7 @@ class BusScanService:
         enriched with student and staff names.
         """
         today = date.today()
-        with switch_to_school_db(skid) as session:
+        with switch_to_institution_db(skid) as session:
             subq = (
                 session.query(
                     BusScan.student_user_id,
@@ -145,7 +145,7 @@ class BusScanService:
     def lookup_student_by_qr(skid, qr_data):
         """
         Resolve QR code payload to a student_user_id.
-        QR payload JSON: {"student_id": <school_users.id>, "school": "<skid>"}
+        QR payload JSON: {"student_id": <institution_users.id>, "institution": "<skid>"}
         Returns student_user_id (int) or raises ValueError.
         """
         try:
@@ -155,8 +155,8 @@ class BusScanService:
         if not isinstance(payload, dict):
             raise ValueError("Invalid QR code: this isn't a student card")
 
-        if payload.get('school') != skid:
-            raise ValueError("This QR code belongs to another school")
+        if payload.get('institution') != skid:
+            raise ValueError("This QR code belongs to another institution")
 
         student_id = payload.get('student_id')
         if not student_id:
@@ -173,18 +173,18 @@ def search_students_for_bus(skid, query):
     Returns list of { id, full_name, roll_no, admission_number } for the manual scan UI.
     """
     q = f"%{query}%"
-    with switch_to_school_db(skid) as session:
+    with switch_to_institution_db(skid) as session:
         rows = (
-            session.query(SchoolUsers, Student.roll_no, Student.admission_number)
-            .outerjoin(Student, Student.user_id == SchoolUsers.id)
-            .join(Role, Role.id == SchoolUsers.role_id)
+            session.query(InstitutionUsers, Student.roll_no, Student.admission_number)
+            .outerjoin(Student, Student.user_id == InstitutionUsers.id)
+            .join(Role, Role.id == InstitutionUsers.role_id)
             .filter(
-                SchoolUsers.is_active == True,
+                InstitutionUsers.is_active == True,
                 Role.role_code == 'STUDENT',
                 or_(
-                    SchoolUsers.first_name.ilike(q),
-                    SchoolUsers.last_name.ilike(q),
-                    func.concat(SchoolUsers.first_name, ' ', SchoolUsers.last_name).ilike(q),
+                    InstitutionUsers.first_name.ilike(q),
+                    InstitutionUsers.last_name.ilike(q),
+                    func.concat(InstitutionUsers.first_name, ' ', InstitutionUsers.last_name).ilike(q),
                     Student.roll_no.ilike(q),
                     Student.admission_number.ilike(q),
                 )

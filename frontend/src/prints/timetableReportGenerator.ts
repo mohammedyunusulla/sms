@@ -11,7 +11,7 @@ import {
     commonPdfStyles,
     loadPdfFonts,
 } from './HeaderAndFooterComponent';
-import type { SchoolData, PdfAction, TimetableReportData } from './printTypes';
+import type { InstitutionData, PdfAction, TimetableReportData } from './printTypes';
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -33,7 +33,7 @@ const getTeacherName = (teacher: any): string => {
  */
 export const generateTimetablePdf = async (
     data: TimetableReportData,
-    schoolData: SchoolData,
+    institutionData: InstitutionData,
     action: PdfAction = 'download'
 ): Promise<void> => {
     await loadPdfFonts();
@@ -178,7 +178,7 @@ export const generateTimetablePdf = async (
 
     // ─── Content ───
     const content: any[] = [
-        getReportHeader(schoolData, title, subtitle, 'landscape', true),
+        getReportHeader(institutionData, title, subtitle, 'landscape', true),
         timetableTable,
         notesSection,
     ];
@@ -211,7 +211,7 @@ export const generateTimetablePdf = async (
             };
         },
         footer: (currentPage: number, pageCount: number) => {
-            return getReportFooter(currentPage, pageCount, schoolData?.generatedBy);
+            return getReportFooter(currentPage, pageCount, institutionData?.generatedBy);
         },
         content,
         styles: commonPdfStyles,

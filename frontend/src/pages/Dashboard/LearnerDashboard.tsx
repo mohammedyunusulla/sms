@@ -57,7 +57,7 @@ const LearnerDashboard: FC = () => {
     const [todayPeriods, setTodayPeriods] = useState<StudentTimetablePeriod[]>([]);
 
     const skid = user?.skid || '';
-    const studentId = user?.school_user_id;
+    const studentId = user?.institution_user_id;
     const academicYearId = user?.current_academic_year?.id;
 
     const fetchDashboardData = useCallback(async () => {

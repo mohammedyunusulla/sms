@@ -7,13 +7,13 @@ class UserRoles(BaseModelTenant, BaseModelTenantMixin):
     """User-Role assignment"""
     __tablename__ = 'user_roles'
     
-    user_id = Column(Integer, ForeignKey('school_users.id'), primary_key=True)
+    user_id = Column(Integer, ForeignKey('institution_users.id'), primary_key=True)
     role_id = Column(Integer, ForeignKey('roles.id'), primary_key=True)
-    assigned_by = Column(Integer, ForeignKey('school_users.id'), nullable=True)
+    assigned_by = Column(Integer, ForeignKey('institution_users.id'), nullable=True)
     is_active = Column(Boolean, default=True)
     
     # Relationships
-    user = relationship("SchoolUsers", back_populates="roles", foreign_keys=[user_id])
+    user = relationship("InstitutionUsers", back_populates="roles", foreign_keys=[user_id])
     role = relationship("Role", back_populates="user_roles")
     
     

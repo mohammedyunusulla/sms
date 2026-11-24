@@ -1,6 +1,6 @@
 /**
  * Room Management - List Page
- * View and manage rooms/halls for the school
+ * View and manage rooms/halls for the institution
  */
 
 import { FC, useEffect, useState } from 'react';

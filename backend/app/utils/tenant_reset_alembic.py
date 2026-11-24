@@ -32,10 +32,10 @@ def _tenant_db_url(db_name: str) -> str:
     return f"postgresql://{POSTGRES_USER}:{pwd}@{POSTGRES_HOST}:{POSTGRES_PORT}/{db_name}"
 
 
-def get_all_schools():
+def get_all_institutions():
     engine = create_engine(MAIN_DB_URL)
     with engine.connect() as conn:
-        result = conn.execute(text("SELECT skid FROM schools"))
+        result = conn.execute(text("SELECT skid FROM institutions"))
         return [row[0] for row in result]
 
 
@@ -57,9 +57,9 @@ def reset_alembic_version(db_name: str, target_revision: str | None):
 
 
 def reset_all_tenants(target_revision: str | None):
-    skids = get_all_schools()
+    skids = get_all_institutions()
     if not skids:
-        print("No tenant schools found.")
+        print("No tenant institutions found.")
         return
 
     action = f"stamp -> {target_revision}" if target_revision else "clear (no revision)"
@@ -68,7 +68,7 @@ def reset_all_tenants(target_revision: str | None):
 
     ok, failed = 0, 0
     for skid in skids:
-        db_name = f"skool_{skid}"
+        db_name = f"eduspyre_{skid}"
         try:
             reset_alembic_version(db_name, target_revision)
             print(f"✅  {db_name}")

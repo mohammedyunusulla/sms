@@ -54,16 +54,16 @@ const ROLES: Role[] = [
     id: "administrators",
     label: "Administrators",
     icon: BuildingIcon,
-    headline: "Full control over school operations",
+    headline: "Full control over day-to-day operations",
     description:
-      "School admins and principals run admissions, classes, staff, fees and academic years from a single dashboard.",
+      "Administrators and principals run admissions, classes, staff, fees and academic years from a single dashboard.",
     points: [
       "Add teachers, students and parents one by one or in bulk",
       "Build timetables and plan exams with seating arrangements",
-      "Track fee collection and school expenses",
+      "Track fee collection and expenses",
       "Control exactly what every role can see and do",
     ],
-    previewTitle: "School overview",
+    previewTitle: "Campus overview",
     rows: [
       { icon: WalletIcon, title: "Fee collection · Term 2", meta: "₹4.8L of ₹5.9L collected", badge: "82%", tone: "brand" },
       { icon: ClipboardCheckIcon, title: "Attendance today", meta: "1,203 of 1,248 present", badge: "96%", tone: "success" },
@@ -93,18 +93,18 @@ const ROLES: Role[] = [
     id: "parents",
     label: "Parents",
     icon: UsersIcon,
-    headline: "Stay close to your child's school day",
+    headline: "Stay close to your child's day",
     description:
       "Everything about your children in one place, on the web today and in the EduSpyre mobile app soon.",
     points: [
-      "Follow the school bus live on a map (mobile app, coming soon)",
+      "Follow the bus live on a map (mobile app, coming soon)",
       "Switch between your children in one tap",
       "See timetables, assignments and syllabus progress",
       "Check fee details, instalments and payment history",
     ],
     previewTitle: "Today",
     rows: [
-      { icon: BusIcon, title: "Bus 12", meta: "On the way to school", badge: "Live", tone: "success" },
+      { icon: BusIcon, title: "Bus 12", meta: "On the way to campus", badge: "Live", tone: "success" },
       { icon: ClipboardCheckIcon, title: "Attendance", meta: "Marked present · 9:05 AM", badge: "Present", tone: "success" },
       { icon: AwardIcon, title: "Progress card", meta: "Term 1 results published", badge: "New", tone: "brand" },
     ],
@@ -113,7 +113,7 @@ const ROLES: Role[] = [
     id: "students",
     label: "Students",
     icon: GraduationCapIcon,
-    headline: "Everything for the school day",
+    headline: "Everything for the day ahead",
     description: "Students always know what's next and get help exactly when they need it.",
     points: [
       "Personal timetable and exam schedule",
@@ -133,7 +133,7 @@ const ROLES: Role[] = [
     label: "Bus staff",
     icon: BusIcon,
     headline: "Simple tools for every trip",
-    description: "Bus staff keep the school and parents informed without any extra paperwork.",
+    description: "Bus staff keep the institution and parents informed without any extra paperwork.",
     points: [
       "Check students in and out with a QR scan",
       "Review a daily report of every check-in and check-out",

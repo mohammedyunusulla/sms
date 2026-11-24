@@ -4,12 +4,12 @@ import string
 from datetime import datetime, timedelta
 from flask import jsonify
 
-def generate_school_code(school_name):
+def generate_institution_code(institution_name):
     """
-    Generate a unique school code from school name
+    Generate a unique institution code from institution name
     """
     # Remove special characters and spaces, take first 3 letters
-    clean_name = re.sub(r'[^A-Za-z0-9]', '', school_name).upper()
+    clean_name = re.sub(r'[^A-Za-z0-9]', '', institution_name).upper()
     prefix = clean_name[:3] if len(clean_name) >= 3 else clean_name.ljust(3, 'X')
     
     # Add random suffix
@@ -220,8 +220,8 @@ def mask_sensitive_data(data, sensitive_fields=None):
     return data
 
 
-def generate_student_id(school_code):
+def generate_student_id(institution_code):
     import random
     year = datetime.now().year
     random_number = random.randint(100000, 999999)
-    return f"{school_code.upper()}-{year}-{random_number}"
+    return f"{institution_code.upper()}-{year}-{random_number}"

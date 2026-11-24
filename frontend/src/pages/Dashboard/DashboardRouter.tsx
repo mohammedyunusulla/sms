@@ -37,7 +37,7 @@ const DashboardRouter: FC = () => {
                     </Suspense>
                 );
 
-            case UserRole.SCHOOL_ADMIN:
+            case UserRole.INSTITUTION_ADMIN:
                 return (
                     <Suspense fallback={<LoadingDashboard />}>
                         <AdministratorDashboard />

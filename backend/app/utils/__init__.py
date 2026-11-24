@@ -1,7 +1,7 @@
-from .db_manager import switch_to_school_db
+from .db_manager import switch_to_institution_db
 from .db_manager import DatabaseManager
 from .helpers import (
-    generate_school_code,
+    generate_institution_code,
     validate_email,
     validate_phone,
     validate_password,
@@ -17,8 +17,8 @@ from .helpers import (
 
 __all__ = [
     'DatabaseManager',
-    'switch_to_school_db',
-    'generate_school_code',
+    'switch_to_institution_db',
+    'generate_institution_code',
     'validate_email',
     'validate_phone',
     'validate_password',

@@ -17,7 +17,7 @@ import {
     type TransferCertificateData,
     type BonafideCertificateData,
     type StudentIDCardData,
-    type SchoolData,
+    type InstitutionData,
 } from '../../prints';
 
 type CertificateTab = 'transfer' | 'bonafide' | 'idcard';
@@ -98,13 +98,13 @@ const CertificateGenerator: FC = () => {
         });
     };
 
-    const getSchoolData = (): SchoolData => {
+    const getInstitutionData = (): InstitutionData => {
         return {
-            schoolName: user?.school_name || 'School Name',
-            schoolAddress: user?.school_address || '',
-            schoolPhone: user?.school_phone || '',
-            schoolEmail: user?.school_email || '',
-            logo: user?.school_logo || '',
+            institutionName: user?.institution_name || 'Institution Name',
+            institutionAddress: user?.institution_address || '',
+            institutionPhone: user?.institution_phone || '',
+            institutionEmail: user?.institution_email || '',
+            logo: user?.institution_logo || '',
             generatedBy: user?.full_name || user?.username || 'Admin',
         };
     };
@@ -113,7 +113,7 @@ const CertificateGenerator: FC = () => {
         try {
             setLoading(true);
 
-            const schoolData = getSchoolData();
+            const institutionData = getInstitutionData();
 
             switch (activeTab) {
                 case 'transfer':
@@ -141,7 +141,7 @@ const CertificateGenerator: FC = () => {
                         days_present: formData.daysPresent ? parseInt(formData.daysPresent) : undefined,
                     };
 
-                    await generateTransferCertificatePdf(transferData, schoolData, action);
+                    await generateTransferCertificatePdf(transferData, institutionData, action);
                     toast.success(`Transfer Certificate ${action === 'download' ? 'downloaded' : 'sent to the printer'}`);
                     break;
 
@@ -160,7 +160,7 @@ const CertificateGenerator: FC = () => {
                         academic_year: user?.current_academic_year?.year_name || 'N/A',
                     };
 
-                    await generateBonafideCertificatePdf(bonafideData, schoolData, action);
+                    await generateBonafideCertificatePdf(bonafideData, institutionData, action);
                     toast.success(`Bonafide Certificate ${action === 'download' ? 'downloaded' : 'sent to the printer'}`);
                     break;
 
@@ -172,7 +172,7 @@ const CertificateGenerator: FC = () => {
 
                     const qrPayload = JSON.stringify({
                         student_id: student.id,
-                        school: user?.skid || '',
+                        institution: user?.skid || '',
                     });
 
                     const idCardData: StudentIDCardData = {
@@ -190,7 +190,7 @@ const CertificateGenerator: FC = () => {
                         qr_data: qrPayload,
                     };
 
-                    await generateStudentIDCardPdf(idCardData, schoolData, action);
+                    await generateStudentIDCardPdf(idCardData, institutionData, action);
                     toast.success(`Student ID Card ${action === 'download' ? 'downloaded' : 'sent to the printer'}`);
                     break;
             }

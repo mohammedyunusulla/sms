@@ -1,4 +1,4 @@
-# School Management System (SMS) Monorepo
+# Institution Management System (SMS) Monorepo
 
 Unified repository for backend, frontend, containerization, and CI/CD deployment.
 
@@ -9,8 +9,8 @@ Unified repository for backend, frontend, containerization, and CI/CD deployment
 ## Runtime Architecture
 
 - Shared PostgreSQL container: `global_postgres` on `app-network`
-- Main auth DB: `sms_dev` (`users`, `schools`, `user_sessions`)
-- Tenant school DBs: `skool_<skid>`
+- Main auth DB: `sms_dev` (`users`, `institutions`, `user_sessions`)
+- Tenant institution DBs: `eduspyre_<skid>`
 - Backend: `127.0.0.1:8001 -> 8000`
 - Frontend: `127.0.0.1:3001 -> 3000`
 

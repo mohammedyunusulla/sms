@@ -1,5 +1,5 @@
 # Ubuntu/Linux Deployment Guide
-# School Management System Backend
+# Institution Management System Backend
 
 ## Prerequisites Installation
 
@@ -28,10 +28,10 @@ sudo systemctl enable postgresql
 sudo -u postgres psql
 
 # In PostgreSQL shell, run:
-CREATE DATABASE skool_main;
+CREATE DATABASE eduspyre_main;
 CREATE USER postgres WITH PASSWORD 'postgres';
 ALTER USER postgres WITH SUPERUSER;
-GRANT ALL PRIVILEGES ON DATABASE skool_main TO postgres;
+GRANT ALL PRIVILEGES ON DATABASE eduspyre_main TO postgres;
 \q
 ```
 
@@ -48,7 +48,7 @@ sudo apt install git -y
 ```bash
 # If using git
 git clone <repository-url>
-cd school-management-backend
+cd institution-management-backend
 
 # Or upload files to server
 ```
@@ -145,28 +145,28 @@ alembic -c migrations_tenant/alembic_tenant.ini upgrade head
 
 ### 1. Create systemd service file
 ```bash
-sudo nano /etc/systemd/system/school-management.service
+sudo nano /etc/systemd/system/institution-management.service
 ```
 
 ### 2. Add this configuration:
 ```ini
 [Unit]
-Description=School Management System Backend
+Description=Institution Management System Backend
 After=network.target postgresql.service
 
 [Service]
 Type=notify
 User=www-data
 Group=www-data
-WorkingDirectory=/path/to/school-management-backend
-Environment="PATH=/path/to/school-management-backend/venv/bin"
+WorkingDirectory=/path/to/institution-management-backend
+Environment="PATH=/path/to/institution-management-backend/venv/bin"
 Environment="FLASK_ENV=production"
-ExecStart=/path/to/school-management-backend/venv/bin/gunicorn \
+ExecStart=/path/to/institution-management-backend/venv/bin/gunicorn \
     --workers 4 \
     --bind 0.0.0.0:5000 \
     --timeout 120 \
-    --access-logfile /path/to/school-management-backend/logs/access.log \
-    --error-logfile /path/to/school-management-backend/logs/error.log \
+    --access-logfile /path/to/institution-management-backend/logs/access.log \
+    --error-logfile /path/to/institution-management-backend/logs/error.log \
     "app:create_app()"
 Restart=always
 RestartSec=10
@@ -178,18 +178,18 @@ WantedBy=multi-user.target
 ### 3. Enable and start service
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable school-management
-sudo systemctl start school-management
-sudo systemctl status school-management
+sudo systemctl enable institution-management
+sudo systemctl start institution-management
+sudo systemctl status institution-management
 ```
 
 ### 4. Service management commands
 ```bash
-sudo systemctl start school-management     # Start
-sudo systemctl stop school-management      # Stop
-sudo systemctl restart school-management   # Restart
-sudo systemctl status school-management    # Check status
-sudo journalctl -u school-management -f    # View logs
+sudo systemctl start institution-management     # Start
+sudo systemctl stop institution-management      # Stop
+sudo systemctl restart institution-management   # Restart
+sudo systemctl status institution-management    # Check status
+sudo journalctl -u institution-management -f    # View logs
 ```
 
 ---
@@ -203,7 +203,7 @@ sudo apt install nginx -y
 
 ### 2. Create Nginx configuration
 ```bash
-sudo nano /etc/nginx/sites-available/school-management
+sudo nano /etc/nginx/sites-available/institution-management
 ```
 
 ### 3. Add this configuration:
@@ -227,7 +227,7 @@ server {
 
     # Serve static files (if any)
     location /static {
-        alias /path/to/school-management-backend/static;
+        alias /path/to/institution-management-backend/static;
         expires 30d;
     }
 }
@@ -235,7 +235,7 @@ server {
 
 ### 4. Enable site and restart Nginx
 ```bash
-sudo ln -s /etc/nginx/sites-available/school-management /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/institution-management /etc/nginx/sites-enabled/
 sudo nginx -t  # Test configuration
 sudo systemctl restart nginx
 ```
@@ -273,7 +273,7 @@ sudo ufw status
 ### View Application Logs
 ```bash
 # If running as service
-sudo journalctl -u school-management -f
+sudo journalctl -u institution-management -f
 
 # Manual logs
 tail -f logs/app.log
@@ -292,13 +292,13 @@ sudo tail -f /var/log/postgresql/postgresql-*.log
 
 ### Backup Main Database
 ```bash
-pg_dump -U postgres -h 127.0.0.1 skool_main > backup_main_$(date +%Y%m%d).sql
+pg_dump -U postgres -h 127.0.0.1 eduspyre_main > backup_main_$(date +%Y%m%d).sql
 ```
 
 ### Backup All Tenant Databases
 ```bash
-# List all databases starting with skool_
-psql -U postgres -h 127.0.0.1 -t -c "SELECT datname FROM pg_database WHERE datname LIKE 'skool_%';" | while read dbname; do
+# List all databases starting with eduspyre_
+psql -U postgres -h 127.0.0.1 -t -c "SELECT datname FROM pg_database WHERE datname LIKE 'eduspyre_%';" | while read dbname; do
     if [ ! -z "$dbname" ]; then
         pg_dump -U postgres -h 127.0.0.1 "$dbname" > "backup_${dbname}_$(date +%Y%m%d).sql"
     fi
@@ -307,7 +307,7 @@ done
 
 ### Restore Database
 ```bash
-psql -U postgres -h 127.0.0.1 skool_main < backup_main_20250102.sql
+psql -U postgres -h 127.0.0.1 eduspyre_main < backup_main_20250102.sql
 ```
 
 ---
@@ -326,7 +326,7 @@ sudo lsof -i :5000
 
 ### Test database connection
 ```bash
-psql -U postgres -h 127.0.0.1 -d skool_main -c "SELECT version();"
+psql -U postgres -h 127.0.0.1 -d eduspyre_main -c "SELECT version();"
 ```
 
 ### Check Python environment
@@ -339,10 +339,10 @@ python3 -c "import flask; print(flask.__version__)"
 ### Permission issues
 ```bash
 # Fix ownership
-sudo chown -R www-data:www-data /path/to/school-management-backend
+sudo chown -R www-data:www-data /path/to/institution-management-backend
 
 # Fix permissions
-chmod -R 755 /path/to/school-management-backend
+chmod -R 755 /path/to/institution-management-backend
 chmod +x *.sh
 ```
 
@@ -407,16 +407,16 @@ source venv/bin/activate
 ./run-main_dbupgrade.sh
 
 # Check application status (if service)
-sudo systemctl status school-management
+sudo systemctl status institution-management
 
 # View logs
-sudo journalctl -u school-management -f
+sudo journalctl -u institution-management -f
 
 # Restart application
-sudo systemctl restart school-management
+sudo systemctl restart institution-management
 
 # Backup database
-pg_dump -U postgres -h 127.0.0.1 skool_main > backup.sql
+pg_dump -U postgres -h 127.0.0.1 eduspyre_main > backup.sql
 ```
 
 ---

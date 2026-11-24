@@ -56,7 +56,7 @@ export default function AnnouncementsList() {
             const res = await announcementService.getAnnouncements(skid, {
                 academicYearId,
                 userRole: user?.role,
-                schoolUserId: user?.school_user_id,
+                institutionUserId: user?.institution_user_id,
                 announcementType: selectedType,
                 priority: selectedPriority,
             });
@@ -68,7 +68,7 @@ export default function AnnouncementsList() {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [skid, academicYearId, user?.role, user?.school_user_id, selectedType, selectedPriority]);
+    }, [skid, academicYearId, user?.role, user?.institution_user_id, selectedType, selectedPriority]);
 
     useEffect(() => {
         setLoading(true);

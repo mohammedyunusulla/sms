@@ -31,7 +31,7 @@ export default function AssignmentDetailScreen() {
     const user = useAuthStore((s) => s.user);
 
     const skid = user?.skid;
-    const teacherId = user?.school_user_id;
+    const teacherId = user?.institution_user_id;
 
     const [assignment, setAssignment] = useState(null);
     const [students, setStudents] = useState([]);

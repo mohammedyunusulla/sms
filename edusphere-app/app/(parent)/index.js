@@ -134,7 +134,7 @@ export default function ParentHomeScreen() {
                             No children linked
                         </Text>
                         <Text className="font-lexend text-sm text-dark-400 mt-1 text-center">
-                            Contact your school admin to link your children to your account.
+                            Contact your institution admin to link your children to your account.
                         </Text>
                     </View>
                 ) : (

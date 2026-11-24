@@ -24,7 +24,7 @@ export const useRoleRefresh = () => {
         let busy = false;
         const refresh = async () => {
             const user = useAuthStore.getState().user;
-            if (busy || !user || !user.role_obj) return; // Super Admin has no school role
+            if (busy || !user || !user.role_obj) return; // Super Admin has no institution role
             busy = true;
             try {
                 const latest = (await authService.getMyRole()) as RoleObj | null;

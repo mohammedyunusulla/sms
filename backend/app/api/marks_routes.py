@@ -3,7 +3,7 @@
 from flask import Blueprint, request, jsonify
 from app.decorators import login_required
 from app.services.marks_service import MarksService
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from app.utils.teaching_scope import current_teacher_id, forbidden, teaches, student_section_id
 from app.models.tenant.ExamModels import ExamSubjectConfig
 
@@ -12,7 +12,7 @@ marks_bp = Blueprint('marks', __name__)
 
 # FETCH STUDENTS WITH EXISTING MARKS
 @marks_bp.route('/fetch-students/<skid>/<academic_year_id>', methods=['POST'])
-@login_required(['TEACHER', 'CLASS_TEACHER', 'SCHOOL_ADMIN'], permission='manage_marks')
+@login_required(['TEACHER', 'CLASS_TEACHER', 'INSTITUTION_ADMIN'], permission='manage_marks')
 def fetch_students_for_marks_entry(skid, academic_year_id):
     """
     Fetch students list with existing marks
@@ -35,7 +35,7 @@ def fetch_students_for_marks_entry(skid, academic_year_id):
 
 # ENTER/UPDATE MARKS
 @marks_bp.route('/entry/<skid>/<academic_year_id>', methods=['POST'])
-@login_required(['TEACHER', 'CLASS_TEACHER', 'SCHOOL_ADMIN'], permission='manage_marks')
+@login_required(['TEACHER', 'CLASS_TEACHER', 'INSTITUTION_ADMIN'], permission='manage_marks')
 def enter_marks(skid, academic_year_id):
     """
     Bulk marks entry/update
@@ -60,9 +60,9 @@ def enter_marks(skid, academic_year_id):
         own_id = current_teacher_id()
         # "entered by" is always whoever is saving (it used to be taken from the request for non-teachers,
         # and a request without it crashed with a 500)
-        data['teacher_id'] = getattr(request.current_user, 'school_user_id', None)
+        data['teacher_id'] = getattr(request.current_user, 'institution_user_id', None)
         if own_id is not None:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 config = session.query(ExamSubjectConfig).filter_by(id=data.get('exam_config_id')).first()
                 if not config:
                     return jsonify({'message': 'Exam configuration not found', 'status': 'error', 'code': 404}), 404

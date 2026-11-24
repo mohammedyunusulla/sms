@@ -58,7 +58,7 @@ const SectionStudents: FC<SectionStudentsProps> = ({
     // Only show actions the server allows: edit / promote for admins, move / remove also for principals.
     // Teachers see the list read-only (every action used to fail for them with a permission error).
     const userRole = useAuthStore((state) => state.user?.role);
-    const canManageStudents = userRole === UserRole.SCHOOL_ADMIN || userRole === UserRole.SUPER_ADMIN;
+    const canManageStudents = userRole === UserRole.INSTITUTION_ADMIN || userRole === UserRole.SUPER_ADMIN;
     const canMoveStudents = canManageStudents || userRole === UserRole.PRINCIPAL;
     const [showAddExisting, setShowAddExisting] = useState(false);
     // The class the viewed section belongs to = the students' current class (sent as from_class_id)

@@ -53,7 +53,7 @@ export default function StudentHome() {
     const academicYear = useAppStore((s) => s.academicYear);
 
     const skid = user?.skid;
-    const studentId = user?.school_user_id;
+    const studentId = user?.institution_user_id;
     const academicYearId = academicYear?.id;
 
     const [loading, setLoading] = useState(true);
@@ -73,7 +73,7 @@ export default function StudentHome() {
                 announcementService.getAnnouncements(skid, {
                     academicYearId,
                     userRole: user?.role,
-                    schoolUserId: studentId,
+                    institutionUserId: studentId,
                     limit: 3,
                 }),
             ]);

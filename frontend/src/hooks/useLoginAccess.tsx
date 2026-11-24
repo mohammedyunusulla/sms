@@ -2,7 +2,7 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { Button, Badge, Modal, ConfirmDialog } from '../components';
 import { userService } from '../services/modules/userService';
-import { getSchoolId } from '../services/api/client';
+import { getInstitutionId } from '../services/api/client';
 import { authService } from '../services/auth/authService';
 
 interface UseLoginAccessOptions {
@@ -75,13 +75,13 @@ export function useLoginAccess({ onRefresh, onEdit }: UseLoginAccessOptions) {
         }
         try {
             setProvisionLoading(true);
-            const skid = getSchoolId();
+            const skid = getInstitutionId();
             const storedUser = authService.getStoredUser();
-            const schoolId = storedUser?.school_id;
+            const institutionId = storedUser?.institution_id;
             await userService.provisionLogin({
-                school_user_id: provisionUser.id,
+                institution_user_id: provisionUser.id,
                 skid,
-                school_id: schoolId,
+                institution_id: institutionId,
                 password: provisionPassword,
             });
             toast.success(`Login created for ${provisionUser.full_name || 'user'}`);

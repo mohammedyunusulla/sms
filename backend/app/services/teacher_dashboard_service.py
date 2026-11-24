@@ -1,10 +1,10 @@
 from app import db
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from app.models.tenant.TimeTableEntry import TimetableEntry
 from app.models.tenant.Announcement import Announcement
 from app.models.tenant.Attendance import Attendance
 from app.models.tenant.Student import Student
-from app.models.tenant.SchoolUsers import SchoolUsers
+from app.models.tenant.InstitutionUsers import InstitutionUsers
 from app.models.tenant.Subject import Subject
 from app.models.tenant.Class import Class
 from app.models.tenant.Sections import Section
@@ -21,7 +21,7 @@ class TeacherDashboardService:
         Get teacher's timetable for a specific day
 
         Args:
-            skid: School ID
+            skid: Institution ID
             teacher_id: Teacher user ID
             date: Date string in YYYY-MM-DD format
 
@@ -29,7 +29,7 @@ class TeacherDashboardService:
             List of periods with details for the specified day
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Parse date and get day of week
                 date_obj = datetime.strptime(date, '%Y-%m-%d').date()
                 day_name = date_obj.strftime('%A')  # Monday, Tuesday, etc.
@@ -99,14 +99,14 @@ class TeacherDashboardService:
         Get latest announcements relevant to teachers
 
         Args:
-            skid: School ID
+            skid: Institution ID
             limit: Maximum number of announcements to return
 
         Returns:
             List of announcements sorted by newest first
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 now = datetime.utcnow()
 
                 # Query published announcements targeting teachers
@@ -118,10 +118,10 @@ class TeacherDashboardService:
                     Announcement.priority,
                     Announcement.created_at,
                     Announcement.created_by,
-                    SchoolUsers.first_name,
-                    SchoolUsers.last_name
+                    InstitutionUsers.first_name,
+                    InstitutionUsers.last_name
                 ).join(
-                    SchoolUsers, Announcement.created_by == SchoolUsers.id
+                    InstitutionUsers, Announcement.created_by == InstitutionUsers.id
                 ).filter(
                     and_(
                         Announcement.is_published == True,
@@ -162,14 +162,14 @@ class TeacherDashboardService:
         """
         Get today's student absentees with count and preview
         Args:
-            skid: School ID
+            skid: Institution ID
             academic_year_id: Academic year ID
             date: Date string in YYYY-MM-DD format 
         Returns:
             Dict with count and preview list (max 3 students)
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 attendance_date = datetime.strptime(date, '%Y-%m-%d').date()
                 
                 # Base filter conditions
@@ -177,9 +177,9 @@ class TeacherDashboardService:
                     Attendance.date == attendance_date,
                     Attendance.academic_year_id == academic_year_id,
                     status_column(Attendance.status) == 'ABSENT',
-                    SchoolUsers.is_active == True
+                    InstitutionUsers.is_active == True
                 ]
-                # A teacher only sees absentees from the sections they work in (it used to be the whole school)
+                # A teacher only sees absentees from the sections they work in (it used to be the whole institution)
                 if teacher_id is not None:
                     from app.utils.teaching_scope import teacher_section_ids
                     section_ids = teacher_section_ids(tenant_session, teacher_id)
@@ -192,20 +192,20 @@ class TeacherDashboardService:
                 total_count = tenant_session.query(
                     func.count(Attendance.id)
                 ).join(
-                    SchoolUsers, Attendance.student_user_id == SchoolUsers.id
+                    InstitutionUsers, Attendance.student_user_id == InstitutionUsers.id
                 ).filter(base_filters).scalar() or 0
                 
                 # Query 2: Get preview (max 3 records only)
                 preview_query = tenant_session.query(
                     Student.user_id,
-                    SchoolUsers.first_name,
-                    SchoolUsers.last_name,
+                    InstitutionUsers.first_name,
+                    InstitutionUsers.last_name,
                     Student.roll_no,
                     Class.class_name,
                     Section.section_name,
                     Attendance.remarks
                 ).join(
-                    SchoolUsers, Student.user_id == SchoolUsers.id
+                    InstitutionUsers, Student.user_id == InstitutionUsers.id
                 ).join(
                     Attendance, Attendance.student_user_id == Student.user_id
                 ).outerjoin(
@@ -243,28 +243,28 @@ class TeacherDashboardService:
         Get total count of unique students assigned to a teacher
 
         Args:
-            skid: School ID
+            skid: Institution ID
             teacher_id: Teacher user ID
 
         Returns:
             Integer count of unique students
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Every section the teacher works in - class teacher, Assign Subjects or published timetable
                 # (it used to count timetable sections only, so a class teacher without periods saw 0) - QA D19
                 from app.utils.teaching_scope import teacher_section_ids
-                from app.models.tenant.SchoolUsers import SchoolUsers
+                from app.models.tenant.InstitutionUsers import InstitutionUsers
                 section_id_list = list(teacher_section_ids(tenant_session, teacher_id))
                 if not section_id_list:
                     return 0
                 student_count = tenant_session.query(
                     func.count(distinct(Student.user_id))
                 ).join(
-                    SchoolUsers, SchoolUsers.id == Student.user_id
+                    InstitutionUsers, InstitutionUsers.id == Student.user_id
                 ).filter(
                     Student.section_id.in_(section_id_list),
-                    SchoolUsers.is_active.is_(True),  # left / deleted students aren't counted
+                    InstitutionUsers.is_active.is_(True),  # left / deleted students aren't counted
                 ).scalar()
                 return student_count or 0
 
@@ -277,7 +277,7 @@ class TeacherDashboardService:
         Get teacher's timetable for a full week (Monday-Saturday)
 
         Args:
-            skid: School ID
+            skid: Institution ID
             teacher_id: Teacher user ID
             start_date: Week start date (Monday) in YYYY-MM-DD format (optional)
 
@@ -285,7 +285,7 @@ class TeacherDashboardService:
             Dict with timetable organized by day
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Import Timetable model
                 from app.models.tenant.TimeTable import Timetable
 

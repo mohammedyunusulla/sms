@@ -23,8 +23,8 @@ const AppHeader: React.FC = () => {
   const { user } = useAuthStore();
   const { hasPermission } = usePermissions();
 
-  // Check if user can manage academic years (School Admin or Principal)
-  // the same tick the server checks (School Admin always has it)
+  // Check if user can manage academic years (Institution Admin or Principal)
+  // the same tick the server checks (Institution Admin always has it)
   const canManageAcademicYears = hasPermission(Permission.MANAGE_ACADEMIC_YEARS);
   // Every parent gets the child switcher, whatever their role's tick boxes: it only picks which child
   // the pages show (each page still checks its own permission), and it's also what loads the children -

@@ -12,7 +12,7 @@ import {
     commonPdfStyles,
     loadPdfFonts,
 } from './HeaderAndFooterComponent';
-import type { SchoolData, PdfAction } from './printTypes';
+import type { InstitutionData, PdfAction } from './printTypes';
 
 export interface ExamTimetableEntry {
     subject_name: string;
@@ -56,7 +56,7 @@ const formatTime = (t: string): string => {
  */
 export const generateExamTimetablePdf = async (
     data: ExamTimetableReportData,
-    schoolData: SchoolData,
+    institutionData: InstitutionData,
     action: PdfAction = 'download'
 ): Promise<void> => {
     await loadPdfFonts();
@@ -208,7 +208,7 @@ export const generateExamTimetablePdf = async (
 
     // --- Content ---
     const content: any[] = [
-        getReportHeader(schoolData, title, subtitle, 'portrait', true),
+        getReportHeader(institutionData, title, subtitle, 'portrait', true),
         summarySection,
         examTable,
         notesSection,
@@ -246,7 +246,7 @@ export const generateExamTimetablePdf = async (
             };
         },
         footer: (currentPage: number, pageCount: number) => {
-            return getReportFooter(currentPage, pageCount, schoolData?.generatedBy);
+            return getReportFooter(currentPage, pageCount, institutionData?.generatedBy);
         },
         content,
         styles: commonPdfStyles,

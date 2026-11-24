@@ -35,8 +35,8 @@ const StudentForm: FC<IStudentFormProps> = ({ initialData, mode: propMode = 'cre
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
     // Basic plan: students get no login, so no password is asked for (QA A40)
-    const schoolPlan = String(useAuthStore((st) => st.user?.plan) || '').toUpperCase();
-    const createsLogin = schoolPlan === 'STANDARD' || schoolPlan === 'PREMIUM';
+    const institutionPlan = String(useAuthStore((st) => st.user?.plan) || '').toUpperCase();
+    const createsLogin = institutionPlan === 'STANDARD' || institutionPlan === 'PREMIUM';
     // Auto-detect mode based on URL - if id exists, it's update mode
     const mode = id ? 'update' : propMode;
     const [student, setStudent] = useState<any>(null);

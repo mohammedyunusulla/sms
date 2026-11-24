@@ -4,10 +4,10 @@ from sqlalchemy import distinct
 from app.models.tenant import (
     Syllabus, Lesson, Topic, Subtopic, Subject, AcademicYear,
     TeacherSubject, SyllabusProgressTracking, TeacherSyllabusAssignment,
-    Student, Timetable, TimetableEntry, Teacher, SchoolUsers,
+    Student, Timetable, TimetableEntry, Teacher, InstitutionUsers,
     Class, Section
 )
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from datetime import datetime, date
 from decimal import Decimal
 
@@ -330,7 +330,7 @@ class SyllabusService:
     def configure_timeline(skid, teacher_id, item_type, item_id, data, section_id=None):
         """Configure planned dates and notes for a syllabus item (Configure step)."""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 # Validate item exists
                 if item_type == 'lesson':
                     item = session.query(Lesson).filter_by(id=item_id, is_active=True).first()
@@ -389,7 +389,7 @@ class SyllabusService:
     def start_item(skid, teacher_id, item_type, item_id, section_id=None):
         """Start teaching a syllabus item (Start step). Requires item to be configured first."""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 syllabus_id = _syllabus_id_of(session, item_type, item_id)
                 if not syllabus_id:
                     raise ValueError(f"{item_type.capitalize()} not found")
@@ -467,7 +467,7 @@ class SyllabusService:
         Requires item to be started (in_progress or completed) unless grandfathered.
         """
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 # Validate item exists
                 if item_type == 'lesson':
                     item = session.query(Lesson).filter_by(id=item_id, is_active=True).first()
@@ -549,7 +549,7 @@ class SyllabusService:
     def get_student_syllabus_view(skid, student_user_id, academic_year_id):
         """Get syllabus progress view for a student, resolved via timetable linkage."""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 # Get student's class and section
                 student = session.query(Student).filter_by(user_id=student_user_id).first()
                 if not student:
@@ -594,7 +594,7 @@ class SyllabusService:
 
                     # Get teacher info
                     teacher = session.query(Teacher).filter_by(user_id=teacher_id).first()
-                    teacher_user = session.query(SchoolUsers).filter_by(id=teacher_id).first() if teacher else None
+                    teacher_user = session.query(InstitutionUsers).filter_by(id=teacher_id).first() if teacher else None
                     teacher_name = teacher_user.full_name if teacher_user else 'Unknown'
 
                     # Get subject info
@@ -633,7 +633,7 @@ class SyllabusService:
     def get_teacher_syllabus_progress_view(skid, teacher_id, academic_year_id):
         """Get syllabus progress view for a teacher — shows their own assigned syllabi with progress."""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 # Get subjects assigned to teacher
                 teacher_subjects = session.query(TeacherSubject).filter_by(teacher_id=teacher_id).all()
                 if not teacher_subjects:
@@ -652,7 +652,7 @@ class SyllabusService:
                     return []
 
                 # Get teacher info
-                teacher_user = session.query(SchoolUsers).filter_by(id=teacher_id).first()
+                teacher_user = session.query(InstitutionUsers).filter_by(id=teacher_id).first()
                 teacher_name = teacher_user.full_name if teacher_user else 'Unknown'
 
                 results = []
@@ -687,7 +687,7 @@ class SyllabusService:
         """Full syllabus hierarchy with the section's progress (read-only); the teacher's own without a section."""
         try:
             if section_id:
-                with switch_to_school_db(skid) as session:
+                with switch_to_institution_db(skid) as session:
                     assigned = session.query(TeacherSyllabusAssignment).filter_by(
                         syllabus_id=syllabus_id, section_id=section_id).first()
                 if assigned or not teacher_id:
@@ -705,7 +705,7 @@ class SyllabusService:
     def create_syllabus(skid, data, teacher_id):
         """Create a new syllabus for a subject"""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 # Validate subject and academic year exist
                 subject = session.query(Subject).filter_by(id=data['subject_id']).first()
                 if not subject:
@@ -768,7 +768,7 @@ class SyllabusService:
         merge_section_progress is kept for old callers; progress is always the section's now.
         """
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 query = session.query(Syllabus).filter_by(id=syllabus_id, is_active=True)
 
                 if include_hierarchy:
@@ -806,8 +806,8 @@ class SyllabusService:
                 progress_list = _progress_scope(session.query(SyllabusProgressTracking).filter(
                     SyllabusProgressTracking.is_active == True), teacher_id, section_id).all()
                 progress_map = {(p.item_type, p.item_id): p for p in progress_list}
-                names = {u.id: u.full_name for u in session.query(SchoolUsers).filter(
-                    SchoolUsers.id.in_({p.teacher_id for p in progress_list})).all()} if progress_list else {}
+                names = {u.id: u.full_name for u in session.query(InstitutionUsers).filter(
+                    InstitutionUsers.id.in_({p.teacher_id for p in progress_list})).all()} if progress_list else {}
 
                 def apply_with_attribution(item_dict, item_type, item_id):
                     """The section's progress, who recorded the completion, and whether this teacher can change it."""
@@ -840,7 +840,7 @@ class SyllabusService:
     def get_syllabi_by_subject(skid, subject_id, academic_year_id=None):
         """Get all syllabi for a subject"""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 query = session.query(Syllabus).filter_by(subject_id=subject_id, is_active=True)
 
                 if academic_year_id:
@@ -854,9 +854,9 @@ class SyllabusService:
 
     @staticmethod
     def get_all_syllabi(skid, academic_year_id=None):
-        """Get all syllabi for a school"""
+        """Get all syllabi for an institution"""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 query = session.query(Syllabus).filter_by(is_active=True)
 
                 if academic_year_id:
@@ -872,7 +872,7 @@ class SyllabusService:
     def get_syllabi_by_teacher(skid, teacher_id, academic_year_id=None):
         """Get all syllabi for a teacher"""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 # Get subjects assigned to teacher
                 subject_ids = [ts.subject_id for ts in session.query(TeacherSubject).filter_by(teacher_id=teacher_id).all()]
 
@@ -897,7 +897,7 @@ class SyllabusService:
     def update_syllabus(skid, syllabus_id, data):
         """Update syllabus details"""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 syllabus = session.query(Syllabus).filter_by(id=syllabus_id, is_active=True).first()
                 if not syllabus:
                     raise ValueError("Syllabus not found")
@@ -924,7 +924,7 @@ class SyllabusService:
     def delete_syllabus(skid, syllabus_id):
         """Soft delete syllabus"""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 syllabus = session.query(Syllabus).filter_by(id=syllabus_id).first()
                 if not syllabus:
                     raise ValueError("Syllabus not found")
@@ -946,7 +946,7 @@ class SyllabusService:
     def create_lesson_or_chapter(skid, syllabus_id, data):
         """Create a new lesson under a syllabus"""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 syllabus = session.query(Syllabus).filter_by(id=syllabus_id, is_active=True).first()
                 if not syllabus:
                     raise ValueError("Syllabus not found")
@@ -979,7 +979,7 @@ class SyllabusService:
     def update_lesson(skid, lesson_id, data, teacher_id=None):
         """Update lesson details (Shared content or Teacher-specific tracking)"""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 lesson = session.query(Lesson).filter_by(id=lesson_id, is_active=True).first()
                 if not lesson:
                     raise ValueError("Lesson not found")
@@ -1022,7 +1022,7 @@ class SyllabusService:
     def delete_lesson(skid, lesson_id):
         """Soft delete lesson"""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 lesson = session.query(Lesson).filter_by(id=lesson_id).first()
                 if not lesson:
                     raise ValueError("Lesson not found")
@@ -1049,7 +1049,7 @@ class SyllabusService:
     def create_topic(skid, lesson_id, data):
         """Create a new topic under a lesson"""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 lesson = session.query(Lesson).filter_by(id=lesson_id, is_active=True).first()
                 if not lesson:
                     raise ValueError("Lesson not found")
@@ -1079,7 +1079,7 @@ class SyllabusService:
     def update_topic(skid, topic_id, data, teacher_id=None):
         """Update topic details (Shared content or Teacher-specific tracking)"""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 topic = session.query(Topic).filter_by(id=topic_id, is_active=True).first()
                 if not topic:
                     raise ValueError("Topic not found")
@@ -1121,7 +1121,7 @@ class SyllabusService:
     def delete_topic(skid, topic_id):
         """Soft delete topic"""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 topic = session.query(Topic).filter_by(id=topic_id).first()
                 if not topic:
                     raise ValueError("Topic not found")
@@ -1151,7 +1151,7 @@ class SyllabusService:
     def create_subtopic(skid, topic_id, data):
         """Create a new subtopic under a topic"""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 topic = session.query(Topic).filter_by(id=topic_id, is_active=True).first()
                 if not topic:
                     raise ValueError("Topic not found")
@@ -1182,7 +1182,7 @@ class SyllabusService:
     def update_subtopic(skid, subtopic_id, data, teacher_id=None):
         """Update subtopic details (Shared content or Teacher-specific tracking)"""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 subtopic = session.query(Subtopic).filter_by(id=subtopic_id, is_active=True).first()
                 if not subtopic:
                     raise ValueError("Subtopic not found")
@@ -1234,7 +1234,7 @@ class SyllabusService:
     def delete_subtopic(skid, subtopic_id):
         """Soft delete subtopic"""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 subtopic = session.query(Subtopic).filter_by(id=subtopic_id).first()
                 if not subtopic:
                     raise ValueError("Subtopic not found")
@@ -1369,7 +1369,7 @@ class SyllabusService:
     def assign_teacher_to_syllabus(skid, syllabus_id, teacher_id, section_id):
         """Assign a teacher to a syllabus for a specific section."""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 syllabus = session.query(Syllabus).filter_by(id=syllabus_id, is_active=True).first()
                 if not syllabus:
                     raise ValueError("Syllabus not found")
@@ -1422,7 +1422,7 @@ class SyllabusService:
                 session.commit()
 
                 # Build response with names
-                teacher_user = session.query(SchoolUsers).filter_by(id=teacher_id).first()
+                teacher_user = session.query(InstitutionUsers).filter_by(id=teacher_id).first()
                 class_obj = session.query(Class).filter_by(id=section.class_id).first()
 
                 result = assignment.to_dict()
@@ -1442,7 +1442,7 @@ class SyllabusService:
     def unassign_teacher_from_syllabus(skid, assignment_id):
         """Unassign a teacher from a syllabus section (preserves history)."""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 assignment = session.query(TeacherSyllabusAssignment).filter_by(
                     id=assignment_id, is_active=True
                 ).first()
@@ -1464,7 +1464,7 @@ class SyllabusService:
     def get_syllabus_assignments(skid, syllabus_id):
         """Get all assignments (active + inactive) for a syllabus with teacher/section names."""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 syllabus = session.query(Syllabus).filter_by(id=syllabus_id, is_active=True).first()
                 if not syllabus:
                     raise ValueError("Syllabus not found")
@@ -1483,7 +1483,7 @@ class SyllabusService:
                 teacher_ids = set(a.teacher_id for a in assignments)
                 section_ids = set(a.section_id for a in assignments)
 
-                teacher_users = session.query(SchoolUsers).filter(SchoolUsers.id.in_(teacher_ids)).all()
+                teacher_users = session.query(InstitutionUsers).filter(InstitutionUsers.id.in_(teacher_ids)).all()
                 teacher_map = {t.id: t.full_name for t in teacher_users}
 
                 sections = session.query(Section).filter(Section.id.in_(section_ids)).all()
@@ -1514,7 +1514,7 @@ class SyllabusService:
     def get_teachers_by_subject(skid, subject_id):
         """Get all teachers assigned to a subject via TeacherSubject."""
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 teacher_subjects = session.query(TeacherSubject).filter_by(
                     subject_id=subject_id
                 ).all()
@@ -1523,8 +1523,8 @@ class SyllabusService:
                     return []
 
                 teacher_ids = [ts.teacher_id for ts in teacher_subjects]
-                teachers = session.query(SchoolUsers).filter(
-                    SchoolUsers.id.in_(teacher_ids)
+                teachers = session.query(InstitutionUsers).filter(
+                    InstitutionUsers.id.in_(teacher_ids)
                 ).all()
 
                 return [
@@ -1546,7 +1546,7 @@ class SyllabusService:
         Source of truth: teacher_syllabus_assignments table only.
         """
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 syllabus = session.query(Syllabus).filter_by(id=syllabus_id, is_active=True).first()
                 if not syllabus:
                     raise ValueError("Syllabus not found")
@@ -1563,8 +1563,8 @@ class SyllabusService:
                 section_ids = set(a.section_id for a in assignments)
 
                 # Batch-load names
-                teachers = session.query(SchoolUsers).filter(
-                    SchoolUsers.id.in_(teacher_ids)
+                teachers = session.query(InstitutionUsers).filter(
+                    InstitutionUsers.id.in_(teacher_ids)
                 ).all()
                 teacher_map = {t.id: t.full_name for t in teachers}
 
@@ -1632,7 +1632,7 @@ class SyllabusService:
         If teacher_ids is provided, only merge progress from those teachers.
         """
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 syllabus = session.query(Syllabus).options(
                     joinedload(Syllabus.lessons).joinedload(Lesson.topics).joinedload(Topic.subtopics)
                 ).filter_by(id=syllabus_id, is_active=True).first()
@@ -1679,8 +1679,8 @@ class SyllabusService:
                 all_progress_teacher_ids = set(p.teacher_id for p in progress_list)
                 teacher_name_map = {}
                 if all_progress_teacher_ids:
-                    teacher_users = session.query(SchoolUsers).filter(
-                        SchoolUsers.id.in_(all_progress_teacher_ids)
+                    teacher_users = session.query(InstitutionUsers).filter(
+                        InstitutionUsers.id.in_(all_progress_teacher_ids)
                     ).all()
                     teacher_name_map = {t.id: t.full_name for t in teacher_users}
 
@@ -1843,7 +1843,7 @@ class SyllabusService:
                     skid, syllabus_id, teacher_id, include_hierarchy=True, section_id=section_id)
             else:
                 syllabus_dict = SyllabusService.get_syllabus_combined_progress(skid, syllabus_id, None)
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:
                 if not session.query(Syllabus).filter_by(id=syllabus_id, is_active=True).first():
                     raise ValueError("Syllabus not found")
 
@@ -1919,7 +1919,7 @@ class SyllabusService:
             syllabi = SyllabusService.get_syllabi_by_teacher(skid, teacher_id, academic_year_id)
             # each syllabus: the average of the teacher's sections (QA B33), their own progress without one
             if syllabi:
-                with switch_to_school_db(skid) as session:
+                with switch_to_institution_db(skid) as session:
                     for item in syllabi:
                         secs = _teacher_section_ids(session, item['id'], teacher_id)
                         figures = ([SyllabusService._compute_section_syllabus_pct(session, item['id'], x) for x in secs]

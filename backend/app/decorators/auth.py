@@ -6,7 +6,7 @@ from app.models.main.User import User, UserRole
 
 def _requested_skid(view_kwargs):
     """
-    Return the school (tenant) code a request targets, if any.
+    Return the institution (tenant) code a request targets, if any.
     Checked in order: URL path parameter, ?skid= query string, "skid" in the JSON body.
     """
     if view_kwargs.get('skid') is not None:
@@ -26,12 +26,12 @@ def login_required(allowed_roles=None, permission=None, self_service=False, own_
 
     allowed_roles: the route's role list (decides while PERMISSION_ENFORCEMENT is off / log).
     permission:    the role tick box(es) the route needs - a key or a tuple of keys (any one is enough).
-                   With PERMISSION_ENFORCEMENT=enforce this replaces the role list (School Admin / Super Admin
+                   With PERMISSION_ENFORCEMENT=enforce this replaces the role list (Institution Admin / Super Admin
                    always pass). See app/utils/role_permissions.py.
     self_service:  the route is about the caller themselves (sign-in, a student's / parent's own pages, ...),
                    so it stays decided by role. Used by check_route_permissions.py.
-    full_access_only: only School Admin / Super Admin, whatever the tick boxes (e.g. creating a School Admin,
-                   changing someone's role) - so no tick can let a role raise itself above School Admin.
+    full_access_only: only Institution Admin / Super Admin, whatever the tick boxes (e.g. creating a Institution Admin,
+                   changing someone's role) - so no tick can let a role raise itself above Institution Admin.
     own_roles:     roles that use this route for their OWN data (e.g. STUDENT / PARENT on a student's attendance):
                    they stay decided by the role list (plus the route's own-record checks); everyone else needs
                    the permission.
@@ -65,20 +65,20 @@ def login_required(allowed_roles=None, permission=None, self_service=False, own_
                 # Access: the role list, or the role's tick boxes (see app/utils/role_permissions.py)
                 user_role = user.role.value if hasattr(user.role, 'value') else user.role
                 from app.utils.role_permissions import decide
-                if full_access_only and user_role not in ('SUPER_ADMIN', 'SCHOOL_ADMIN'):
+                if full_access_only and user_role not in ('SUPER_ADMIN', 'INSTITUTION_ADMIN'):
                     return jsonify({'message': 'Insufficient permissions'}), 403
                 if not decide(user, user_role, allowed_roles, permissions, own_roles):
                     return jsonify({'message': 'Insufficient permissions'}), 403
 
-                # Tenant isolation: non-super-admins may only touch their own school's data.
+                # Tenant isolation: non-super-admins may only touch their own institution's data.
                 if user.role != UserRole.SUPER_ADMIN:
                     target_skid = _requested_skid(kwargs)
                     if target_skid is not None and str(target_skid) != str(user.skid):
                         current_app.logger.warning(
-                            f"Cross-school access blocked: user {user.id} (skid={user.skid}) "
+                            f"Cross-institution access blocked: user {user.id} (skid={user.skid}) "
                             f"-> skid={target_skid} {request.method} {request.path}"
                         )
-                        return jsonify({'message': 'Access denied: you can only access your own school data'}), 403
+                        return jsonify({'message': 'Access denied: you can only access your own institution data'}), 403
 
                 # Add user to request context
                 request.current_user = user
@@ -107,18 +107,18 @@ def super_admin_required(f):
     return login_required(['super_admin'])(f)
 
 
-def school_admin_required(f):
-    """Decorator to require school admin or higher role"""
-    return login_required(['super_admin', 'school_admin', 'principal'])(f)
+def institution_admin_required(f):
+    """Decorator to require institution admin or higher role"""
+    return login_required(['super_admin', 'institution_admin', 'principal'])(f)
 
 
 def teacher_required(f):
     """Decorator to require teacher or higher role"""
-    return login_required(['super_admin', 'school_admin', 'principal', 'teacher'])(f)
+    return login_required(['super_admin', 'institution_admin', 'principal', 'teacher'])(f)
 
 
-# Roles that may look up any student in their own school (teacher scoping is handled separately).
-STUDENT_DATA_STAFF_ROLES = {'SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER', 'BUS_STAFF', 'ACCOUNTANT', 'CLERK'}
+# Roles that may look up any student in their own institution (teacher scoping is handled separately).
+STUDENT_DATA_STAFF_ROLES = {'SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER', 'BUS_STAFF', 'ACCOUNTANT', 'CLERK'}
 STUDENT_ACCESS_DENIED = "Access denied: you can only view your own or your child's records"
 
 
@@ -128,20 +128,20 @@ def _role_value(user):
 
 def can_view_student(user, skid, student_user_id):
     """
-    Staff may view any student of their school; a student only themselves;
+    Staff may view any student of their institution; a student only themselves;
     a parent only students linked to them in student_parents.
     """
     role = _role_value(user)
     if role in STUDENT_DATA_STAFF_ROLES:
         return True
     if role == 'STUDENT':
-        return user.school_user_id is not None and int(student_user_id) == int(user.school_user_id)
-    if role == 'PARENT' and user.school_user_id is not None:
-        from app.utils.db_manager import switch_to_school_db
+        return user.institution_user_id is not None and int(student_user_id) == int(user.institution_user_id)
+    if role == 'PARENT' and user.institution_user_id is not None:
+        from app.utils.db_manager import switch_to_institution_db
         from app.models.tenant.StudentParent import StudentParent
-        with switch_to_school_db(skid) as session:
+        with switch_to_institution_db(skid) as session:
             return session.query(StudentParent).filter_by(
-                parent_user_id=user.school_user_id, student_user_id=int(student_user_id)
+                parent_user_id=user.institution_user_id, student_user_id=int(student_user_id)
             ).first() is not None
     return False
 
@@ -190,9 +190,9 @@ def student_access_required(param='student_id', source='path', resolver=None):
 
 def student_fee_owner(skid, student_fee_id):
     """Resolver for student_access_required: student_fee_id -> student_user_id."""
-    from app.utils.db_manager import switch_to_school_db
+    from app.utils.db_manager import switch_to_institution_db
     from app.models.tenant.FeeModels import StudentFee
-    with switch_to_school_db(skid) as session:
+    with switch_to_institution_db(skid) as session:
         fee = session.query(StudentFee).filter_by(id=student_fee_id).first()
         return fee.student_id if fee else None
 
@@ -207,7 +207,7 @@ def own_parent_required(param='parent_user_id'):
                 return jsonify({'message': 'User not authenticated'}), 401
             if _role_value(user) in STUDENT_DATA_STAFF_ROLES:
                 return f(*args, **kwargs)
-            if _role_value(user) == 'PARENT' and str(kwargs.get(param)) == str(user.school_user_id):
+            if _role_value(user) == 'PARENT' and str(kwargs.get(param)) == str(user.institution_user_id):
                 return f(*args, **kwargs)
             current_app.logger.warning(
                 f"Parent data access blocked: user {user.id} ({_role_value(user)}) -> parent {kwargs.get(param)} {request.path}"
@@ -217,11 +217,11 @@ def own_parent_required(param='parent_user_id'):
     return decorator
 
 
-def same_school_required(f):
+def same_institution_required(f):
     """
-    Decorator to ensure user can only access data from their own school.
-    Super admins can access any school.
-    Validates that any school_id in the URL matches the user's school.
+    Decorator to ensure user can only access data from their own institution.
+    Super admins can access any institution.
+    Validates that any institution_id in the URL matches the user's institution.
     """
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -229,18 +229,18 @@ def same_school_required(f):
         if not user:
             return jsonify({'message': 'User not authenticated'}), 401
 
-        # Super admins can access any school
+        # Super admins can access any institution
         if user.role == UserRole.SUPER_ADMIN:
             return f(*args, **kwargs)
 
-        # Validate school_id if present in URL kwargs
-        if 'school_id' in kwargs:
-            if str(kwargs['school_id']) != str(user.school_id):
-                return jsonify({'message': 'Access denied: you can only access your own school data'}), 403
+        # Validate institution_id if present in URL kwargs
+        if 'institution_id' in kwargs:
+            if str(kwargs['institution_id']) != str(user.institution_id):
+                return jsonify({'message': 'Access denied: you can only access your own institution data'}), 403
         else:
-            # Auto-inject user's school_id if not in URL
-            if user.school_id:
-                kwargs['school_id'] = user.school_id
+            # Auto-inject user's institution_id if not in URL
+            if user.institution_id:
+                kwargs['institution_id'] = user.institution_id
 
         return f(*args, **kwargs)
 

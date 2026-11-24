@@ -1,4 +1,4 @@
-import { getApiClient, getSchoolId } from '../../../services/api/client';
+import { getApiClient, getInstitutionId } from '../../../services/api/client';
 import { API_ENDPOINTS } from '../../../services/api/config';
 import { HomeworkAnalytics, HomeworkAssignment, HomeworkSession } from '../types';
 
@@ -166,16 +166,16 @@ export const homeworkApi = {
 
   async listClasses(): Promise<Array<{ id: number; class_name?: string; name?: string }>> {
     const client = getApiClient();
-    const skid = getSchoolId();
+    const skid = getInstitutionId();
     const response = await client.get<ApiEnvelope<Array<{ id: number; class_name?: string; name?: string }>>>(
-      API_ENDPOINTS.CLASSES.LIST_BY_SCHOOL(skid)
+      API_ENDPOINTS.CLASSES.LIST_BY_INSTITUTION(skid)
     );
     return response.data || [];
   },
 
   async listSections(classId: number): Promise<Array<{ id: number; section_name?: string; name?: string }>> {
     const client = getApiClient();
-    const skid = getSchoolId();
+    const skid = getInstitutionId();
     const response = await client.get<ApiEnvelope<Array<{ id: number; section_name?: string; name?: string }>>>(
       API_ENDPOINTS.CLASSES.SECTIONS(skid, classId)
     );

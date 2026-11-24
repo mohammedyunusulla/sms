@@ -3,7 +3,7 @@
  * Shared across all report generators (attendance, progress card, receipt, timetable, etc.)
  */
 
-import type { SchoolData, SignatureConfig } from './printTypes';
+import type { InstitutionData, SignatureConfig } from './printTypes';
 
 // Transparent 1x1 PNG fallback when no logo is provided
 const FALLBACK_LOGO =
@@ -11,11 +11,11 @@ const FALLBACK_LOGO =
 
 /**
  * Report Header
- * Full school header with logo, name, address, contact info, decorative line, title & subtitle.
+ * Full institution header with logo, name, address, contact info, decorative line, title & subtitle.
  * Used as the first-page header; subsequent pages get a simplified version.
  */
 export const getReportHeader = (
-    schoolData: SchoolData,
+    institutionData: InstitutionData,
     title: string,
     subtitle: string,
     pageOrientation: 'portrait' | 'landscape' = 'portrait',
@@ -32,30 +32,30 @@ export const getReportHeader = (
                 columns: [
                     {
                         width: 70,
-                        image: schoolData?.logo || FALLBACK_LOGO,
+                        image: institutionData?.logo || FALLBACK_LOGO,
                         fit: [55, 55],
                     },
                     {
                         width: '*',
                         stack: [
                             {
-                                text: schoolData?.schoolName || 'School Name',
-                                style: 'schoolName',
+                                text: institutionData?.institutionName || 'Institution Name',
+                                style: 'institutionName',
                                 alignment: 'center',
                             },
                             {
-                                text: schoolData?.schoolAddress || 'School Address',
-                                style: 'schoolAddress',
+                                text: institutionData?.institutionAddress || 'Institution Address',
+                                style: 'institutionAddress',
                                 alignment: 'center',
                             },
                             {
                                 text: [
                                     { text: 'Phone: ', bold: true },
-                                    schoolData?.schoolPhone || 'N/A',
+                                    institutionData?.institutionPhone || 'N/A',
                                     { text: ' | Email: ', bold: true },
-                                    schoolData?.schoolEmail || 'N/A',
+                                    institutionData?.institutionEmail || 'N/A',
                                 ],
-                                style: 'schoolContact',
+                                style: 'institutionContact',
                                 alignment: 'center',
                             },
                         ],
@@ -196,18 +196,18 @@ export const getSignatureSection = (signatures: SignatureConfig[] = []) => {
  * Shared across all report document definitions.
  */
 export const commonPdfStyles = {
-    schoolName: {
+    institutionName: {
         fontSize: 18,
         bold: true,
         color: '#667eea',
         margin: [0, 5, 0, 2],
     },
-    schoolAddress: {
+    institutionAddress: {
         fontSize: 10,
         color: '#666666',
         margin: [0, 2, 0, 2],
     },
-    schoolContact: {
+    institutionContact: {
         fontSize: 9,
         color: '#666666',
         margin: [0, 2, 0, 5],

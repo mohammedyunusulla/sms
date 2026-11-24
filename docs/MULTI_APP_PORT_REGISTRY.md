@@ -13,8 +13,8 @@ This registry reserves host ports, container names, database names, and deploy p
 
 | App | Env | Backend Host Port | Frontend Host Port | Backend Container | Frontend Container | PostgreSQL DB | Deploy Path | Subdomain |
 |---|---|---|---|---|---|---|---|---|
-| School Management System (`sms`) | dev | `127.0.0.1:8001` | `127.0.0.1:3001` | `sms_backend_dev` | `sms_frontend_dev` | `sms_dev` | `/home/vm/apps/sms/dev` | `dev-sms.klopterz.in` |
-| School Management System (`sms`) | prod | `127.0.0.1:8002` | `127.0.0.1:3002` | `sms_backend_prod` | `sms_frontend_prod` | `sms_prod` | `/home/vm/apps/sms/prod` | `sms.klopterz.in` |
+| Institution Management System (`sms`) | dev | `127.0.0.1:8001` | `127.0.0.1:3001` | `sms_backend_dev` | `sms_frontend_dev` | `sms_dev` | `/home/vm/apps/sms/dev` | `dev-sms.klopterz.in` |
+| Institution Management System (`sms`) | prod | `127.0.0.1:8002` | `127.0.0.1:3002` | `sms_backend_prod` | `sms_frontend_prod` | `sms_prod` | `/home/vm/apps/sms/prod` | `sms.klopterz.in` |
 | Mandi Management (`mandi`) | dev | `127.0.0.1:8003` | `127.0.0.1:3003` | `mandi_backend_dev` | `mandi_frontend_dev` | `mandi_dev` | `/home/vm/apps/mandi/dev` | `dev-mandi.klopterz.in` |
 | Mandi Management (`mandi`) | prod | `127.0.0.1:8004` | `127.0.0.1:3004` | `mandi_backend_prod` | `mandi_frontend_prod` | `mandi_prod` | `/home/vm/apps/mandi/prod` | `mandi.klopterz.in` |
 | Business Tracker (`biztracker`) | dev | `127.0.0.1:8005` | `127.0.0.1:3005` | `biztracker_backend_dev` | `biztracker_frontend_dev` | `biztracker_dev` | `/home/vm/apps/biztracker/dev` | `dev-biztracker.klopterz.in` |

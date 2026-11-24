@@ -1,14 +1,14 @@
 /**
- * School List Page
- * Display and manage schools with status toggle, edit, assign admin, and delete
+ * Institution List Page
+ * Display and manage institutions with status toggle, edit, assign admin, and delete
  */
 
 import { FC, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import toast from 'react-hot-toast';
 import { PageHeader, LoadingSpinner, DataTable, Button, Modal, ConfirmDialog, Badge } from '../../components';
-import { schoolService } from '../../services/modules/schoolService';
-import SchoolAdminForm from './schoolAdminForm';
+import { institutionService } from '../../services/modules/institutionService';
+import InstitutionAdminForm from './institutionAdminForm';
 
 interface IColumn {
     key: string;
@@ -17,7 +17,7 @@ interface IColumn {
     render?: (value: any, row: any) => React.ReactNode;
 }
 
-const SchoolList: FC = () => {
+const InstitutionList: FC = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [rows, setRows] = useState<any[]>([]);
@@ -25,9 +25,9 @@ const SchoolList: FC = () => {
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [deleteCode, setDeleteCode] = useState('');
     const [assignAdminOpen, setAssignAdminOpen] = useState(false);
-    const [selectedSchool, setSelectedSchool] = useState<any>(null);
+    const [selectedInstitution, setSelectedInstitution] = useState<any>(null);
     const [statusAction, setStatusAction] = useState<string | null>(null);
-    const [schoolForAdmin, setSchoolForAdmin] = useState<any>(null);
+    const [institutionForAdmin, setInstitutionForAdmin] = useState<any>(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize] = useState(10);
     const [showActionsMenu, setShowActionsMenu] = useState<string | null>(null);
@@ -44,36 +44,36 @@ const SchoolList: FC = () => {
     };
 
     useEffect(() => {
-        fetchSchools();
+        fetchInstitutions();
     }, []);
 
-    const fetchSchools = async () => {
+    const fetchInstitutions = async () => {
         try {
             setLoading(true);
-            const response = await schoolService.listSchools();
-            const schools = response.data.map((school: any, index: number) => ({
-                ...school,
-                key: school.id,
+            const response = await institutionService.listInstitutions();
+            const institutions = response.data.map((institution: any, index: number) => ({
+                ...institution,
+                key: institution.id,
                 slNo: index + 1,
             }));
-            setRows(schools);
+            setRows(institutions);
         } catch (error) {
-            console.error('Error fetching schools:', error);
-            toast.error('Failed to fetch schools');
+            console.error('Error fetching institutions:', error);
+            toast.error('Failed to fetch institutions');
             setRows([]);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleEdit = (school: any) => {
+    const handleEdit = (institution: any) => {
         setShowActionsMenu(null);
-        navigate('/schools/' + school.id + '/edit', { state: { school, mode: 'update' } });
+        navigate('/institutions/' + institution.id + '/edit', { state: { institution, mode: 'update' } });
     };
 
-    const handleStatusToggle = (school: any) => {
-        setSelectedSchool(school);
-        setStatusAction(school.is_active ? 'deactivate' : 'activate');
+    const handleStatusToggle = (institution: any) => {
+        setSelectedInstitution(institution);
+        setStatusAction(institution.is_active ? 'deactivate' : 'activate');
         setConfirmOpen(true);
         setShowActionsMenu(null);
     };
@@ -82,22 +82,22 @@ const SchoolList: FC = () => {
         try {
             setLoading(true);
             if (statusAction === 'deactivate') {
-                await schoolService.deactivateSchool(selectedSchool.id);
+                await institutionService.deactivateInstitution(selectedInstitution.id);
             } else {
-                await schoolService.activateSchool(selectedSchool.id);
+                await institutionService.activateInstitution(selectedInstitution.id);
             }
-            toast.success(`School ${statusAction}d successfully!`);
-            fetchSchools();
+            toast.success(`Institution ${statusAction}d successfully!`);
+            fetchInstitutions();
             setConfirmOpen(false);
         } catch (err: any) {
-            toast.error(err.message || `Failed to ${statusAction} school.`);
+            toast.error(err.message || `Failed to ${statusAction} institution.`);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleDelete = (school: any) => {
-        setSelectedSchool(school);
+    const handleDelete = (institution: any) => {
+        setSelectedInstitution(institution);
         setDeleteCode('');
         setDeleteConfirmOpen(true);
         setShowActionsMenu(null);
@@ -106,21 +106,21 @@ const SchoolList: FC = () => {
     const handleConfirmDelete = async () => {
         try {
             setLoading(true);
-            await schoolService.deleteSchool(selectedSchool.id, deleteCode.trim());
-            toast.success('School deleted successfully!');
-            fetchSchools();
+            await institutionService.deleteInstitution(selectedInstitution.id, deleteCode.trim());
+            toast.success('Institution deleted successfully!');
+            fetchInstitutions();
             setDeleteConfirmOpen(false);
         } catch (err: any) {
-            toast.error(err.message || 'Failed to delete school.');
+            toast.error(err.message || 'Failed to delete institution.');
         } finally {
             setLoading(false);
         }
     };
 
-    const openAssignAdminModal = (school: any) => {
-        // Always open in create mode - strip school_admin_id so the form creates a new admin
-        const { school_admin_id, ...schoolWithoutAdmin } = school;
-        setSchoolForAdmin(schoolWithoutAdmin);
+    const openAssignAdminModal = (institution: any) => {
+        // Always open in create mode - strip institution_admin_id so the form creates a new admin
+        const { institution_admin_id, ...institutionWithoutAdmin } = institution;
+        setInstitutionForAdmin(institutionWithoutAdmin);
         setAssignAdminOpen(true);
         setShowActionsMenu(null);
     };
@@ -133,7 +133,7 @@ const SchoolList: FC = () => {
         },
         {
             key: 'name',
-            label: 'School Name',
+            label: 'Institution Name',
             // width: 220,
             render: (value) => <span className="font-medium text-gray-900 dark:text-white truncate">{value}</span>,
         },
@@ -203,24 +203,24 @@ const SchoolList: FC = () => {
     ];
 
     if (loading && rows.length === 0) {
-        return <LoadingSpinner fullHeight message="Loading schools..." />;
+        return <LoadingSpinner fullHeight message="Loading institutions..." />;
     }
 
     return (
         <div className="space-y-6">
             <PageHeader
-                title="School Management"
-                subtitle="Manage schools and view their details"
+                title="Institution Management"
+                subtitle="Manage institutions and view their details"
                 breadcrumbs={[
                     { label: 'Dashboard', href: '/dashboard' },
-                    { label: 'Schools', href: '#' },
+                    { label: 'Institutions', href: '#' },
                 ]}
                 actions={
                     <Button
                         variant="primary"
-                        onClick={() => navigate('/schools/new')}
+                        onClick={() => navigate('/institutions/new')}
                     >
-                        + Create School
+                        + Create Institution
                     </Button>
                 }
             />
@@ -301,7 +301,7 @@ const SchoolList: FC = () => {
             <ConfirmDialog
                 isOpen={confirmOpen}
                 title={`Confirm ${statusAction === 'deactivate' ? 'Deactivation' : 'Activation'}`}
-                message={`Are you sure you want to ${statusAction} the school "${selectedSchool?.name}"?${statusAction === 'deactivate' ? ' Users from this school will not be able to log in.' : ''}`}
+                message={`Are you sure you want to ${statusAction} the institution "${selectedInstitution?.name}"?${statusAction === 'deactivate' ? ' Users from this institution will not be able to log in.' : ''}`}
                 type={statusAction === 'deactivate' ? 'warning' : 'info'}
                 confirmText={statusAction === 'deactivate' ? 'Deactivate' : 'Activate'}
                 cancelText="Cancel"
@@ -313,24 +313,24 @@ const SchoolList: FC = () => {
             {/* Delete Confirmation Dialog */}
             <ConfirmDialog
                 isOpen={deleteConfirmOpen}
-                title="Delete School - CRITICAL ACTION"
-                message={`This will permanently delete the school "${selectedSchool?.name}" including all users, dedicated database, and academic data. This action cannot be undone.`}
+                title="Delete Institution - CRITICAL ACTION"
+                message={`This will permanently delete the institution "${selectedInstitution?.name}" including all users, dedicated database, and academic data. This action cannot be undone.`}
                 type="danger"
                 confirmText="Yes, Permanently Delete"
                 cancelText="Cancel"
                 isLoading={loading}
                 onConfirm={handleConfirmDelete}
                 onCancel={() => setDeleteConfirmOpen(false)}
-                confirmDisabled={deleteCode.trim().toLowerCase() !== String(selectedSchool?.code || '').toLowerCase()}
+                confirmDisabled={deleteCode.trim().toLowerCase() !== String(selectedInstitution?.code || '').toLowerCase()}
             >
-                {/* type the school code to enable the delete (QA S14: it was one click) */}
+                {/* type the institution code to enable the delete (QA S14: it was one click) */}
                 <div className="mt-4">
-                    <label htmlFor="delete-school-code" className="block text-sm text-gray-700 dark:text-gray-300">
-                        Type <strong className="font-mono">{selectedSchool?.code}</strong> to confirm
+                    <label htmlFor="delete-institution-code" className="block text-sm text-gray-700 dark:text-gray-300">
+                        Type <strong className="font-mono">{selectedInstitution?.code}</strong> to confirm
                     </label>
                     <input
-                        id="delete-school-code"
-                        name="delete_school_code"
+                        id="delete-institution-code"
+                        name="delete_institution_code"
                         value={deleteCode}
                         onChange={(e) => setDeleteCode(e.target.value)}
                         autoComplete="off"
@@ -344,17 +344,17 @@ const SchoolList: FC = () => {
                 isOpen={assignAdminOpen}
                 onClose={() => {
                     setAssignAdminOpen(false);
-                    fetchSchools();
+                    fetchInstitutions();
                 }}
-                title={`Assign School Admin to "${schoolForAdmin?.name}"`}
+                title={`Assign Institution Admin to "${institutionForAdmin?.name}"`}
                 size="lg"
             >
-                {schoolForAdmin && (
-                    <SchoolAdminForm
-                        school={schoolForAdmin}
+                {institutionForAdmin && (
+                    <InstitutionAdminForm
+                        institution={institutionForAdmin}
                         onClose={() => {
                             setAssignAdminOpen(false);
-                            fetchSchools();
+                            fetchInstitutions();
                         }}
                     />
                 )}
@@ -363,4 +363,4 @@ const SchoolList: FC = () => {
     );
 };
 
-export default SchoolList;
+export default InstitutionList;

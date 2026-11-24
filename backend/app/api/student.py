@@ -27,31 +27,31 @@ def _link_parent(skid, student_user_id, parent_id):
     return StudentParentService.update_student_parent_link(int(student_user_id), int(parent_id), 'Guardian', skid)
 
 
-def _school_user_id_for(skid, username):
-    from app.models.tenant import SchoolUsers
-    from app.utils.db_manager import switch_to_school_db
-    with switch_to_school_db(skid) as tenant_session:
-        su = tenant_session.query(SchoolUsers).filter_by(username=username).first()
+def _institution_user_id_for(skid, username):
+    from app.models.tenant import InstitutionUsers
+    from app.utils.db_manager import switch_to_institution_db
+    with switch_to_institution_db(skid) as tenant_session:
+        su = tenant_session.query(InstitutionUsers).filter_by(username=username).first()
         return su.id if su else None
 
 
 def _admission_number_taken(skid, admission_number, exclude_user_id=None):
     """students.admission_number is unique in the tenant DB."""
     from app.models.tenant import Student
-    from app.utils.db_manager import switch_to_school_db
-    with switch_to_school_db(skid) as tenant_session:
+    from app.utils.db_manager import switch_to_institution_db
+    with switch_to_institution_db(skid) as tenant_session:
         q = tenant_session.query(Student).filter(Student.admission_number == admission_number)
         if exclude_user_id is not None:
             q = q.filter(Student.user_id != int(exclude_user_id))
         return q.first() is not None
 
 @student_bp.route('/create/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_students')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_students')
 @log_actions('CREATE_TEACHER_USER')
 def create_student(skid):
     """
     Create a new student
-    Only super admin and school admin can create users
+    Only super admin and institution admin can create users
     """
     try:
         data = request.get_json()
@@ -59,16 +59,16 @@ def create_student(skid):
         if not data:
             return jsonify({'message': 'No data provided'}), 400
         if not skid:
-            return jsonify({'message': 'School ID is required'}), 400
+            return jsonify({'message': 'Institution ID is required'}), 400
 
         from app.utils.form_input import clean_payload, missing_fields_message, error
         from app.utils.helpers import validate_password
         data = clean_payload(data, STUDENT_OPTIONAL_FIELDS)
         # On the Basic plan students get no login, so no password is asked for (it was required and then
         # silently thrown away - QA A40); Standard / Premium create the login and need one.
-        from app.models.main.School import School, SchoolPlan
-        school = School.query.filter_by(skid=skid).first()
-        creates_login = bool(school and school.plan in (SchoolPlan.STANDARD, SchoolPlan.PREMIUM))
+        from app.models.main.Institution import Institution, InstitutionPlan
+        institution = Institution.query.filter_by(skid=skid).first()
+        creates_login = bool(institution and institution.plan in (InstitutionPlan.STANDARD, InstitutionPlan.PREMIUM))
         required = STUDENT_REQUIRED_FIELDS if creates_login else tuple(f for f in STUDENT_REQUIRED_FIELDS if f[0] != 'password')
         missing = missing_fields_message(data, required)
         if missing:
@@ -92,7 +92,7 @@ def create_student(skid):
         message = 'Student created successfully'
         if data.get('parent_id'):
             try:
-                _link_parent(skid, _school_user_id_for(skid, data['username']), data['parent_id'])
+                _link_parent(skid, _institution_user_id_for(skid, data['username']), data['parent_id'])
             except Exception as link_error:
                 message = f'Student created, but linking the parent failed: {link_error}'
 
@@ -109,7 +109,7 @@ def create_student(skid):
 
 
 @student_bp.route('/bulk-create/<skid>', methods=['POST'])
-@login_required(['PRINCIPAL', 'SCHOOL_ADMIN'], permission='manage_students')
+@login_required(['PRINCIPAL', 'INSTITUTION_ADMIN'], permission='manage_students')
 def bulk_create_students(skid):
     """
     Bulk create students from uploaded data
@@ -153,7 +153,7 @@ def bulk_create_students(skid):
 
 
 @student_bp.route('/update/<skid>/<student_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_students')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_students')
 @log_actions('UPDATE-STUDENT')
 def update_student(skid, student_id):
     """
@@ -167,7 +167,7 @@ def update_student(skid, student_id):
           ↓ (if no duplicates)
       Service Layer (student_service.py:update_student)
           ↓
-          Step 1: Get school plan
+          Step 1: Get institution plan
           Step 2: Fetch from main DB (if plan allows login)
           Step 3: Fetch from tenant DB to verify exists
           Step 4: Update main DB (if plan allows login)
@@ -220,11 +220,11 @@ def update_student(skid, student_id):
 
 
 @student_bp.route('/list/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER', 'CLERK'], permission=('view_students', 'manage_students'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER', 'CLERK'], permission=('view_students', 'manage_students'))
 @log_actions('GET_STUDENTS')
 def get_students_paginated(skid):
     """
-    Get paginated list of students in the specific school with filtering and sorting
+    Get paginated list of students in the specific institution with filtering and sorting
     Query Parameters:
     - page: Page number (default: 1)
     - limit: Items per page (default: 10)
@@ -234,7 +234,7 @@ def get_students_paginated(skid):
     """
     try:
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
 
         # Get query parameters
         page = request.args.get('page', 1, type=int)
@@ -275,7 +275,7 @@ def get_students_paginated(skid):
 
 
 @student_bp.route('/list/<skid>/<academic_year_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLERK'], permission=('view_students', 'manage_students'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'CLERK'], permission=('view_students', 'manage_students'))
 @log_actions('GET_STUDENTS')
 def get_students(skid, academic_year_id):
     """
@@ -283,7 +283,7 @@ def get_students(skid, academic_year_id):
     """
     try:
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
 
         students = StudentService.get_students(skid, academic_year_id)
 
@@ -298,7 +298,7 @@ def get_students(skid, academic_year_id):
 
 # Fetch student list for the section based on the sectionId
 @student_bp.route('/list/inSection/<skid>/<academic_year_id>/<int:section_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'], permission=('view_students', 'manage_students', 'manage_attendance', 'view_attendance', 'manage_marks', 'manage_assignments'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'CLERK'], permission=('view_students', 'manage_students', 'manage_attendance', 'view_attendance', 'manage_marks', 'manage_assignments'))
 def get_students_for_section(skid, academic_year_id, section_id):
     """
     Get all students for a specific class-section with pagination and filtering
@@ -359,7 +359,7 @@ def get_students_for_section(skid, academic_year_id, section_id):
         return jsonify({'message': f'Failed to retrieve students: {str(e)}', 'status': 'error', 'code': 500}), 500
 
 @student_bp.route('/get-by-id/<skid>/<int:id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'CLERK'], permission=('view_students', 'manage_students'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'CLERK'], permission=('view_students', 'manage_students'))
 @log_actions('GET_STUDENTS')
 def get_student_by_id(skid, id):
     """
@@ -367,7 +367,7 @@ def get_student_by_id(skid, id):
     """
     try:
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
             
         student = StudentService.get_student_by_id(skid, id)
 
@@ -382,7 +382,7 @@ def get_student_by_id(skid, id):
         
 
 @student_bp.route('/promote/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_students')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_students')
 @log_actions('PROMOTE_STUDENTS')
 def promote_students(skid):
     """
@@ -411,7 +411,7 @@ def promote_students(skid):
             return jsonify({'message': 'No data provided'}), 400
             
         if not skid:
-            return jsonify({'message': 'School ID is required'}), 400
+            return jsonify({'message': 'Institution ID is required'}), 400
         
         # Validate required fields
         student_ids = data.get("student_ids") or []
@@ -430,7 +430,7 @@ def promote_students(skid):
             }), 400
         
         # Call service method
-        result = StudentService.promote_students(data, skid, promoted_by=request.current_user.school_user_id)
+        result = StudentService.promote_students(data, skid, promoted_by=request.current_user.institution_user_id)
 
         # Report what really happened (it used to say "promoted successfully" even when nobody moved)
         moved = result['promoted_count'] + result['detained_count']
@@ -471,7 +471,7 @@ def _set_student_active_response(skid, student_id, active):
 
 
 @student_bp.route('/delete/<int:student_id>/<skid>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='delete_students')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL'], permission='delete_students')
 @log_actions('DEACTIVATE_STUDENT')
 def delete_student(student_id, skid):
     """Soft delete: mark the student inactive and disable their login. All records are kept."""
@@ -482,7 +482,7 @@ def delete_student(student_id, skid):
 
 
 @student_bp.route('/reactivate/<int:student_id>/<skid>', methods=['PATCH'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_students')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL'], permission='manage_students')
 @log_actions('REACTIVATE_STUDENT')
 def reactivate_student(student_id, skid):
     """Undo a soft delete: mark the student active and re-enable their login."""

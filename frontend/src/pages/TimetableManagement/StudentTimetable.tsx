@@ -24,8 +24,8 @@ const StudentTimetable: FC = () => {
 
             {/* Teachers see their own schedule; students their section's */}
             {user?.role === 'TEACHER'
-                ? <DailyTimetableView teacherId={user?.school_user_id} />
-                : <DailyTimetableView studentId={user?.school_user_id} />}
+                ? <DailyTimetableView teacherId={user?.institution_user_id} />
+                : <DailyTimetableView studentId={user?.institution_user_id} />}
         </div>
     );
 };

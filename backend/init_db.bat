@@ -1,6 +1,6 @@
 @echo off
 echo ====================================
-echo   School Management System
+echo   Institution Management System
 echo   1. Activating and Setting Up Environment
 echo   2. Installing Dependencies from requirements.txt
 echo ====================================

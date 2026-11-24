@@ -32,15 +32,15 @@ def login():
         if not user:
             return jsonify({'message': 'Invalid credentials'}), 401
 
-        # Check if user's school is active
-        if user.school_id:
-            school = user.school
-            if not school:
-                return jsonify({'message': 'School not found'}), 404
+        # Check if user's institution is active
+        if user.institution_id:
+            institution = user.institution
+            if not institution:
+                return jsonify({'message': 'Institution not found'}), 404
 
-            if not school.is_active:
+            if not institution.is_active:
                 return jsonify({
-                    'message': 'Your school account is currently inactive. Please contact support for assistance.'
+                    'message': 'Your institution account is currently inactive. Please contact support for assistance.'
                 }), 403
 
         # Create session and tokens
@@ -124,15 +124,15 @@ def get_current_user():
         user = request.current_user
         # the person's role and its tick boxes, so the app can refresh the menu when an admin changes them
         role_obj = None
-        if user.skid and user.school_user_id:
-            from app.utils.db_manager import switch_to_school_db
+        if user.skid and user.institution_user_id:
+            from app.utils.db_manager import switch_to_institution_db
             from app.utils.role_permissions import account_role
-            with switch_to_school_db(user.skid) as session:
-                role = account_role(session, user.school_user_id)
+            with switch_to_institution_db(user.skid) as session:
+                role = account_role(session, user.institution_user_id)
                 if role:
                     role_obj = {
                         'id': role.id, 'role_name': role.role_name, 'role_code': role.role_code,
-                        'school_id': role.school_id, 'is_active': role.is_active,
+                        'institution_id': role.institution_id, 'is_active': role.is_active,
                         'is_system_role': role.is_system_role, 'permissions': list(role.permissions or []),
                     }
         return jsonify({
@@ -152,7 +152,7 @@ def update_current_user():
     """
     Update the current user's own profile.
     Only first_name, last_name, and phone can be changed via this endpoint.
-    Email, username, role, and school are protected.
+    Email, username, role, and institution are protected.
     """
     try:
         data = request.get_json()

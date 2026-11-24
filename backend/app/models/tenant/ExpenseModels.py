@@ -7,7 +7,7 @@ class StaffSalarySetup(BaseModelTenant, BaseModelTenantMixin):
     __tablename__ = 'staff_salary_setup'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    staff_id = Column(Integer, ForeignKey('school_users.id'), nullable=False)
+    staff_id = Column(Integer, ForeignKey('institution_users.id'), nullable=False)
     academic_year_id = Column(Integer, ForeignKey('academic_years.id'), nullable=False)
     
     # Salary Components
@@ -27,7 +27,7 @@ class StaffSalarySetup(BaseModelTenant, BaseModelTenantMixin):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    staff = relationship("SchoolUsers", backref="salary_setups")
+    staff = relationship("InstitutionUsers", backref="salary_setups")
     academic_year = relationship("AcademicYear", backref="staff_salaries")
     salary_payments = relationship("SalaryPayment", back_populates="salary_setup")
 
@@ -36,7 +36,7 @@ class SalaryPayment(BaseModelTenant, BaseModelTenantMixin):
     __tablename__ = 'salary_payments'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    staff_id = Column(Integer, ForeignKey('school_users.id'), nullable=False)
+    staff_id = Column(Integer, ForeignKey('institution_users.id'), nullable=False)
     salary_setup_id = Column(Integer, ForeignKey('staff_salary_setup.id'), nullable=False)
     academic_year_id = Column(Integer, ForeignKey('academic_years.id'), nullable=False)
     
@@ -59,12 +59,12 @@ class SalaryPayment(BaseModelTenant, BaseModelTenantMixin):
     notes = Column(String(500))
     
     # Metadata
-    paid_by = Column(Integer, ForeignKey('school_users.id'))
+    paid_by = Column(Integer, ForeignKey('institution_users.id'))
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
-    staff = relationship("SchoolUsers", foreign_keys=[staff_id], backref="salary_payments")
+    staff = relationship("InstitutionUsers", foreign_keys=[staff_id], backref="salary_payments")
     salary_setup = relationship("StaffSalarySetup", back_populates="salary_payments")
     academic_year = relationship("AcademicYear", backref="salary_payments")
 

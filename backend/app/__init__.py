@@ -49,9 +49,9 @@ def create_app(config_name=None):
     
     # Register blueprints
     from app.api import (
-        auth_bp, user_bp, teacher_bp, student_bp, school_bp, class_bp, subject_bp, attendance_bp,
+        auth_bp, user_bp, teacher_bp, student_bp, institution_bp, class_bp, subject_bp, attendance_bp,
         parent_bp, roles_bp, user_roles_bp, timeTable_bp, studentParent_bp, fee_bp, announcement_bp,
-        school_admin_dashboard_bp, exam_bp, marks_bp, progress_card_bp, expense_bp, academic_year_bp,
+        institution_admin_dashboard_bp, exam_bp, marks_bp, progress_card_bp, expense_bp, academic_year_bp,
         teacher_dashboard_bp, syllabus_bp, assignment_bp, student_dashboard_bp, room_bp, seating_bp,
         bus_scan_bp, staff_bp, homework_bp, push_bp
     )
@@ -61,7 +61,7 @@ def create_app(config_name=None):
     app.register_blueprint(student_bp, url_prefix='/api/students')
     app.register_blueprint(parent_bp, url_prefix='/api/parents')
     app.register_blueprint(studentParent_bp, url_prefix='/api/studentParent')
-    app.register_blueprint(school_bp, url_prefix='/api/school')
+    app.register_blueprint(institution_bp, url_prefix='/api/institution')
     app.register_blueprint(class_bp, url_prefix='/api/classes')
     app.register_blueprint(subject_bp, url_prefix='/api/subjects')
     app.register_blueprint(attendance_bp, url_prefix='/api/attendance')
@@ -70,7 +70,7 @@ def create_app(config_name=None):
     app.register_blueprint(roles_bp, url_prefix='/api/roles')
     app.register_blueprint(user_roles_bp, url_prefix='/api/user-roles')
     app.register_blueprint(announcement_bp, url_prefix='/api/announcements')
-    app.register_blueprint(school_admin_dashboard_bp, url_prefix='/api/schoolAdminDashboard')
+    app.register_blueprint(institution_admin_dashboard_bp, url_prefix='/api/institutionAdminDashboard')
     app.register_blueprint(teacher_dashboard_bp, url_prefix='/api/teacherDashboard')
     app.register_blueprint(exam_bp, url_prefix='/api/exams')
     app.register_blueprint(marks_bp, url_prefix='/api/marks')
@@ -182,6 +182,14 @@ def _bootstrap_main_schema(app):
     with app.app_context():
         import app.models  # noqa: F401 - registers model metadata
 
+        # Old "school" names -> "institution" (tables, columns, types, role value). Must run BEFORE create_all,
+        # which would otherwise create new empty tables next to the renamed ones. Does nothing once done.
+        from app.utils.institution_rename import rename_database_objects
+        with db.engine.begin() as conn:
+            renamed = rename_database_objects(conn)
+        if renamed:  # (not app.logger: "import app.models" above rebinds the name `app` to the package)
+            logging.getLogger(__name__).warning(f"Main database renamed to institution names: {renamed}")
+
         db.create_all()
 
         # Backfill auth hardening columns for legacy users table schemas.
@@ -213,7 +221,7 @@ def _bootstrap_main_schema(app):
             ))
             db.session.commit()
 
-# Columns added to existing school databases after they were created (create_all only builds new tables).
+# Columns added to existing institution databases after they were created (create_all only builds new tables).
 # Each statement must be safe to run on every start.
 _OLD_PROGRESS = """
     SELECT p.*, a.section_id AS target_section
@@ -252,10 +260,10 @@ TENANT_SCHEMA_UPDATES = (
     # custom roles are "based on" a built-in staff role (QA A13); built-in roles are based on themselves
     "ALTER TABLE IF EXISTS roles ADD COLUMN IF NOT EXISTS base_role VARCHAR(50)",
     "UPDATE roles SET base_role = role_code WHERE base_role IS NULL AND role_code IN "
-    "('SCHOOL_ADMIN','PRINCIPAL','TEACHER','STUDENT','PARENT','BUS_STAFF','CLERK')",
-    # built-in roles are marked as such (some schools had Clerk / Bus Staff unmarked, so they could be deleted)
+    "('INSTITUTION_ADMIN','PRINCIPAL','TEACHER','STUDENT','PARENT','BUS_STAFF','CLERK')",
+    # built-in roles are marked as such (some institutions had Clerk / Bus Staff unmarked, so they could be deleted)
     "UPDATE roles SET is_system_role = TRUE WHERE is_system_role IS DISTINCT FROM TRUE AND role_code IN "
-    "('SCHOOL_ADMIN','PRINCIPAL','TEACHER','STUDENT','PARENT','BUS_STAFF','CLERK')",
+    "('INSTITUTION_ADMIN','PRINCIPAL','TEACHER','STUDENT','PARENT','BUS_STAFF','CLERK')",
     # syllabus progress is kept per section (QA B33)
     "ALTER TABLE IF EXISTS syllabus_progress_tracking ADD COLUMN IF NOT EXISTS section_id INTEGER "
     "REFERENCES sections(id) ON DELETE CASCADE",
@@ -269,22 +277,37 @@ TENANT_SCHEMA_UPDATES = (
 
 
 def _bootstrap_tenant_schemas(app):
-    """Apply TENANT_SCHEMA_UPDATES to every school's database. A school that can't be reached is logged and skipped."""
-    from app.models.main.School import School
-    from app.utils.db_manager import switch_to_school_db
+    """Apply TENANT_SCHEMA_UPDATES to every institution's database. An institution that can't be reached is logged and skipped."""
+    from app.models.main.Institution import Institution
+    from app.utils.db_manager import switch_to_institution_db
     with app.app_context():
         try:
-            skids = [s.skid for s in School.query.all() if s.skid]
+            skids = [s.skid for s in Institution.query.all() if s.skid]
         except Exception as e:  # main DB not ready: nothing to update yet
             app.logger.warning(f"Tenant schema update skipped: {e}")
             return
+        # institution databases skool_<skid> -> eduspyre_<skid> (before anything connects to them; no-op once done)
+        try:
+            from app.utils.institution_rename import rename_tenant_databases
+            with db.engine.connect().execution_options(isolation_level="AUTOCOMMIT") as admin_conn:
+                renamed = rename_tenant_databases(admin_conn, skids)
+            if renamed:
+                app.logger.warning(f"Institution databases renamed: {renamed}")
+        except Exception as e:
+            app.logger.error(f"Renaming institution databases failed: {e}")
     for skid in skids:
         try:
-            with switch_to_school_db(skid) as session:
+            with switch_to_institution_db(skid) as session:  # one transaction per institution database
+                # old "school" names -> "institution" first (tables, columns, admin role code); no-op once done
+                from app.utils.institution_rename import rename_database_objects, rename_tenant_data
+                conn = session.connection()
+                renamed = rename_database_objects(conn) + rename_tenant_data(conn)
+                if renamed:
+                    app.logger.warning(f"Institution database {skid} renamed: {renamed}")
                 for statement in TENANT_SCHEMA_UPDATES:
                     session.execute(text(statement))
         except Exception as e:
-            app.logger.warning(f"Tenant schema update failed for school {skid}: {str(e).splitlines()[0]}")
+            app.logger.warning(f"Tenant schema update failed for institution {skid}: {str(e).splitlines()[0]}")
 
 
 def setup_logging(app):
@@ -304,4 +327,4 @@ def setup_logging(app):
     file_handler.setLevel(log_level)
     app.logger.addHandler(file_handler)
     app.logger.setLevel(log_level)
-    app.logger.info('School Management System startup')
+    app.logger.info('Institution Management System startup')

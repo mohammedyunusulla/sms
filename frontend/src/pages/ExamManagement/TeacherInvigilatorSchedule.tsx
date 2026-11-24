@@ -64,11 +64,11 @@ const TeacherInvigilatorSchedule: FC = () => {
     };
 
     const fetchSchedule = async () => {
-        if (!user?.school_user_id || !selectedExamType) return;
+        if (!user?.institution_user_id || !selectedExamType) return;
         setLoading(true);
         try {
             const data = await examService.getInvigilatorSchedule(
-                user.school_user_id,
+                user.institution_user_id,
                 Number(selectedExamType),
                 currentAcademicYear?.id
             );

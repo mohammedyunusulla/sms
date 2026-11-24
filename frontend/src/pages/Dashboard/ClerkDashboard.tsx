@@ -42,7 +42,7 @@ const ClerkDashboard: FC = () => {
 
             {links.length === 0 ? (
                 <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-6 text-sm text-yellow-700 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300">
-                    Your role has no pages yet. Ask the school admin to give the Clerk role its permissions.
+                    Your role has no pages yet. Ask the institution admin to give the Clerk role its permissions.
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="clerk-links">

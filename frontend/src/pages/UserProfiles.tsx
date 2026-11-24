@@ -24,7 +24,7 @@ interface Account {
 }
 
 const ROLE_LABELS: Record<string, string> = {
-    SUPER_ADMIN: 'Super Admin', SCHOOL_ADMIN: 'School Admin', PRINCIPAL: 'Principal', TEACHER: 'Teacher',
+    SUPER_ADMIN: 'Super Admin', INSTITUTION_ADMIN: 'Institution Admin', PRINCIPAL: 'Principal', TEACHER: 'Teacher',
     STUDENT: 'Student', PARENT: 'Parent', BUS_STAFF: 'Bus Staff',
 };
 
@@ -238,7 +238,7 @@ const UserProfiles: FC = () => {
                             <div className="md:col-span-2">
                                 <p className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</p>
                                 <p className="text-gray-900 dark:text-white">{account.email}</p>
-                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Username and email can only be changed by the school office.</p>
+                                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Username and email can only be changed by the institution's office.</p>
                             </div>
                         </div>
                         {editing && (

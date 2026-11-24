@@ -1,10 +1,10 @@
-from app.models.tenant import Class, Student, SchoolUsers
+from app.models.tenant import Class, Student, InstitutionUsers
 from app.models.tenant.Sections import Section
 from app.models.tenant.FeeModels import (
     FeeStructure, StudentFee, FeePayment, FeeDiscount, 
      FeeType, PaymentMode, PaymentStatus, FeeInstallment, RecurrenceType
 )
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from datetime import datetime, date, timedelta
 from sqlalchemy import func, and_, or_, extract
 from decimal import Decimal
@@ -171,7 +171,7 @@ class FeeService:
         """Create fee structure for a class"""
         from app.utils.validators import positive_amount
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 amount = positive_amount(data.get('amount'), "Fee amount")
                 if data.get('is_recurring') and data.get('recurrence_amount') not in (None, ''):
                     data['recurrence_amount'] = positive_amount(data['recurrence_amount'], "Recurring amount")
@@ -202,7 +202,7 @@ class FeeService:
     def get_fee_structures(skid, academic_year_id, class_id=None):
         """Get all fee structures with filters"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 query = tenant_session.query(FeeStructure, Class).join(
                     Class, FeeStructure.class_id == Class.id
                 )
@@ -231,7 +231,7 @@ class FeeService:
     def update_fee_structure(fee_id, data, skid):
         """Update fee structure"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 fee_structure = tenant_session.query(FeeStructure).filter_by(id=fee_id).first()
                 if not fee_structure:
                     raise ValueError("Fee structure not found")
@@ -262,7 +262,7 @@ class FeeService:
         Delete a fee structure
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Get fee structure
                 fee_structure = tenant_session.query(FeeStructure).filter_by(id=fee_id).first()
                 
@@ -304,7 +304,7 @@ class FeeService:
     def assign_fees_to_student(student_id, academic_year_id, skid, custom_fees=None):
         """Assign fees to a student - auto or custom"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 student = tenant_session.query(Student).filter_by(user_id=student_id).first()
                 if not student:
                     raise ValueError(f"Student with ID {student_id} not found")
@@ -375,7 +375,7 @@ class FeeService:
         try:
             from app.utils.validators import to_date
             due = to_date(due_date, "Due date") if due_date else date.today() + timedelta(days=30)
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # ✅ First check if fee structures exist
                 fee_structures = tenant_session.query(FeeStructure).filter_by(
                     class_id=class_id,
@@ -457,7 +457,7 @@ class FeeService:
     def record_payment(data, skid, collected_by_id):
         """Record a fee payment"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 student_fee = tenant_session.query(StudentFee).filter_by(
                     id=data['student_fee_id']
                 ).first()
@@ -528,7 +528,7 @@ class FeeService:
         if not reason:
             raise ValueError("Give a reason for cancelling the payment")
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 payment = tenant_session.query(FeePayment).filter_by(id=payment_id).first()
                 if not payment:
                     raise ValueError("Payment not found")
@@ -575,7 +575,7 @@ class FeeService:
             installments: [{"installment_name": "Term 1", "amount": 5000, "due_date": "2024-07-31"}, ...]
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 student_fee = tenant_session.query(StudentFee).filter_by(id=student_fee_id).first()
                 if not student_fee:
                     raise ValueError("Student fee not found")
@@ -594,7 +594,7 @@ class FeeService:
     def get_fee_installments(student_fee_id, skid):
         """Get all installments for a student fee"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 installments = tenant_session.query(FeeInstallment).filter_by(
                     student_fee_id=student_fee_id
                 ).order_by(FeeInstallment.installment_number).all()
@@ -608,7 +608,7 @@ class FeeService:
     def record_installment_payment(installment_id, data, skid, collected_by_id):
         """Record payment for a specific installment"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 installment = tenant_session.query(FeeInstallment).filter_by(id=installment_id).first()
                 if not installment:
                     raise ValueError("Installment not found")
@@ -672,7 +672,7 @@ class FeeService:
     def auto_generate_installments(student_fee_id, num_installments, skid):
         """Split what is still owed into equal installments, every 3 months, inside the academic year."""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 student_fee = tenant_session.query(StudentFee).filter_by(id=student_fee_id).first()
                 if not student_fee:
                     raise ValueError("Student fee not found")
@@ -705,7 +705,7 @@ class FeeService:
         only what is still owed, with no due date past the academic year. preview=True returns the plan unsaved.
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 student_fee = tenant_session.query(StudentFee).filter_by(id=student_fee_id).first()
                 if not student_fee:
                     raise ValueError("Student fee not found")
@@ -738,7 +738,7 @@ class FeeService:
         Scenario: student paid 3 months in installments, wants to pay the rest in full.
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 student_fee = tenant_session.query(StudentFee).filter_by(id=student_fee_id).first()
                 if not student_fee:
                     raise ValueError("Student fee not found")
@@ -774,7 +774,7 @@ class FeeService:
     def get_student_fee_summary(student_id, academic_year_id, skid):
         """Get complete fee summary for a student"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 student_fees = tenant_session.query(
                     StudentFee, FeeStructure
                 ).join(
@@ -804,7 +804,7 @@ class FeeService:
                     collector_ids = {p.collected_by for p in payments if p.collected_by}
                     if collector_ids:
                         names = {u.id: f"{u.first_name} {u.last_name or ''}".strip()
-                                 for u in tenant_session.query(SchoolUsers).filter(SchoolUsers.id.in_(collector_ids)).all()}
+                                 for u in tenant_session.query(InstitutionUsers).filter(InstitutionUsers.id.in_(collector_ids)).all()}
                         for pd in fee_dict['payments']:
                             pd['collected_by_name'] = names.get(pd.get('collected_by'))
                     
@@ -831,18 +831,18 @@ class FeeService:
     def get_fee_collection_report(skid, start_date=None, end_date=None, class_id=None):
         """Get fee collection report"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 query = tenant_session.query(
                     FeePayment,
                     StudentFee,
                     Student,
-                    SchoolUsers
+                    InstitutionUsers
                 ).join(
                     StudentFee, FeePayment.student_fee_id == StudentFee.id
                 ).join(
                     Student, StudentFee.student_id == Student.user_id
                 ).join(
-                    SchoolUsers, Student.user_id == SchoolUsers.id
+                    InstitutionUsers, Student.user_id == InstitutionUsers.id
                 ).filter(
                     FeePayment.is_cancelled == False
                 )
@@ -862,7 +862,7 @@ class FeeService:
                 structure_ids = {sf.fee_structure_id for _, sf, _, _ in results if sf.fee_structure_id}
                 fee_names = {fs.id: fs.fee_name for fs in tenant_session.query(FeeStructure).filter(FeeStructure.id.in_(structure_ids)).all()} if structure_ids else {}
                 collector_ids = {p.collected_by for p, _, _, _ in results if p.collected_by}
-                collectors = {u.id: f"{u.first_name} {u.last_name or ''}".strip() for u in tenant_session.query(SchoolUsers).filter(SchoolUsers.id.in_(collector_ids)).all()} if collector_ids else {}
+                collectors = {u.id: f"{u.first_name} {u.last_name or ''}".strip() for u in tenant_session.query(InstitutionUsers).filter(InstitutionUsers.id.in_(collector_ids)).all()} if collector_ids else {}
 
                 total_collected = 0
                 collection_by_mode = {}
@@ -902,10 +902,10 @@ class FeeService:
         """
         from app.models.tenant.StudentParent import StudentParent
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 as_of = as_of_date or date.today()
-                rows = tenant_session.query(StudentFee, SchoolUsers, Student, FeeStructure).join(
-                    SchoolUsers, StudentFee.student_id == SchoolUsers.id
+                rows = tenant_session.query(StudentFee, InstitutionUsers, Student, FeeStructure).join(
+                    InstitutionUsers, StudentFee.student_id == InstitutionUsers.id
                 ).join(
                     Student, Student.user_id == StudentFee.student_id
                 ).outerjoin(
@@ -937,7 +937,7 @@ class FeeService:
                     parent_phone = None
                     link = tenant_session.query(StudentParent).filter_by(student_user_id=student.user_id).first()
                     if link:
-                        parent = tenant_session.query(SchoolUsers).filter_by(id=link.parent_user_id).first()
+                        parent = tenant_session.query(InstitutionUsers).filter_by(id=link.parent_user_id).first()
                         parent_phone = parent.phone if parent else None
 
                     defaulters.append({
@@ -984,7 +984,7 @@ class FeeService:
         from app.utils.validators import positive_amount, to_date
         from app.models.tenant.AcademicYear import AcademicYear
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 student_id = int(data.get('student_id') or 0)
                 if not tenant_session.query(Student).filter_by(user_id=student_id).first():
                     raise ValueError("Student not found")
@@ -1082,12 +1082,12 @@ class FeeService:
         Args:
             class_id: Class ID
             academic_year_id: Academic year
-            skid: School identifier
+            skid: Institution identifier
         Returns:
             Success message with count
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Get all fee structures for the class
                 fee_structures = tenant_session.query(FeeStructure).filter_by(
                     class_id=class_id,
@@ -1136,7 +1136,7 @@ class FeeService:
         
         Args:
             search_query: Search term (name/phone/roll_no)
-            skid: School identifier
+            skid: Institution identifier
             academic_year_id: Academic year for fee filtering
             class_id: Optional class filter
         
@@ -1144,12 +1144,12 @@ class FeeService:
             List of students with fee summary
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Build query with joins
                 query = tenant_session.query(
-                    Student, SchoolUsers, Class, Section
+                    Student, InstitutionUsers, Class, Section
                 ).join(
-                    SchoolUsers, Student.user_id == SchoolUsers.id
+                    InstitutionUsers, Student.user_id == InstitutionUsers.id
                 ).outerjoin(
                     Class, Student.class_id == Class.id
                 ).outerjoin(
@@ -1159,12 +1159,12 @@ class FeeService:
                 # Multi-field search using OR condition
                 search_conditions = or_(
                     # Search by name (first name, last name, or full name)
-                    SchoolUsers.first_name.ilike(f'%{search_query}%'),
-                    SchoolUsers.last_name.ilike(f'%{search_query}%'),
-                    func.concat(SchoolUsers.first_name, ' ', SchoolUsers.last_name).ilike(f'%{search_query}%'),
+                    InstitutionUsers.first_name.ilike(f'%{search_query}%'),
+                    InstitutionUsers.last_name.ilike(f'%{search_query}%'),
+                    func.concat(InstitutionUsers.first_name, ' ', InstitutionUsers.last_name).ilike(f'%{search_query}%'),
                     
                     # Search by phone number
-                    SchoolUsers.phone.ilike(f'%{search_query}%'),
+                    InstitutionUsers.phone.ilike(f'%{search_query}%'),
                     
                     # Search by roll number (student_id field)
                     Student.roll_no.ilike(f'%{search_query}%')

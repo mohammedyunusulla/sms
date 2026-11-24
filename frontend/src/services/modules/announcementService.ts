@@ -4,7 +4,7 @@
 // Uses centralized API client from services/api/client.ts
 
 
-import { getApiClient, getSchoolId } from '../api/client';
+import { getApiClient, getInstitutionId } from '../api/client';
 import { IAnnouncement, AnnouncementPriority, UserRole } from '../../types/index';
 
 interface ApiResponse<T = any> {
@@ -80,13 +80,13 @@ class AnnouncementService {
     // Get list of announcements with optional filtering
     async list(params?: IAnnouncementListParams): Promise<IAnnouncementListResponse> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/list/${schoolId}`, { params }) as unknown as ApiResponse;
+        const response = await api.get(`${this.baseUrl}/list/${institutionId}`, { params }) as unknown as ApiResponse;
 
         // Handle API response format
         const announcements = response.announcements || response.data || [];
@@ -110,13 +110,13 @@ class AnnouncementService {
     // Get single announcement by ID
     async getById(id: string | number): Promise<IAnnouncement> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/get-by-id/${schoolId}/${id}`) as unknown as ApiResponse<IAnnouncement>;
+        const response = await api.get(`${this.baseUrl}/get-by-id/${institutionId}/${id}`) as unknown as ApiResponse<IAnnouncement>;
         return response.data as IAnnouncement;
     }
 
@@ -124,13 +124,13 @@ class AnnouncementService {
     // Create new announcement
     async create(data: ICreateAnnouncementRequest): Promise<IAnnouncement> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/create/${schoolId}`, data) as unknown as ApiResponse<IAnnouncement>;
+        const response = await api.post(`${this.baseUrl}/create/${institutionId}`, data) as unknown as ApiResponse<IAnnouncement>;
         if (response.code === 201 && response.status === 'success') {
             return response.data as IAnnouncement;
         }
@@ -141,13 +141,13 @@ class AnnouncementService {
     // Update announcement
     async update(id: string, data: IUpdateAnnouncementRequest): Promise<IAnnouncement> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.put(`${this.baseUrl}/update/${schoolId}/${id}`, data) as unknown as ApiResponse<IAnnouncement>;
+        const response = await api.put(`${this.baseUrl}/update/${institutionId}/${id}`, data) as unknown as ApiResponse<IAnnouncement>;
         if (response.code === 200 && response.status === 'success') {
             return response.data as IAnnouncement;
         }
@@ -158,13 +158,13 @@ class AnnouncementService {
     // Delete announcement 
     async delete(id: string): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.delete(`${this.baseUrl}/delete/${schoolId}/${id}`) as unknown as ApiResponse;
+        const response = await api.delete(`${this.baseUrl}/delete/${institutionId}/${id}`) as unknown as ApiResponse;
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.message || 'Failed to delete announcement');
         }
@@ -174,13 +174,13 @@ class AnnouncementService {
     // Publish announcement 
     async publish(id: string): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/${id}/publish/${schoolId}`) as unknown as ApiResponse;
+        const response = await api.post(`${this.baseUrl}/${id}/publish/${institutionId}`) as unknown as ApiResponse;
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.message || 'Failed to publish announcement');
         }
@@ -190,13 +190,13 @@ class AnnouncementService {
     // Archive announcement 
     async archive(id: string): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/${id}/archive/${schoolId}`) as unknown as ApiResponse;
+        const response = await api.post(`${this.baseUrl}/${id}/archive/${institutionId}`) as unknown as ApiResponse;
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.message || 'Failed to archive announcement');
         }
@@ -206,13 +206,13 @@ class AnnouncementService {
     // Export announcements to CSV 
     async exportToCSV(params?: IAnnouncementListParams): Promise<Blob> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/export/csv/${schoolId}`, {
+        const response = await api.get(`${this.baseUrl}/export/csv/${institutionId}`, {
             params,
             responseType: 'blob',
         }) as unknown as ApiResponse<Blob>;

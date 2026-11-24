@@ -3,10 +3,10 @@ import psycopg2.errors
 import logging
 from psycopg2.extensions import ISOLATION_LEVEL_AUTOCOMMIT
 from sqlalchemy import create_engine
-from app.models.main.School import School
+from app.models.main.Institution import Institution
 from config import Config
 from app.models.base import BaseModelTenant
-from app.models.tenant import SchoolUsers, Teacher, Staff, Student, Parent, Roles, Attendance, StudentEnrollment, StudentParent, Subject, UserRoles, Class, Section  # import all school models
+from app.models.tenant import InstitutionUsers, Teacher, Staff, Student, Parent, Roles, Attendance, StudentEnrollment, StudentParent, Subject, UserRoles, Class, Section  # import all institution models
 from app.utils.tenant_db import get_tenant_engine
 from app import db
 from app.utils.seeders import seed_default_roles
@@ -23,9 +23,9 @@ class DatabaseManager:
     """
     
     @staticmethod
-    def create_school_database(db_name):
+    def create_institution_database(db_name):
         """
-        Create a new database for a school
+        Create a new database for an institution
         """
         try:
             # Connect to PostgreSQL server using credentials from config/.env
@@ -54,8 +54,8 @@ class DatabaseManager:
                 raise Exception(f"Failed to create database: {str(e)}")
     
     @staticmethod
-    def initialize_school_schema(db_name):
-        """Initialize tables and schema for school database"""
+    def initialize_institution_schema(db_name):
+        """Initialize tables and schema for institution database"""
         try:
             engine = get_tenant_engine(db_name)
             BaseModelTenant.metadata.create_all(engine)
@@ -81,8 +81,8 @@ class DatabaseManager:
             raise Exception(f"Failed to initialize schema: {str(e)}")
     
 
-    def drop_school_database(db_name):
-        """Drop a school database (for cleanup in case of errors)"""
+    def drop_institution_database(db_name):
+        """Drop an institution database (for cleanup in case of errors)"""
         try:
             # Get database connection parameters from Flask config
             db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI')
@@ -136,9 +136,9 @@ from contextlib import contextmanager
 import logging
 _log = logging.getLogger(__name__)
 @contextmanager
-def switch_to_school_db(skid):
+def switch_to_institution_db(skid):
     # Dynamically build DB URI
-    db_name = f"skool_{skid}"
+    db_name = f"eduspyre_{skid}"
     encoded_password = quote_plus(Config.POSTGRES_PASSWORD)
     db_uri = f"postgresql://{Config.POSTGRES_USER}:{encoded_password}@{Config.POSTGRES_HOST}:{Config.POSTGRES_PORT}/{db_name}"
     engine = create_engine(db_uri)

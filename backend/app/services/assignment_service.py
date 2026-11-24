@@ -1,8 +1,8 @@
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from app.models.tenant.Assignment import Assignment
 from app.models.tenant.AssignmentSubmission import AssignmentSubmission
 from app.models.tenant.Student import Student
-from app.models.tenant.SchoolUsers import SchoolUsers
+from app.models.tenant.InstitutionUsers import InstitutionUsers
 from app.models.tenant.Subject import Subject
 from app.models.tenant.Class import Class
 from app.models.tenant.Sections import Section
@@ -21,7 +21,7 @@ class AssignmentService:
         Returns a list of dicts with class, section, and subject info.
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 results = tenant_session.query(
                     Class.id.label('class_id'),
                     Class.class_name,
@@ -70,7 +70,7 @@ class AssignmentService:
     def create_assignment(data, skid):
         """Create a new assignment."""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 assignment = Assignment(
                     teacher_id=data['teacher_id'],
                     class_id=data['class_id'],
@@ -118,7 +118,7 @@ class AssignmentService:
     def update_assignment(skid, assignment_id, data):
         """Update an existing assignment's text."""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 assignment = tenant_session.query(Assignment).filter(
                     and_(Assignment.id == assignment_id, Assignment.is_active == True)
                 ).first()
@@ -166,7 +166,7 @@ class AssignmentService:
     def get_assignments_by_date(skid, teacher_id, date, academic_year_id):
         """Get all assignments for a teacher on a specific date."""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 assignment_date = datetime.strptime(date, '%Y-%m-%d').date()
 
                 results = tenant_session.query(
@@ -198,10 +198,10 @@ class AssignmentService:
 
                     # Completion stats: the section's ACTIVE students only, both for "done" and the total
                     # (done counted rows from any section and the total included inactive students - QA D13)
-                    from app.models.tenant.SchoolUsers import SchoolUsers
+                    from app.models.tenant.InstitutionUsers import InstitutionUsers
                     section_students = tenant_session.query(Student.user_id).join(
-                        SchoolUsers, SchoolUsers.id == Student.user_id
-                    ).filter(Student.section_id == row[0].section_id, SchoolUsers.is_active.is_(True))
+                        InstitutionUsers, InstitutionUsers.id == Student.user_id
+                    ).filter(Student.section_id == row[0].section_id, InstitutionUsers.is_active.is_(True))
                     student_count = section_students.count()
                     completed = tenant_session.query(func.count(AssignmentSubmission.id)).filter(
                         AssignmentSubmission.assignment_id == row[0].id,
@@ -226,7 +226,7 @@ class AssignmentService:
     def get_assignment_with_students(skid, assignment_id):
         """Get an assignment along with the student list and their submission status."""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Get assignment details
                 result = tenant_session.query(
                     Assignment,
@@ -256,14 +256,14 @@ class AssignmentService:
                 students = tenant_session.query(
                     Student.user_id,
                     Student.roll_no,
-                    SchoolUsers.first_name,
-                    SchoolUsers.last_name,
+                    InstitutionUsers.first_name,
+                    InstitutionUsers.last_name,
                 ).join(
-                    SchoolUsers, Student.user_id == SchoolUsers.id
+                    InstitutionUsers, Student.user_id == InstitutionUsers.id
                 ).filter(
                     and_(
                         Student.section_id == assignment.section_id,
-                        SchoolUsers.is_active == True
+                        InstitutionUsers.is_active == True
                     )
                 ).order_by(Student.roll_no).all()
 
@@ -302,7 +302,7 @@ class AssignmentService:
     def update_submissions(skid, assignment_id, submissions_data, reviewer_id):
         """Bulk update student submission status and remarks."""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Verify assignment exists
                 assignment = tenant_session.query(Assignment).filter(
                     and_(Assignment.id == assignment_id, Assignment.is_active == True)
@@ -314,13 +314,13 @@ class AssignmentService:
                 now = datetime.utcnow()
 
                 # Only students of the assignment's section can be marked (any student used to be accepted - QA D13)
-                from app.models.tenant.SchoolUsers import SchoolUsers
+                from app.models.tenant.InstitutionUsers import InstitutionUsers
                 in_section = {uid for (uid,) in tenant_session.query(Student.user_id).filter(
                     Student.section_id == assignment.section_id)}
                 outside = [e.get('student_id') for e in submissions_data if int(e.get('student_id') or 0) not in in_section]
                 if outside:
                     names = [f"{u.first_name} {u.last_name or ''}".strip() for u in
-                             tenant_session.query(SchoolUsers).filter(SchoolUsers.id.in_([int(x or 0) for x in outside])).all()]
+                             tenant_session.query(InstitutionUsers).filter(InstitutionUsers.id.in_([int(x or 0) for x in outside])).all()]
                     raise ValueError(f"Not in this assignment's section: {', '.join(names) or ', '.join(map(str, outside))}")
 
                 for entry in submissions_data:
@@ -366,7 +366,7 @@ class AssignmentService:
         Optionally filter by date. Returns most recent first.
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Get student's class and section
                 student = tenant_session.query(Student).filter(
                     Student.user_id == student_id
@@ -393,8 +393,8 @@ class AssignmentService:
                     Class.class_name,
                     Section.section_name,
                     Subject.subject_name,
-                    SchoolUsers.first_name.label('teacher_first'),
-                    SchoolUsers.last_name.label('teacher_last'),
+                    InstitutionUsers.first_name.label('teacher_first'),
+                    InstitutionUsers.last_name.label('teacher_last'),
                     AssignmentSubmission.is_completed,
                     AssignmentSubmission.remarks,
                 ).join(
@@ -404,7 +404,7 @@ class AssignmentService:
                 ).join(
                     Subject, Assignment.subject_id == Subject.id
                 ).outerjoin(
-                    SchoolUsers, Assignment.teacher_id == SchoolUsers.id
+                    InstitutionUsers, Assignment.teacher_id == InstitutionUsers.id
                 ).outerjoin(
                     AssignmentSubmission, and_(
                         AssignmentSubmission.assignment_id == Assignment.id,
@@ -436,7 +436,7 @@ class AssignmentService:
     def delete_assignment(skid, assignment_id):
         """Soft delete an assignment."""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 assignment = tenant_session.query(Assignment).filter(
                     and_(Assignment.id == assignment_id, Assignment.is_active == True)
                 ).first()

@@ -9,7 +9,7 @@ exam_bp = Blueprint('exams', __name__)
 
 # CREATE EXAM TYPE
 @exam_bp.route('/create/exam-type/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_exams')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_exams')
 def create_exam_type(skid):
     """
     Create a new exam type
@@ -44,9 +44,9 @@ def create_exam_type(skid):
 
 # FETCH ALL EXAM TYPES
 @exam_bp.route('/fetch/exam-types/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT'], permission=('view_exams', 'manage_exams'), own_roles=('STUDENT', 'PARENT'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT'], permission=('view_exams', 'manage_exams'), own_roles=('STUDENT', 'PARENT'))
 def fetch_exam_types(skid):
-    """Fetch all exam types for the school"""
+    """Fetch all exam types for the institution"""
     try:
         exam_types = ExamService.get_all_exam_types(skid)
         return jsonify({
@@ -60,7 +60,7 @@ def fetch_exam_types(skid):
 
 # FETCH SINGLE EXAM TYPE BY ID
 @exam_bp.route('/<int:exam_id>/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_exams', 'manage_exams'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER'], permission=('view_exams', 'manage_exams'))
 def fetch_exam_type_by_id(exam_id, skid):
     """Fetch a single exam type by ID"""
     try:
@@ -82,7 +82,7 @@ def fetch_exam_type_by_id(exam_id, skid):
 
 # UPDATE EXAM TYPE
 @exam_bp.route('/update/exam-type/<skid>/<int:exam_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_exams')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_exams')
 def update_exam_type(skid, exam_id):
     """Update an existing exam type"""
     try:
@@ -102,7 +102,7 @@ def update_exam_type(skid, exam_id):
 
 # DELETE EXAM TYPE
 @exam_bp.route('/delete/<int:exam_id>/<skid>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_exams')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_exams')
 def delete_exam_type(exam_id, skid):
     """Delete an exam type"""
     try:
@@ -122,7 +122,7 @@ def delete_exam_type(exam_id, skid):
 
 # CREATE EXAM SUBJECT CONFIGURATION
 @exam_bp.route('/create/exam-config/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_exams')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_exams')
 def create_exam_config(skid):
     """
     Create exam subject configuration
@@ -163,7 +163,7 @@ def create_exam_config(skid):
 
 # FETCH EXAM CONFIGURATIONS
 @exam_bp.route('/fetch/exam-configs/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_exams', 'manage_exams', 'manage_marks'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER'], permission=('view_exams', 'manage_exams', 'manage_marks'))
 def fetch_exam_configs(skid):
     """
     Fetch exam configurations with filters
@@ -189,7 +189,7 @@ def fetch_exam_configs(skid):
 
 # FETCH SINGLE EXAM CONFIGURATION BY ID
 @exam_bp.route('/exam-config/<int:config_id>/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_exams', 'manage_exams', 'manage_marks'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER'], permission=('view_exams', 'manage_exams', 'manage_marks'))
 def fetch_exam_config_by_id(config_id, skid):
     """Fetch a single exam configuration by ID"""
     try:
@@ -211,7 +211,7 @@ def fetch_exam_config_by_id(config_id, skid):
 
 # UPDATE EXAM CONFIGURATION
 @exam_bp.route('/update/exam-config/<skid>/<int:config_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_exams')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_exams')
 def update_exam_config(skid, config_id):
     """Update an existing exam configuration"""
     try:
@@ -232,7 +232,7 @@ def update_exam_config(skid, config_id):
 
 # DELETE EXAM CONFIGURATION
 @exam_bp.route('/delete/exam-config/<skid>/<int:config_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_exams')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_exams')
 def delete_exam_config(skid, config_id):
     """Delete an exam configuration"""
     try:
@@ -250,7 +250,7 @@ def delete_exam_config(skid, config_id):
 
 # BULK COPY CONFIGURATIONS
 @exam_bp.route('/bulk-copy/exam-configs/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_exams')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_exams')
 def bulk_copy_configs(skid):
     """
     Bulk copy configurations from one exam/class to another
@@ -280,7 +280,7 @@ def bulk_copy_configs(skid):
 
 # CREATE EXAM TIMETABLE ENTRY
 @exam_bp.route('/create/exam-timetable/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_exams')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_exams')
 def create_exam_timetable(skid):
     """
     Create an exam timetable entry
@@ -319,7 +319,7 @@ def create_exam_timetable(skid):
 
 # FETCH EXAM TIMETABLE ENTRIES
 @exam_bp.route('/fetch/exam-timetables/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_exams', 'manage_exams'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER'], permission=('view_exams', 'manage_exams'))
 def fetch_exam_timetables(skid):
     """
     Fetch exam timetable entries with filters
@@ -345,7 +345,7 @@ def fetch_exam_timetables(skid):
 
 # FETCH SINGLE EXAM TIMETABLE ENTRY
 @exam_bp.route('/exam-timetable/<int:entry_id>/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], permission=('view_exams', 'manage_exams'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER'], permission=('view_exams', 'manage_exams'))
 def fetch_exam_timetable_by_id(entry_id, skid):
     """Fetch a single exam timetable entry by ID"""
     try:
@@ -367,7 +367,7 @@ def fetch_exam_timetable_by_id(entry_id, skid):
 
 # UPDATE EXAM TIMETABLE ENTRY
 @exam_bp.route('/update/exam-timetable/<skid>/<int:entry_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_exams')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_exams')
 def update_exam_timetable(skid, entry_id):
     """Update an exam timetable entry"""
     try:
@@ -387,7 +387,7 @@ def update_exam_timetable(skid, entry_id):
 
 # DELETE EXAM TIMETABLE ENTRY
 @exam_bp.route('/delete/exam-timetable/<skid>/<int:entry_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_exams')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_exams')
 def delete_exam_timetable(skid, entry_id):
     """Delete an exam timetable entry"""
     try:
@@ -406,7 +406,7 @@ def delete_exam_timetable(skid, entry_id):
 
 # BULK DELETE EXAM TIMETABLE ENTRIES
 @exam_bp.route('/bulk-delete/exam-timetables/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_exams')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_exams')
 def bulk_delete_exam_timetables(skid):
     """Bulk delete exam timetable entries"""
     try:
@@ -430,7 +430,7 @@ def bulk_delete_exam_timetables(skid):
 
 # INVIGILATOR SCHEDULE (exam slots where teacher is assigned as invigilator)
 @exam_bp.route('/invigilator-schedule/<skid>/<int:teacher_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_exams', own_roles=('TEACHER',))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_exams', own_roles=('TEACHER',))
 def get_invigilator_schedule(skid, teacher_id):
     """
     Get all exam seating configs where the given teacher is the invigilator.
@@ -456,7 +456,7 @@ def get_invigilator_schedule(skid, teacher_id):
 
 # STUDENT EXAM TIMETABLE (exam schedule + room/seat/invigilator from seating arrangement)
 @exam_bp.route('/student-exam-timetable/<skid>/<int:student_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT'], permission=('view_exams', 'manage_exams'), own_roles=('STUDENT', 'PARENT'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER', 'STUDENT', 'PARENT'], permission=('view_exams', 'manage_exams'), own_roles=('STUDENT', 'PARENT'))
 @student_access_required('student_id')
 def get_student_exam_timetable(skid, student_id):
     """
@@ -484,12 +484,12 @@ def get_student_exam_timetable(skid, student_id):
 
 
 # ==================== RESULTS PUBLISHING ====================
-# Students and parents see an exam's marks only after the school publishes them for that year.
+# Students and parents see an exam's marks only after the institution publishes them for that year.
 from app.services.exam_results_service import ExamResultsService  # noqa: E402
 
 
 @exam_bp.route('/results-published/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_exams', 'manage_exams'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_exams', 'manage_exams'))
 def list_published_results(skid):
     """Which exams' results are published for a year. Query: academic_year_id (required)"""
     academic_year_id = request.args.get('academic_year_id', type=int)
@@ -503,7 +503,7 @@ def list_published_results(skid):
 
 
 @exam_bp.route('/results-publish/<skid>/<int:exam_type_id>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_exams')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL'], permission='manage_exams')
 def publish_results(skid, exam_type_id):
     """Publish or unpublish an exam's results. Body: { academic_year_id, published: true|false }"""
     data = request.get_json() or {}
@@ -515,7 +515,7 @@ def publish_results(skid, exam_type_id):
             raise ValueError('published must be true or false')
         result = ExamResultsService.set_published(
             skid, exam_type_id, academic_year_id, data['published'],
-            getattr(request.current_user, 'school_user_id', None),
+            getattr(request.current_user, 'institution_user_id', None),
         )
         msg = 'Results published' if data['published'] else 'Results hidden from students and parents'
         return jsonify({'message': msg, 'data': result, 'status': 'success', 'code': 200}), 200

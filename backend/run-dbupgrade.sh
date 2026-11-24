@@ -3,7 +3,7 @@
 # This script upgrades both main and tenant databases
 
 echo "======================================"
-echo "   School Management System"
+echo "   Institution Management System"
 echo "   Database Upgrade"
 echo "======================================"
 
@@ -47,7 +47,7 @@ echo ""
 echo "======================================"
 echo "  Step 2: Upgrading TENANT Databases"
 echo "======================================"
-echo "Note: Tenant databases are upgraded when schools are accessed"
+echo "Note: Tenant databases are upgraded when institutions are accessed"
 echo "or you can manually run:"
 echo "  alembic -c migrations_tenant/alembic_tenant.ini upgrade head"
 echo ""

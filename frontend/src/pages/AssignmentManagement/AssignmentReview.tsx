@@ -109,7 +109,7 @@ const AssignmentReview: FC = () => {
     };
 
     const handleSubmit = async () => {
-        if (!user?.school_user_id || !id) return;
+        if (!user?.institution_user_id || !id) return;
 
         setIsSubmitting(true);
         try {
@@ -122,7 +122,7 @@ const AssignmentReview: FC = () => {
             await assignmentService.updateSubmissions(
                 parseInt(id),
                 submissions,
-                user.school_user_id
+                user.institution_user_id
             );
             toast.success(`Updated submissions for ${students.length} student(s)`);
             navigate('/assignments');

@@ -37,7 +37,7 @@ export type { StudentIDCardData } from './studentIDCardGenerator';
 
 // Types
 export type {
-    SchoolData,
+    InstitutionData,
     PdfAction,
     SignatureConfig,
     AttendanceReportData,

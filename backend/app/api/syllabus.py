@@ -11,9 +11,9 @@ syllabus_bp = Blueprint('syllabus', __name__)
 # ============== SYLLABUS ENDPOINTS ==============
 
 @syllabus_bp.route('/get/list/<skid>', methods=['GET'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_syllabus_and_progress', 'manage_syllabus'))
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_syllabus_and_progress', 'manage_syllabus'))
 def fetch_all_syllabus(skid):
-    """Fetch all syllabi for a school"""
+    """Fetch all syllabi for an institution"""
     try:
         academic_year_id = request.args.get('academic_year_id', type=int)
         result = SyllabusService.get_all_syllabi(skid, academic_year_id)
@@ -24,7 +24,7 @@ def fetch_all_syllabus(skid):
 
 
 @syllabus_bp.route('/create/<skid>', methods=['POST'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
 def create_syllabus(skid):
     """Create new syllabus"""
     try:
@@ -35,8 +35,8 @@ def create_syllabus(skid):
         if not user:
             raise ValueError("User not authenticated")
 
-        # Use school_user_id which links to the ID in the tenant's teachers table
-        teacher_id = user.school_user_id
+        # Use institution_user_id which links to the ID in the tenant's teachers table
+        teacher_id = user.institution_user_id
         # Validate required fields
         if not data.get('subject_id'):
             raise ValueError("Subject ID is required")
@@ -59,7 +59,7 @@ def create_syllabus(skid):
 
 
 @syllabus_bp.route('/get/<skid>/<int:syllabus_id>', methods=['GET'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_syllabus_and_progress', 'manage_syllabus'))
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_syllabus_and_progress', 'manage_syllabus'))
 def get_syllabus_by_id(skid, syllabus_id):
     """Get syllabus by ID with teacher-specific progress"""
     try:
@@ -72,7 +72,7 @@ def get_syllabus_by_id(skid, syllabus_id):
 
         # Teachers always resolve to their own ID with merged section progress
         if user_role == 'TEACHER':
-            teacher_id = user.school_user_id
+            teacher_id = user.institution_user_id
             include_hierarchy = request.args.get('include_hierarchy', 'false').lower() == 'true'
             # their section's progress; section_id picks one when they teach it in several (QA B33)
             result = SyllabusService.get_syllabus_by_id(
@@ -110,7 +110,7 @@ def get_syllabus_by_id(skid, syllabus_id):
 
 
 @syllabus_bp.route('/teachers-for-syllabus/<skid>/<int:syllabus_id>', methods=['GET'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
 def get_teachers_for_syllabus(skid, syllabus_id):
     """Get all teachers assigned to a syllabus's subject with their progress summary"""
     try:
@@ -126,7 +126,7 @@ def get_teachers_for_syllabus(skid, syllabus_id):
 
 
 @syllabus_bp.route('/assign-teacher/<skid>/<int:syllabus_id>', methods=['POST'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
 def assign_teacher(skid, syllabus_id):
     """Assign a teacher to a syllabus for a specific section"""
     try:
@@ -146,7 +146,7 @@ def assign_teacher(skid, syllabus_id):
 
 
 @syllabus_bp.route('/unassign-teacher/<skid>/<int:assignment_id>', methods=['PUT'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
 def unassign_teacher(skid, assignment_id):
     """Unassign a teacher from a syllabus section (preserves history)"""
     try:
@@ -159,7 +159,7 @@ def unassign_teacher(skid, assignment_id):
 
 
 @syllabus_bp.route('/assignments/<skid>/<int:syllabus_id>', methods=['GET'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
 def get_syllabus_assignments(skid, syllabus_id):
     """Get all teacher assignments (active and former) for a syllabus"""
     try:
@@ -172,7 +172,7 @@ def get_syllabus_assignments(skid, syllabus_id):
 
 
 @syllabus_bp.route('/teachers-by-subject/<skid>/<int:subject_id>', methods=['GET'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
 def get_teachers_by_subject(skid, subject_id):
     """Get all teachers assigned to a subject via TeacherSubject"""
     try:
@@ -183,7 +183,7 @@ def get_teachers_by_subject(skid, subject_id):
 
 
 @syllabus_bp.route('/list/subject/<skid>/<int:subject_id>', methods=['GET'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_syllabus_and_progress', 'manage_syllabus'))
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_syllabus_and_progress', 'manage_syllabus'))
 def get_syllabi_by_subject(skid, subject_id):
     """Get all syllabi for a subject"""
     try:
@@ -195,7 +195,7 @@ def get_syllabi_by_subject(skid, subject_id):
 
 
 @syllabus_bp.route('/list/teacher/<skid>/<int:teacher_id>', methods=['GET'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_syllabus_and_progress', 'manage_syllabus'))
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_syllabus_and_progress', 'manage_syllabus'))
 def get_syllabi_by_teacher(skid, teacher_id):
     """Get all syllabi for a teacher"""
     try:
@@ -207,7 +207,7 @@ def get_syllabi_by_teacher(skid, teacher_id):
 
 
 @syllabus_bp.route('/update/<skid>/<int:syllabus_id>', methods=['PUT'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
 def update_syllabus(skid, syllabus_id):
     """Update syllabus"""
     try:
@@ -229,7 +229,7 @@ def update_syllabus(skid, syllabus_id):
 
 
 @syllabus_bp.route('/delete/<skid>/<int:syllabus_id>', methods=['DELETE'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
 def delete_syllabus(skid, syllabus_id):
     """Delete syllabus"""
     try:
@@ -245,7 +245,7 @@ def delete_syllabus(skid, syllabus_id):
 
 
 @syllabus_bp.route('/lesson/create/<skid>/<int:syllabus_id>', methods=['POST'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
 def create_lesson_or_chapter(skid, syllabus_id):
     """Create new lesson"""
     try:
@@ -271,7 +271,7 @@ def create_lesson_or_chapter(skid, syllabus_id):
 
 
 @syllabus_bp.route('/lesson/update/<skid>/<int:lesson_id>', methods=['PUT'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
 def update_lesson(skid, lesson_id):
     """Update lesson (Shared content or teacher-specific progress)"""
     try:
@@ -283,7 +283,7 @@ def update_lesson(skid, lesson_id):
             raise ValueError("User not authenticated")
 
         user_role = user.role.value if hasattr(user.role, 'value') else user.role
-        teacher_id = user.school_user_id if user_role == 'TEACHER' else None
+        teacher_id = user.institution_user_id if user_role == 'TEACHER' else None
 
         data = request.get_json()
         result = SyllabusService.update_lesson(skid, lesson_id, data, teacher_id)
@@ -300,7 +300,7 @@ def update_lesson(skid, lesson_id):
 
 
 @syllabus_bp.route('/lesson/delete/<skid>/<int:lesson_id>', methods=['DELETE'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
 def delete_lesson(skid, lesson_id):
     """Delete lesson"""
     try:
@@ -316,7 +316,7 @@ def delete_lesson(skid, lesson_id):
 
 
 @syllabus_bp.route('/topic/create/<skid>/<int:lesson_id>', methods=['POST'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
 def create_topic(skid, lesson_id):
     """Create new topic"""
     try:
@@ -342,7 +342,7 @@ def create_topic(skid, lesson_id):
 
 
 @syllabus_bp.route('/topic/update/<skid>/<int:topic_id>', methods=['PUT'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
 def update_topic(skid, topic_id):
     """Update topic (Shared content or teacher-specific progress)"""
     try:
@@ -354,7 +354,7 @@ def update_topic(skid, topic_id):
             raise ValueError("User not authenticated")
 
         user_role = user.role.value if hasattr(user.role, 'value') else user.role
-        teacher_id = user.school_user_id if user_role == 'TEACHER' else None
+        teacher_id = user.institution_user_id if user_role == 'TEACHER' else None
 
         data = request.get_json()
         result = SyllabusService.update_topic(skid, topic_id, data, teacher_id)
@@ -371,7 +371,7 @@ def update_topic(skid, topic_id):
 
 
 @syllabus_bp.route('/topic/delete/<skid>/<int:topic_id>', methods=['DELETE'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
 def delete_topic(skid, topic_id):
     """Delete topic"""
     try:
@@ -387,7 +387,7 @@ def delete_topic(skid, topic_id):
 
 
 @syllabus_bp.route('/subtopic/create/<skid>/<int:topic_id>', methods=['POST'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
 def create_subtopic(skid, topic_id):
     """Create new subtopic"""
     try:
@@ -413,7 +413,7 @@ def create_subtopic(skid, topic_id):
 
 
 @syllabus_bp.route('/subtopic/update/<skid>/<int:subtopic_id>', methods=['PUT'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER'], permission='manage_syllabus')
 def update_subtopic(skid, subtopic_id):
     """Update subtopic (Shared content or teacher-specific progress)"""
     try:
@@ -425,7 +425,7 @@ def update_subtopic(skid, subtopic_id):
             raise ValueError("User not authenticated")
 
         user_role = user.role.value if hasattr(user.role, 'value') else user.role
-        teacher_id = user.school_user_id if user_role == 'TEACHER' else None
+        teacher_id = user.institution_user_id if user_role == 'TEACHER' else None
 
         data = request.get_json()
         result = SyllabusService.update_subtopic(skid, subtopic_id, data, teacher_id)
@@ -442,7 +442,7 @@ def update_subtopic(skid, subtopic_id):
 
 
 @syllabus_bp.route('/subtopic/delete/<skid>/<int:subtopic_id>', methods=['DELETE'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL'], permission='manage_syllabus')
 def delete_subtopic(skid, subtopic_id):
     """Delete subtopic"""
     try:
@@ -458,7 +458,7 @@ def delete_subtopic(skid, subtopic_id):
 
 
 @syllabus_bp.route('/analytics/<skid>/<int:syllabus_id>', methods=['GET'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_syllabus_and_progress', 'manage_syllabus'))
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_syllabus_and_progress', 'manage_syllabus'))
 def get_syllabus_analytics(skid, syllabus_id):
     """Get syllabus analytics with teacher-specific progress"""
     try:
@@ -467,7 +467,7 @@ def get_syllabus_analytics(skid, syllabus_id):
             raise ValueError("User not authenticated")
 
         user_role = user.role.value if hasattr(user.role, 'value') else user.role
-        teacher_id = user.school_user_id if user_role == 'TEACHER' else None
+        teacher_id = user.institution_user_id if user_role == 'TEACHER' else None
 
         result = SyllabusService.get_syllabus_analytics(skid, syllabus_id, teacher_id,
                                                         section_id=request.args.get('section_id', type=int))
@@ -479,7 +479,7 @@ def get_syllabus_analytics(skid, syllabus_id):
 
 
 @syllabus_bp.route('/analytics/teacher/<skid>/<int:teacher_id>', methods=['GET'])
-@login_required(['SCHOOL_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_syllabus_and_progress', 'manage_syllabus'))
+@login_required(['INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER'], permission=('view_syllabus_and_progress', 'manage_syllabus'))
 def get_teacher_progress_summary(skid, teacher_id):
     """Get teacher progress summary"""
     try:
@@ -508,7 +508,7 @@ def configure_timeline(skid):
         if not user:
             raise ValueError("User not authenticated")
 
-        teacher_id = user.school_user_id
+        teacher_id = user.institution_user_id
         data = request.get_json()
 
         item_type = data.get('item_type')
@@ -544,7 +544,7 @@ def start_item(skid):
         if not user:
             raise ValueError("User not authenticated")
 
-        teacher_id = user.school_user_id
+        teacher_id = user.institution_user_id
         data = request.get_json()
 
         item_type = data.get('item_type')
@@ -579,7 +579,7 @@ def mark_progress(skid):
         if not user:
             raise ValueError("User not authenticated")
 
-        teacher_id = user.school_user_id
+        teacher_id = user.institution_user_id
         data = request.get_json()
 
         item_type = data.get('item_type')
@@ -605,7 +605,7 @@ def mark_progress(skid):
 
 
 @syllabus_bp.route('/student-view/<skid>', methods=['GET'])
-@login_required(['STUDENT', 'SCHOOL_ADMIN', 'PRINCIPAL', 'PARENT', 'TEACHER'], permission=('view_syllabus_and_progress', 'view_child_syllabus', 'manage_syllabus'), own_roles=('STUDENT', 'PARENT'))
+@login_required(['STUDENT', 'INSTITUTION_ADMIN', 'PRINCIPAL', 'PARENT', 'TEACHER'], permission=('view_syllabus_and_progress', 'view_child_syllabus', 'manage_syllabus'), own_roles=('STUDENT', 'PARENT'))
 @student_access_required('student_user_id', source='query')
 def get_student_syllabus_view(skid):
     """Get syllabus progress view. Teachers see their own syllabi; students resolve via timetable."""
@@ -622,12 +622,12 @@ def get_student_syllabus_view(skid):
 
         # Teachers get their own syllabi progress
         if user_role == 'TEACHER':
-            result = SyllabusService.get_teacher_syllabus_progress_view(skid, user.school_user_id, academic_year_id)
+            result = SyllabusService.get_teacher_syllabus_progress_view(skid, user.institution_user_id, academic_year_id)
             return jsonify({'status': 'success', 'data': result, 'code': 200}), 200
 
         # Students auto-resolve; others must pass student_user_id
         if user_role == 'STUDENT':
-            student_user_id = user.school_user_id
+            student_user_id = user.institution_user_id
         else:
             student_user_id = request.args.get('student_user_id', type=int)
             if not student_user_id:
@@ -642,7 +642,7 @@ def get_student_syllabus_view(skid):
 
 
 @syllabus_bp.route('/student-view/<skid>/<int:syllabus_id>', methods=['GET'])
-@login_required(['STUDENT', 'SCHOOL_ADMIN', 'PRINCIPAL', 'PARENT', 'TEACHER'], permission=('view_syllabus_and_progress', 'view_child_syllabus', 'manage_syllabus'), own_roles=('STUDENT', 'PARENT'))
+@login_required(['STUDENT', 'INSTITUTION_ADMIN', 'PRINCIPAL', 'PARENT', 'TEACHER'], permission=('view_syllabus_and_progress', 'view_child_syllabus', 'manage_syllabus'), own_roles=('STUDENT', 'PARENT'))
 def get_student_syllabus_detail(skid, syllabus_id):
     """Get full syllabus hierarchy with teacher's progress overlay"""
     try:
@@ -652,10 +652,10 @@ def get_student_syllabus_detail(skid, syllabus_id):
         user = getattr(request, 'current_user', None)
         role = getattr(getattr(user, 'role', None), 'value', getattr(user, 'role', None))
         if role == 'STUDENT':
-            from app.utils.db_manager import switch_to_school_db
+            from app.utils.db_manager import switch_to_institution_db
             from app.models.tenant import Student
-            with switch_to_school_db(skid) as session:
-                me = session.query(Student).filter_by(user_id=user.school_user_id).first()
+            with switch_to_institution_db(skid) as session:
+                me = session.query(Student).filter_by(user_id=user.institution_user_id).first()
                 section_id = me.section_id if me else None
         if not teacher_id and not section_id:
             return jsonify({'status': 'error', 'message': 'teacher_id or section_id query parameter is required', 'code': 400}), 400

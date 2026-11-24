@@ -1,9 +1,9 @@
 # ============================================================
 # app/services/subject_service.py (Fixed Service)
 from app import db
-from app.models.tenant import SectionSubject, Subject, TeacherSubject, SchoolUsers
+from app.models.tenant import SectionSubject, Subject, TeacherSubject, InstitutionUsers
 from app.models.tenant.Sections import Section
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from app.utils.usage_check import usage_summary, SUBJECT_REFERENCES, blocked_message
 
 
@@ -15,7 +15,7 @@ class SubjectService:
         Create a new subject in tenant database
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Check if subject code already exists (only if subject_code is provided)
                 if data.get('subject_code'):
                     existing_subject = tenant_session.query(Subject).filter_by(
@@ -59,7 +59,7 @@ class SubjectService:
         Update an existing subject in tenant database
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 subject = tenant_session.query(Subject).filter_by(id=subject_id).first()
                 
                 if not subject:
@@ -103,7 +103,7 @@ class SubjectService:
         Delete a subject from tenant database
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 subject = tenant_session.query(Subject).filter_by(id=subject_id).first()
                 
                 if not subject:
@@ -130,7 +130,7 @@ class SubjectService:
         Get a specific subject by ID
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 subject = tenant_session.query(Subject).filter_by(id=subject_id).first()
                 
                 if not subject:
@@ -147,7 +147,7 @@ class SubjectService:
         Get all subjects for a specific class along with assigned teachers
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 subjects = tenant_session.query(Subject).filter_by(class_id=class_id).all()
                 result = []
     
@@ -157,7 +157,7 @@ class SubjectService:
                     
                     teachers = []
                     for ts in teacher_subjects:
-                        user = tenant_session.query(SchoolUsers).filter_by(id=ts.teacher_id).first()
+                        user = tenant_session.query(InstitutionUsers).filter_by(id=ts.teacher_id).first()
                         if user:
                             teachers.append({
                                 "id": user.id,
@@ -178,10 +178,10 @@ class SubjectService:
     @staticmethod
     def get_subjects_list( skid):
         """
-        Get all subjects in a school
+        Get all subjects in an institution
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 subjects = tenant_session.query(Subject).all()
                 return [subject.to_dict() for subject in subjects]
     
@@ -195,7 +195,7 @@ class SubjectService:
         Get all subjects assigned to a specific section with their teachers
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Query subjects through the section_subjects association
                 subjects = tenant_session.query(Subject).join(
                     SectionSubject, Subject.id == SectionSubject.subject_id
@@ -213,7 +213,7 @@ class SubjectService:
                     
                     teachers = []
                     for ts in teacher_subjects:
-                        user = tenant_session.query(SchoolUsers).filter_by(id=ts.teacher_id).first()
+                        user = tenant_session.query(InstitutionUsers).filter_by(id=ts.teacher_id).first()
                         if user:
                             teachers.append({
                                 "id": user.id,
@@ -240,7 +240,7 @@ class SubjectService:
         Validates that subjects belong to the same class as the section
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Verify section exists and get its class_id
                 section = tenant_session.query(Section).filter_by(id=section_id).first()
                 if not section:
@@ -324,7 +324,7 @@ class SubjectService:
         Only removes the assignment, doesn't delete the subject
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Find the association
                 section_subject = tenant_session.query(SectionSubject).filter_by(
                     section_id=section_id,
@@ -352,7 +352,7 @@ class SubjectService:
         (same class, not yet assigned)
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Get section's class_id
                 section = tenant_session.query(Section).filter_by(id=section_id).first()
                 if not section:

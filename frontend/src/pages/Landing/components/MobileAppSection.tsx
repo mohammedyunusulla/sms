@@ -51,14 +51,14 @@ const MOBILE_FEATURES: MobileFeature[] = [
   {
     role: "Students",
     icon: GraduationCapIcon,
-    title: "The school day at a glance",
+    title: "The day at a glance",
     body: "Check the timetable, upcoming assignments and syllabus progress from anywhere.",
     tone: "bg-theme-purple-500/10 text-theme-purple-500 dark:bg-theme-purple-500/20",
   },
   {
     role: "Administrators",
     icon: BuildingIcon,
-    title: "The school office in your pocket",
+    title: "The admin office in your pocket",
     body: "People, classes, timetables, exams, progress cards, fees, expenses and salaries, all available on mobile.",
     tone: "bg-blue-light-50 text-blue-light-600 dark:bg-blue-light-500/15 dark:text-blue-light-400",
   },
@@ -109,7 +109,7 @@ function ParentBusScreen() {
       <div className="flex items-center justify-between px-4 pt-6">
         <div>
           <p className="text-[10px] text-gray-500 dark:text-gray-400">Class 4-B</p>
-          <p className="text-[15px] font-semibold text-gray-900 dark:text-white">School bus</p>
+          <p className="text-[15px] font-semibold text-gray-900 dark:text-white">Your bus</p>
         </div>
         <span className="flex items-center gap-1 rounded-full bg-success-50 px-2 py-0.5 text-[10px] font-semibold text-success-700 dark:bg-success-500/15 dark:text-success-400">
           <span className="size-1.5 rounded-full bg-success-500" /> Live
@@ -234,7 +234,7 @@ export default function MobileAppSection() {
               eyebrow="Mobile app"
               title={
                 <>
-                  The whole school, <span className="landing-gradient-text">in your pocket</span>
+                  The whole institution, <span className="landing-gradient-text">in your pocket</span>
                 </>
               }
               description="The EduSpyre app for Android and iOS is on its way. It brings every role's essentials to their phone, from a live bus map for parents to QR check-ins for bus staff."

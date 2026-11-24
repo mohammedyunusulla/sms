@@ -64,7 +64,7 @@ export default function CreateAnnouncementScreen() {
         publish_date: new Date().toISOString(),
         expiry_date: null,
         attachments: [],
-        created_by: user?.school_user_id,
+        created_by: user?.institution_user_id,
       });
 
       if (Platform.OS === "web") {

@@ -1,14 +1,14 @@
 from app.models.main.User import User, UserRole
-from app.models.main.School import School
-from app.models.tenant import SchoolUsers
+from app.models.main.Institution import Institution
+from app.models.tenant import InstitutionUsers
 from app.models.tenant.Roles import Role
 from app.models.tenant.Staff import Staff
 from app.models.tenant.UserRoles import UserRoles
 from app import db
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 
 # Roles NOT handled by this service — they have dedicated creation flows
-EXCLUDED_ROLES = {'TEACHER', 'STUDENT', 'PARENT', 'SUPER_ADMIN', 'SCHOOL_ADMIN'}
+EXCLUDED_ROLES = {'TEACHER', 'STUDENT', 'PARENT', 'SUPER_ADMIN', 'INSTITUTION_ADMIN'}
 
 
 class StaffService:
@@ -16,8 +16,8 @@ class StaffService:
     @staticmethod
     def create_staff(data, skid):
         """
-        Create a school user for any role except TEACHER, STUDENT, PARENT.
-        Supports: SCHOOL_ADMIN, PRINCIPAL, BUS_STAFF, and any custom roles.
+        Create an institution user for any role except TEACHER, STUDENT, PARENT.
+        Supports: INSTITUTION_ADMIN, PRINCIPAL, BUS_STAFF, and any custom roles.
 
         Required fields in `data`:
             username, email, password, first_name, last_name, role
@@ -37,9 +37,9 @@ class StaffService:
                 "Use the dedicated Teacher / Student / Parent creation forms."
             )
 
-        school = School.query.filter_by(skid=skid).first()
-        if not school:
-            raise ValueError("School not found")
+        institution = Institution.query.filter_by(skid=skid).first()
+        if not institution:
+            raise ValueError("Institution not found")
 
         # Uniqueness checks in main DB
         if User.get_by_username(data['username']):
@@ -47,15 +47,15 @@ class StaffService:
         if User.get_by_email(data['email']):
             raise ValueError("Email already exists")
 
-        # The school's role decides the login role: built-in roles are themselves, a custom role (e.g. Accountant)
+        # The institution's role decides the login role: built-in roles are themselves, a custom role (e.g. Accountant)
         # is stored on the login account as the built-in role it's based on (QA A13: custom roles were refused)
-        with switch_to_school_db(skid) as session:
-            school_role = session.query(Role).filter_by(role_code=role_code).first()
-            if not school_role:
+        with switch_to_institution_db(skid) as session:
+            institution_role = session.query(Role).filter_by(role_code=role_code).first()
+            if not institution_role:
                 raise ValueError(f"Unknown role '{role_code}'")
-            if school_role.is_active is False:
-                raise ValueError(f"The role '{school_role.role_name}' is switched off")
-            login_role = str(school_role.base_role or role_code).upper()
+            if institution_role.is_active is False:
+                raise ValueError(f"The role '{institution_role.role_name}' is switched off")
+            login_role = str(institution_role.base_role or role_code).upper()
         if login_role in EXCLUDED_ROLES:
             raise ValueError(f"Role '{role_code}' cannot be created through this endpoint.")
         try:
@@ -72,24 +72,24 @@ class StaffService:
             phone=data.get('phone'),
             role=user_role_enum,
             skid=skid,
-            school_id=school.id,
+            institution_id=institution.id,
         )
         user.set_password(data['password'])
         db.session.add(user)
         db.session.flush()
 
         # ── Step 2: create tenant-DB records ─────────────────────────────────
-        with switch_to_school_db(skid) as session:
+        with switch_to_institution_db(skid) as session:
             # Look up the role record in the tenant DB
             role_obj = session.query(Role).filter_by(role_code=role_code).first()
             if not role_obj:
                 raise ValueError(
-                    f"Role '{role_code}' not found in school database. "
+                    f"Role '{role_code}' not found in institution database. "
                     "Run the seeder / migrations to populate roles."
                 )
 
-            # Create SchoolUsers entry
-            school_user = SchoolUsers(
+            # Create InstitutionUsers entry
+            institution_user = InstitutionUsers(
                 username=data['username'],
                 email=data['email'],
                 first_name=data['first_name'],
@@ -99,12 +99,12 @@ class StaffService:
                 role_id=role_obj.id,
                 is_active=True,
             )
-            session.add(school_user)
+            session.add(institution_user)
             session.flush()
 
             # Create UserRoles entry
             user_role = UserRoles(
-                user_id=school_user.id,
+                user_id=institution_user.id,
                 role_id=role_obj.id,
                 is_active=True,
             )
@@ -113,10 +113,10 @@ class StaffService:
             # All staff roles (PRINCIPAL, BUS_STAFF, custom) get a Staff profile
             employee_id = (
                 data.get('employee_id')
-                or f"{role_code[:3]}-{skid}-{school_user.id}"
+                or f"{role_code[:3]}-{skid}-{institution_user.id}"
             )
             profile = Staff(
-                user_id=school_user.id,
+                user_id=institution_user.id,
                 employee_id=employee_id,
                 designation=data.get('designation', role_code.replace('_', ' ').title()),
                 salary=data.get('salary'),
@@ -126,24 +126,24 @@ class StaffService:
             session.add(profile)
 
             session.commit()
-            user.school_user_id = school_user.id
+            user.institution_user_id = institution_user.id
 
         db.session.commit()
         return user
 
     @staticmethod
     def get_staff_list(skid):
-        """Return all active non-student/teacher/parent users for a school."""
-        with switch_to_school_db(skid) as session:
+        """Return all active non-student/teacher/parent users for an institution."""
+        with switch_to_institution_db(skid) as session:
             excluded = list(EXCLUDED_ROLES)
             staff = (
-                session.query(SchoolUsers)
-                .join(Role, SchoolUsers.role_id == Role.id)
+                session.query(InstitutionUsers)
+                .join(Role, InstitutionUsers.role_id == Role.id)
                 .filter(
-                    SchoolUsers.is_active == True,
+                    InstitutionUsers.is_active == True,
                     Role.role_code.notin_(excluded),
                 )
-                .order_by(SchoolUsers.first_name, SchoolUsers.last_name)
+                .order_by(InstitutionUsers.first_name, InstitutionUsers.last_name)
                 .all()
             )
             return [s.to_dict() for s in staff]

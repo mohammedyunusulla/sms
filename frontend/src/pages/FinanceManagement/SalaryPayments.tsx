@@ -107,7 +107,7 @@ const SalaryPayments: FC = () => {
             setSaving(true);
             await financeService.markSalaryPaid(selectedPayment.id, {
                 ...paymentForm,
-                paid_by: user?.school_user_id,
+                paid_by: user?.institution_user_id,
             });
             toast.success('Salary marked as paid');
             setShowPayDialog(false);

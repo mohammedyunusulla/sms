@@ -1,5 +1,5 @@
 """
-Which school events send a push notification, to whom, and what it says.
+Which institution events send a push notification, to whom, and what it says.
 
 Called right after the change is committed, with the caller's still-open tenant session.
 Every function here is best-effort: it logs and swallows errors, so a notification problem
@@ -15,7 +15,7 @@ from app.services import push_service as push
 
 _log = logging.getLogger(__name__)
 
-STAFF_ROLES = ("SCHOOL_ADMIN", "PRINCIPAL", "TEACHER", "CLERK", "BUS_STAFF")
+STAFF_ROLES = ("INSTITUTION_ADMIN", "PRINCIPAL", "TEACHER", "CLERK", "BUS_STAFF")
 
 
 def _best_effort(fn):
@@ -140,13 +140,13 @@ def students_marked_absent(skid, tenant_session, student_ids, day):
     Tell parents their child was marked absent. Only for today / yesterday, so filling in or
     correcting old registers doesn't send a burst of stale alerts.
     """
-    from app.models.tenant.SchoolUsers import SchoolUsers
+    from app.models.tenant.InstitutionUsers import InstitutionUsers
     from app.models.tenant.StudentParent import StudentParent
 
     if not student_ids or day < push.today() - timedelta(days=1) or day > push.today():
         return
-    names = dict(tenant_session.query(SchoolUsers.id, SchoolUsers.first_name).filter(
-        SchoolUsers.id.in_([int(s) for s in student_ids])
+    names = dict(tenant_session.query(InstitutionUsers.id, InstitutionUsers.first_name).filter(
+        InstitutionUsers.id.in_([int(s) for s in student_ids])
     ).all())
     links = tenant_session.query(StudentParent.student_user_id, StudentParent.parent_user_id).filter(
         StudentParent.student_user_id.in_([int(s) for s in student_ids])

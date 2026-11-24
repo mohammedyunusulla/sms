@@ -52,7 +52,7 @@ export default function HeroPreview() {
           <span className="size-2.5 rounded-full bg-warning-400" />
           <span className="size-2.5 rounded-full bg-success-400" />
           <div className="ml-3 flex-1 truncate rounded-md bg-gray-100 px-3 py-1 text-[11px] text-gray-500 dark:bg-white/5 dark:text-gray-400">
-            eduspyre · school dashboard
+            eduspyre · admin dashboard
           </div>
         </div>
 
@@ -81,7 +81,7 @@ export default function HeroPreview() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400">Good morning</p>
-                <p className="text-sm font-semibold text-gray-900 dark:text-white">School overview</p>
+                <p className="text-sm font-semibold text-gray-900 dark:text-white">Campus overview</p>
               </div>
               <span className="rounded-full bg-brand-50 px-2.5 py-1 text-[10px] font-medium text-brand-600 dark:bg-brand-500/15 dark:text-brand-300">
                 AY 2026–27

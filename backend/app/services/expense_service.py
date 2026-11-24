@@ -1,6 +1,6 @@
-from app.models.tenant import SchoolUsers, Teacher, Staff
+from app.models.tenant import InstitutionUsers, Teacher, Staff
 from app.models.tenant.ExpenseModels import *
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from sqlalchemy.orm import joinedload
 from datetime import date
 from app.utils.validators import non_negative_amount, not_in_future, number_in_range, positive_amount, to_date, within_an_academic_year
@@ -55,22 +55,22 @@ class ExpenseService:
     def get_staff_salary_setups(skid, academic_year_id):
         """Get all salary setups for staff - optimized with eager loading"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 setups = (
                     tenant_session.query(StaffSalarySetup)
-                    .join(SchoolUsers, StaffSalarySetup.staff_id == SchoolUsers.id)
-                    .outerjoin(Teacher, SchoolUsers.id == Teacher.user_id)
-                    .outerjoin(Staff, SchoolUsers.id == Staff.user_id)
+                    .join(InstitutionUsers, StaffSalarySetup.staff_id == InstitutionUsers.id)
+                    .outerjoin(Teacher, InstitutionUsers.id == Teacher.user_id)
+                    .outerjoin(Staff, InstitutionUsers.id == Staff.user_id)
                     .options(
-                        joinedload(StaffSalarySetup.staff).joinedload(SchoolUsers.role_obj),
-                        joinedload(StaffSalarySetup.staff).joinedload(SchoolUsers.teacher),
-                        joinedload(StaffSalarySetup.staff).joinedload(SchoolUsers.staff)
+                        joinedload(StaffSalarySetup.staff).joinedload(InstitutionUsers.role_obj),
+                        joinedload(StaffSalarySetup.staff).joinedload(InstitutionUsers.teacher),
+                        joinedload(StaffSalarySetup.staff).joinedload(InstitutionUsers.staff)
                     )
                     .filter(
                         StaffSalarySetup.is_active == True,
                         StaffSalarySetup.academic_year_id == academic_year_id
                     )
-                    .order_by(SchoolUsers.first_name, SchoolUsers.last_name)
+                    .order_by(InstitutionUsers.first_name, InstitutionUsers.last_name)
                     .all()
                 )
                 
@@ -100,7 +100,7 @@ class ExpenseService:
     @staticmethod
     def create_salary_setup(skid, data):
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 basic, allowances, deductions, gross, net = _salary_totals(data)
                 staff_id = int(data['staff_id'])
                 # Salaries are for teachers and staff only, and one active setup per person per year
@@ -142,7 +142,7 @@ class ExpenseService:
     def update_salary_setup(skid, data):
         """Update existing salary setup - simplified"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 setup_id = data.get('id')
                 if not setup_id:
                     raise ValueError("Setup ID is required for update")
@@ -181,7 +181,7 @@ class ExpenseService:
     def delete_salary_setup(skid, setup_id):
         """Delete (soft delete) salary setup"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 setup = tenant_session.query(StaffSalarySetup).filter(
                     StaffSalarySetup.id == setup_id
                 ).one_or_none()
@@ -214,7 +214,7 @@ class ExpenseService:
         month = int(number_in_range(month, 1, 12, "Month"))
         year = int(number_in_range(year, 2000, 2100, "Year"))
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Get all active salary setups
                 setups = (
                     tenant_session.query(StaffSalarySetup)
@@ -270,7 +270,7 @@ class ExpenseService:
     @staticmethod
     def mark_salary_paid(skid, payment_id, payment_data):
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 payment = tenant_session.query(SalaryPayment).get(payment_id)
                 if not payment:
                     raise ValueError("Payment not found")
@@ -315,7 +315,7 @@ class ExpenseService:
     def mark_salary_unpaid(skid, payment_id):
         """Mark salary as unpaid - revert payment and delete expense"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Get the salary payment
                 payment = (
                     tenant_session.query(SalaryPayment)
@@ -357,7 +357,7 @@ class ExpenseService:
     def create_expense(skid, data):
         """Create expense record - type-safe"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 amount = positive_amount(data.get('amount'), "Expense amount")
                 expense_day = not_in_future(data.get('expense_date'), "Expense date")
                 # filed under the academic year that contains the date
@@ -401,7 +401,7 @@ class ExpenseService:
     def update_expense(skid, expense_id, data):
         """Update existing expense"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 expense = tenant_session.query(Expense).filter(
                     Expense.id == expense_id
                 ).one_or_none()
@@ -438,7 +438,7 @@ class ExpenseService:
     def delete_expense(skid, expense_id):
         """Delete expense"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 expense = tenant_session.query(Expense).filter(
                     Expense.id == expense_id
                 ).one_or_none()
@@ -461,10 +461,10 @@ class ExpenseService:
     @staticmethod
     def get_salary_payments(skid, academic_year_id=None):
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 query = (
                     tenant_session.query(SalaryPayment)
-                    .join(SchoolUsers, SalaryPayment.staff_id == SchoolUsers.id)
+                    .join(InstitutionUsers, SalaryPayment.staff_id == InstitutionUsers.id)
                 )
                 
                 if academic_year_id:
@@ -489,7 +489,7 @@ class ExpenseService:
     @staticmethod
     def get_expenses(skid, filters=None):
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 query = tenant_session.query(Expense)
                 
                 if filters:

@@ -5,8 +5,8 @@ from sqlalchemy.orm import relationship
 class Student(BaseModelTenant, BaseModelTenantMixin):
     __tablename__ = 'students'
 
-    user_id = Column(Integer, ForeignKey('school_users.id'), primary_key=True)
-    roll_no = Column(String(50), nullable=True) # Unique within the school, e.g., roll number
+    user_id = Column(Integer, ForeignKey('institution_users.id'), primary_key=True)
+    roll_no = Column(String(50), nullable=True) # Unique within the institution, e.g., roll number
     admission_date = Column(Date)
     class_id = Column(Integer, ForeignKey('classes.id'), nullable=True)
     section_id = Column(Integer, ForeignKey('sections.id'), nullable=True) # Assuming a `sections` table will be created
@@ -28,7 +28,7 @@ class Student(BaseModelTenant, BaseModelTenantMixin):
     created_at = Column(DateTime, default=func.current_timestamp())
     updated_at = Column(DateTime, default=func.current_timestamp(), onupdate=func.current_timestamp())
     
-    user = relationship("SchoolUsers", back_populates="student")
+    user = relationship("InstitutionUsers", back_populates="student")
     section_obj = relationship("Section", back_populates="students_in_section") # Example, needs to be defined in Section
     attendance_records = relationship("Attendance", back_populates="student_profile")
     enrollments = relationship("StudentEnrollment", back_populates="student")

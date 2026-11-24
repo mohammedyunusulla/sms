@@ -8,13 +8,13 @@ teacher_dashboard_bp = Blueprint('teacherDashboard', __name__)
 
 
 @teacher_dashboard_bp.route('/students/teacher/count/<skid>/<teacher_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], self_service=True)
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER'], self_service=True)
 def get_teacher_student_count(skid, teacher_id):
     """
     Get total count of students assigned to a teacher
 
     Query params:
-    - skid: School ID (required)
+    - skid: Institution ID (required)
     - teacher_id: Teacher user ID (required)
 
     Returns total count of unique students across all sections taught by the teacher
@@ -54,13 +54,13 @@ def get_teacher_student_count(skid, teacher_id):
 
 
 @teacher_dashboard_bp.route('/attendance/absentees/count/<skid>/<academic_year_id>/<date>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], self_service=True)
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER'], self_service=True)
 def get_today_absentees_count(skid, academic_year_id, date):
     """
     Get today's student absentees count and preview
 
     Query params:
-    - skid: School ID (required)
+    - skid: Institution ID (required)
     - academic_year_id: Academic year ID (required)
     - date: Date in YYYY-MM-DD format (required)
 
@@ -86,7 +86,7 @@ def get_today_absentees_count(skid, academic_year_id, date):
                 'code': 400
             }), 400
 
-        # Teachers: only their own sections (teacher id from the login, never the URL); admins: whole school
+        # Teachers: only their own sections (teacher id from the login, never the URL); admins: whole institution
         from app.utils.teaching_scope import current_teacher_id
         absentees_data = TeacherDashboardService.get_today_absentees(
             skid=skid,
@@ -118,13 +118,13 @@ def get_today_absentees_count(skid, academic_year_id, date):
 
 # Full Week Timetable
 @teacher_dashboard_bp.route('/timetable/teacher/week/<skid>/<teacher_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], self_service=True)
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER'], self_service=True)
 def get_teacher_week_timetable(skid, teacher_id):
     """
     Get teacher's full week timetable (Monday-Saturday)
 
     Query params:
-    - skid: School ID (required)
+    - skid: Institution ID (required)
     - teacher_id: Teacher user ID (required)
     - start_date: Week start date in YYYY-MM-DD format (optional, defaults to current week's Monday)
 
@@ -181,13 +181,13 @@ def get_teacher_week_timetable(skid, teacher_id):
 
 # Specific Day Timetable
 @teacher_dashboard_bp.route('/timetable/teacher/<skid>/<teacher_id>/<date>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER'], self_service=True)
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER'], self_service=True)
 def get_teacher_timetable(skid, teacher_id, date):
     """
     Get teacher timetable for a specific day
 
     Query params:
-    - skid: School ID (required)
+    - skid: Institution ID (required)
     - teacher_id: Teacher user ID (required)
     - date: Date in YYYY-MM-DD format (required)
 

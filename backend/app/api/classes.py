@@ -7,7 +7,7 @@ class_bp = Blueprint('classes', __name__)
 
 # CREATE CLASS
 @class_bp.route('/create/class/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_classes')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_classes')
 def create_class(skid):
     try:
         data = request.get_json()
@@ -25,7 +25,7 @@ def create_class(skid):
 
 
 @class_bp.route('/update/class/<skid>/<int:class_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_classes')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_classes')
 def update_class(skid, class_id):
     """
     Update a class
@@ -37,7 +37,7 @@ def update_class(skid, class_id):
             return jsonify({'message': 'No data provided', 'status': 'error', 'code': 400}), 400
         
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
         
         updated_class = ClassService.update_class(class_id, data, skid)
         
@@ -55,14 +55,14 @@ def update_class(skid, class_id):
 
 
 @class_bp.route('/class/delete/<skid>/<int:class_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_classes')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_classes')
 def delete_class(skid, class_id):
     """
     Delete a class and all its sections
     """
     try:
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
         ClassService.delete_class(class_id, skid)
         
         return jsonify({
@@ -78,13 +78,13 @@ def delete_class(skid, class_id):
 
 
 @class_bp.route('/list/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'], permission=('view_classes', 'manage_classes', 'manage_attendance', 'view_attendance', 'manage_marks', 'manage_assignments'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'CLERK'], permission=('view_classes', 'manage_classes', 'manage_attendance', 'view_attendance', 'manage_marks', 'manage_assignments'))
 def get_classes(skid):
     """
-    Get all classes for the current user's school
+    Get all classes for the current user's institution
     """
     try:
-        classes = ClassService.get_classes_by_school(skid)
+        classes = ClassService.get_classes_by_institution(skid)
         
         return jsonify({
             'message': 'Classes retrieved successfully',
@@ -97,14 +97,14 @@ def get_classes(skid):
         return jsonify({'message': f'Failed to retrieve classes: {str(e)}', 'status': 'error', 'code': 500}), 500
         
 @class_bp.route('/<int:class_id>/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'], permission=('view_classes', 'manage_classes', 'manage_attendance', 'view_attendance', 'manage_marks', 'manage_assignments'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'CLERK'], permission=('view_classes', 'manage_classes', 'manage_attendance', 'view_attendance', 'manage_marks', 'manage_assignments'))
 def get_class_by_id(class_id, skid):
     """
     Get a specific class by ID with student count
     """
     try:
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
 
         class_data = ClassService.get_class_by_id(class_id, skid)
 
@@ -124,11 +124,11 @@ def get_class_by_id(class_id, skid):
 
 
 @class_bp.route('/create/section/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_classes')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_classes')
 def create_section(skid):
     """
     Create a new section
-    Only super admin and school admin can create sections
+    Only super admin and institution admin can create sections
     """
     try:
         data = request.get_json()
@@ -137,7 +137,7 @@ def create_section(skid):
             return jsonify({'message': 'No data provided', 'status': 'error', 'code': 400}), 400
         
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
         
         new_section = ClassService.create_section(data, skid)
         
@@ -155,7 +155,7 @@ def create_section(skid):
 
 
 @class_bp.route('/update/section/<skid>/<int:section_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_classes')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_classes')
 def update_section(skid, section_id):
     """
     Update a section
@@ -166,7 +166,7 @@ def update_section(skid, section_id):
         if not data:
             return jsonify({'message': 'No data provided', 'status': 'error', 'code': 400}), 400
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
         
         updated_section = ClassService.update_section(section_id, data, skid)
         
@@ -184,14 +184,14 @@ def update_section(skid, section_id):
 
 
 @class_bp.route('/section/delete/<skid>/<int:section_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_classes')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_classes')
 def delete_section(skid, section_id):
     """
     Delete a section
     """
     try:
         if not skid:
-            raise ValueError("School ID (skid) is required")
+            raise ValueError("Institution ID (skid) is required")
         
         ClassService.delete_section(section_id, skid)
         
@@ -208,7 +208,7 @@ def delete_section(skid, section_id):
 
 
 @class_bp.route('/sections/<skid>/<int:class_id>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'TEACHER', 'CLERK'], permission=('view_classes', 'manage_classes', 'manage_attendance', 'view_attendance', 'manage_marks', 'manage_assignments'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'TEACHER', 'CLERK'], permission=('view_classes', 'manage_classes', 'manage_attendance', 'view_attendance', 'manage_marks', 'manage_assignments'))
 def get_sections_by_class(skid, class_id):
     """
     Get all sections for a specific class
@@ -228,7 +228,7 @@ def get_sections_by_class(skid, class_id):
 
 
 @class_bp.route('/add-to-section/<skid>/<int:section_id>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_students')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL'], permission='manage_students')
 def add_students_to_section(skid, section_id):
     """
     Add one or multiple students to a specific section
@@ -293,7 +293,7 @@ def add_students_to_section(skid, section_id):
 
 
 @class_bp.route('/remove-from-section/<skid>/<int:section_id>/<int:student_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_students')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL'], permission='manage_students')
 def remove_student_from_section(skid, section_id, student_id):
     """
     Remove a student from a specific class or its sections
@@ -317,7 +317,7 @@ def remove_student_from_section(skid, section_id, student_id):
 
 
 @class_bp.route('/move-to-section/<skid>/<int:new_section_id>/<int:student_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN', 'PRINCIPAL'], permission='manage_students')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL'], permission='manage_students')
 def move_student_to_section(skid, new_section_id, student_id):
     """
     Move a student from current section to a new section

@@ -353,7 +353,7 @@ const MarksEntry: FC = () => {
                     exam_config_id: examConfig.id,
                     marks_data: marksArray,
                     is_draft: false,
-                    teacher_id: String(authUser.school_user_id),
+                    teacher_id: String(authUser.institution_user_id),
                 },
                 authUser.current_academic_year.id.toString()
             );

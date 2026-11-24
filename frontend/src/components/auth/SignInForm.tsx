@@ -75,7 +75,7 @@ export default function SignInForm() {
                 <div className="mb-6 text-center short:mb-4 sm:mb-8 lg:text-left">
                     <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-white">Welcome back</h1>
                     <p className="mt-1.5 text-sm leading-relaxed text-gray-500 very-short:hidden sm:mt-2 dark:text-gray-400">
-                        Sign in with the email and password provided by your school.
+                        Sign in with the email and password provided by your institution.
                     </p>
                 </div>
 
@@ -103,7 +103,7 @@ export default function SignInForm() {
                                 autoComplete="email"
                                 ref={emailRef}
                                 required
-                                placeholder="you@school.edu"
+                                placeholder="you@institution.edu"
                                 value={email}
                                 onChange={(e) => {
                                     setEmail(e.target.value);
@@ -194,7 +194,7 @@ export default function SignInForm() {
                 </form>
 
                 <div className="mt-6 rounded-2xl border border-gray-200 bg-gray-50/80 px-4 py-3 text-center text-sm short:mt-4 short:py-2.5 very-short:mt-3 very-short:py-2 sm:mt-8 sm:px-5 sm:py-4 lg:text-left leading-relaxed text-gray-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-gray-400">
-                    <p>No account? Ask your school administrator.</p>
+                    <p>No account? Ask your institution's administrator.</p>
                     <p className="mt-1">
                         New to EduSpyre?{" "}
                         <a

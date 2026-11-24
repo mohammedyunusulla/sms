@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Resets the alembic_version table on every tenant (skool_*) database.
+# Resets the alembic_version table on every tenant (eduspyre_*) database.
 #
 # Usage:
 #   ./reset-tenant_alembic.sh                 # clears alembic_version (no revision stamped)

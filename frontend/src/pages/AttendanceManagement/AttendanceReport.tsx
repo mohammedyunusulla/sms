@@ -17,7 +17,7 @@ import { classService } from '../../services/modules/classService';
 import { useAuthStore } from '@/stores/authStore';
 import { AttendanceStatus } from '../../types/index';
 import { generateAttendanceReport } from '../../prints';
-import type { SchoolData, PdfAction, AttendanceReportData } from '../../prints';
+import type { InstitutionData, PdfAction, AttendanceReportData } from '../../prints';
 import AttendanceAuditLine, { IAttendanceAudit } from './AttendanceAuditLine';
 
 interface IAttendanceRecord {
@@ -250,14 +250,14 @@ const AttendanceReport: FC = () => {
         onPageChange: (page: number) => setCurrentPage(page),
     };
 
-    // Build school data for PDF header from auth user
-    const getSchoolData = useCallback((): SchoolData => {
+    // Build institution data for PDF header from auth user
+    const getInstitutionData = useCallback((): InstitutionData => {
         const authUser = useAuthStore.getState().user;
         return {
-            schoolName: authUser?.school_name || 'School Name',
-            schoolAddress: '', // Can be extended when institution details API is available
-            schoolPhone: '',
-            schoolEmail: authUser?.email || '',
+            institutionName: authUser?.institution_name || 'Institution Name',
+            institutionAddress: '', // Can be extended when institution details API is available
+            institutionPhone: '',
+            institutionEmail: authUser?.email || '',
             logo: null,
             generatedBy: authUser?.full_name || authUser?.name || 'System',
         };
@@ -279,7 +279,7 @@ const AttendanceReport: FC = () => {
         try {
             const className = getSelectedClassName();
             const sectionName = getSelectedSectionName();
-            const schoolData = getSchoolData();
+            const institutionData = getInstitutionData();
 
             if (filters.viewType === 'single') {
                 if (!attendanceRecords.length || !stats) {
@@ -311,7 +311,7 @@ const AttendanceReport: FC = () => {
                     },
                 };
 
-                await generateAttendanceReport(reportData, schoolData, action);
+                await generateAttendanceReport(reportData, institutionData, action);
                 toast.success(`Report ${action === 'download' ? 'downloaded' : action === 'print' ? 'sent to printer' : 'opened'} successfully`);
             } else {
                 if (!monthlyData?.students?.length) {
@@ -353,14 +353,14 @@ const AttendanceReport: FC = () => {
                     },
                 };
 
-                await generateAttendanceReport(reportData, schoolData, action);
+                await generateAttendanceReport(reportData, institutionData, action);
                 toast.success(`Report ${action === 'download' ? 'downloaded' : action === 'print' ? 'sent to printer' : 'opened'} successfully`);
             }
         } catch (err: any) {
             console.error('Error generating report:', err);
             toast.error('Failed to generate report');
         }
-    }, [filters, attendanceRecords, monthlyData, stats, classes, sections, getSchoolData, getSelectedClassName, getSelectedSectionName]);
+    }, [filters, attendanceRecords, monthlyData, stats, classes, sections, getInstitutionData, getSelectedClassName, getSelectedSectionName]);
 
     // Whether print buttons should be enabled
     const canPrint = filters.viewType === 'single'

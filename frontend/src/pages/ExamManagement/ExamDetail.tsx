@@ -227,7 +227,7 @@ const ExamDetail: FC = () => {
       {/* Info Box */}
       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
         <p className="text-sm text-blue-700 dark:text-blue-300">
-          <strong>Note:</strong> This exam configuration defines a type/category of exam that can be used across the school.
+          <strong>Note:</strong> This exam configuration defines a type/category of exam that can be used across the institution.
         </p>
       </div>
 

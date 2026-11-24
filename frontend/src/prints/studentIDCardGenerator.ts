@@ -10,7 +10,7 @@ import {
     loadPdfFonts,
     formatDate,
 } from './HeaderAndFooterComponent';
-import type { SchoolData, PdfAction } from './printTypes';
+import type { InstitutionData, PdfAction } from './printTypes';
 
 export interface StudentIDCardData {
     // Student Information
@@ -31,7 +31,7 @@ export interface StudentIDCardData {
     academic_year: string;
 
     // QR Code — encodes student identity for bus-staff scanning
-    qr_data?: string;  // JSON string: {"student_id": X, "school": "SKL001"}
+    qr_data?: string;  // JSON string: {"student_id": X, "institution": "SKL001"}
 }
 
 /**
@@ -39,7 +39,7 @@ export interface StudentIDCardData {
  */
 export const generateStudentIDCardPdf = async (
     data: StudentIDCardData,
-    schoolData: SchoolData,
+    institutionData: InstitutionData,
     action: PdfAction = 'print'
 ): Promise<void> => {
     await loadPdfFonts();
@@ -81,7 +81,7 @@ export const generateStudentIDCardPdf = async (
             body: [[
                 {
                     stack: [
-                        // School Info Header
+                        // Institution Info Header
                         {
                             table: {
                                 widths: ['*'],
@@ -89,7 +89,7 @@ export const generateStudentIDCardPdf = async (
                                     {
                                         stack: [
                                             {
-                                                text: schoolData.schoolName || 'School Name',
+                                                text: institutionData.institutionName || 'Institution Name',
                                                 fontSize: 11,
                                                 bold: true,
                                                 alignment: 'center',
@@ -227,7 +227,7 @@ export const generateStudentIDCardPdf = async (
                         },
                         {
                             ul: [
-                                { text: 'This card is property of the school', fontSize: 7 },
+                                { text: 'This card is property of the institution', fontSize: 7 },
                                 { text: 'Carry this card at all times', fontSize: 7 },
                                 { text: 'Report loss immediately', fontSize: 7 },
                                 { text: 'Not transferable', fontSize: 7 }

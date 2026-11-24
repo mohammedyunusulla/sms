@@ -80,29 +80,29 @@ const Assignments: FC = () => {
 
     // Fetch teacher's class-subject combos on mount
     useEffect(() => {
-        if (user?.school_user_id) {
+        if (user?.institution_user_id) {
             fetchClassSubjects();
         }
-    }, [user?.school_user_id, academicYearVersion]);
+    }, [user?.institution_user_id, academicYearVersion]);
 
     // Fetch today's assignments when tab is active or date changes
     useEffect(() => {
-        if (activeTab === 'today' && user?.school_user_id && user?.current_academic_year?.id) {
+        if (activeTab === 'today' && user?.institution_user_id && user?.current_academic_year?.id) {
             fetchAssignmentsByDate(todayDate, setTodayAssignments, setLoadingToday);
         }
-    }, [activeTab, todayDate, user?.school_user_id, user?.current_academic_year?.id, academicYearVersion]);
+    }, [activeTab, todayDate, user?.institution_user_id, user?.current_academic_year?.id, academicYearVersion]);
 
     // Fetch past assignments when tab is active or date changes
     useEffect(() => {
-        if (activeTab === 'past' && user?.school_user_id && user?.current_academic_year?.id) {
+        if (activeTab === 'past' && user?.institution_user_id && user?.current_academic_year?.id) {
             fetchAssignmentsByDate(pastDate, setPastAssignments, setLoadingPast);
         }
-    }, [activeTab, pastDate, user?.school_user_id, user?.current_academic_year?.id, academicYearVersion]);
+    }, [activeTab, pastDate, user?.institution_user_id, user?.current_academic_year?.id, academicYearVersion]);
 
     const fetchClassSubjects = async () => {
         setLoadingClassSubjects(true);
         try {
-            const data = await assignmentService.getTeacherClassSubjects(user!.school_user_id);
+            const data = await assignmentService.getTeacherClassSubjects(user!.institution_user_id);
             setClassSubjects(data);
         } catch (err: any) {
             toast.error('Failed to load your class-subject assignments');
@@ -120,7 +120,7 @@ const Assignments: FC = () => {
         loadingSetter(true);
         try {
             const data = await assignmentService.listByDate(
-                user!.school_user_id,
+                user!.institution_user_id,
                 date,
                 user!.current_academic_year.id
             );
@@ -150,7 +150,7 @@ const Assignments: FC = () => {
         setIsSubmitting(true);
         try {
             const payload: any = {
-                teacher_id: user!.school_user_id,
+                teacher_id: user!.institution_user_id,
                 class_id: parsedCombo.class_id,
                 section_id: parsedCombo.section_id,
                 subject_id: parsedCombo.subject_id,

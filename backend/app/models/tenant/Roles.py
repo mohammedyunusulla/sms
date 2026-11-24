@@ -16,10 +16,10 @@ class Role(BaseModelTenant, BaseModelTenantMixin):
     # login account, so it decides the dashboard and the server's access checks. Built-in roles: their own code.
     base_role = Column(String(50), nullable=True)
     is_active = Column(Boolean, default=True)
-    school_id = Column(Integer, nullable=True)  # Null for system roles
+    institution_id = Column(Integer, nullable=True)  # Null for system roles
     created_at = Column(DateTime, default=func.current_timestamp())
     updated_at = Column(DateTime, default=func.current_timestamp(), onupdate=func.current_timestamp())
 
     # Relationship back to User table (one-to-many from Role to User)
-    users = relationship("SchoolUsers", back_populates="role_obj")
+    users = relationship("InstitutionUsers", back_populates="role_obj")
     user_roles = relationship("UserRoles", back_populates="role", cascade="all, delete-orphan")

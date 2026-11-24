@@ -2,8 +2,8 @@ import Reveal from "./Reveal";
 
 const ITEMS = [
   { value: "7", label: "user roles, each with tailored access" },
-  { value: "15+", label: "connected school modules" },
-  { value: "1", label: "dedicated database per school" },
+  { value: "15+", label: "connected modules" },
+  { value: "1", label: "dedicated database per institution" },
   { value: "100%", label: "browser-based, nothing to install" },
 ];
 

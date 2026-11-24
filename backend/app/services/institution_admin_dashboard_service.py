@@ -1,5 +1,5 @@
-from app.utils.db_manager import switch_to_school_db
-from app.models.tenant import Student, Teacher, SchoolUsers, AcademicYear, StudentEnrollment, Attendance, Subject, Class
+from app.utils.db_manager import switch_to_institution_db
+from app.models.tenant import Student, Teacher, InstitutionUsers, AcademicYear, StudentEnrollment, Attendance, Subject, Class
 from app.models.tenant.ExpenseModels import Expense
 from app.models.tenant.FeeModels import StudentFee, FeePayment
 from app.models.tenant.Roles import Role
@@ -26,13 +26,13 @@ def _status_counts(session, academic_year_id, day, class_id=None, section_id=Non
     return counts
 
 
-class SchoolAdminDashboardService:
+class InstitutionAdminDashboardService:
     
     @staticmethod
     def get_dashboard_stats(skid, academic_year_id):
-        """Get dashboard statistics for school admin"""
+        """Get dashboard statistics for institution admin"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Validate academic year
                 academic_year = tenant_session.query(AcademicYear).filter_by(
                     id=academic_year_id
@@ -42,7 +42,7 @@ class SchoolAdminDashboardService:
                     raise ValueError("Invalid academic year")
                 
                 # Get stats
-                stats = SchoolAdminDashboardService._get_counts(
+                stats = InstitutionAdminDashboardService._get_counts(
                     tenant_session, academic_year_id
                 )
                 
@@ -71,16 +71,16 @@ class SchoolAdminDashboardService:
         
         # Gender distribution
         gender_stats = tenant_session.query(
-            SchoolUsers.gender,
-            func.count(SchoolUsers.id)
+            InstitutionUsers.gender,
+            func.count(InstitutionUsers.id)
         ).join(
-            Student, SchoolUsers.id == Student.user_id
+            Student, InstitutionUsers.id == Student.user_id
         ).join(
             StudentEnrollment, StudentEnrollment.student_id == Student.user_id
         ).filter(
             StudentEnrollment.academic_year_id == academic_year_id,
             StudentEnrollment.status == 'active'
-        ).group_by(SchoolUsers.gender).all()
+        ).group_by(InstitutionUsers.gender).all()
         
         male_count = next((count for gender, count in gender_stats if gender == 'Male'), 0)
         female_count = next((count for gender, count in gender_stats if gender == 'Female'), 0)
@@ -92,16 +92,16 @@ class SchoolAdminDashboardService:
         
         # Total parents (users with PARENT role)
         total_parents = tenant_session.query(
-            func.count(SchoolUsers.id)
+            func.count(InstitutionUsers.id)
         ).join(
-            Role, SchoolUsers.role_id == Role.id
+            Role, InstitutionUsers.role_id == Role.id
         ).filter(
             Role.role_code == 'PARENT'  # Assuming role name is stored in Role table
         ).scalar() or 0
         
         # Overall users count
         overall_users = tenant_session.query(
-            func.count(SchoolUsers.id)
+            func.count(InstitutionUsers.id)
         ).scalar() or 0
         
         today = date.today()
@@ -142,7 +142,7 @@ class SchoolAdminDashboardService:
             if not month:
                 month = datetime.now().month
             
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Get academic year to determine the year
                 academic_year = tenant_session.query(AcademicYear).filter(
                     AcademicYear.id == academic_year_id
@@ -219,7 +219,7 @@ class SchoolAdminDashboardService:
     def get_timetable(skid, academic_year_id, class_id=None, section_id=None):
         """Get timetable for a specific class and section or the last created one"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Build query
                 query = tenant_session.query(Timetable).filter(
                     Timetable.academic_year_id == academic_year_id,
@@ -247,14 +247,14 @@ class SchoolAdminDashboardService:
                 entries = tenant_session.query(
                     TimetableEntry,
                     Subject.subject_name,
-                    SchoolUsers.first_name,
-                    SchoolUsers.last_name
+                    InstitutionUsers.first_name,
+                    InstitutionUsers.last_name
                 ).join(
                     Subject, TimetableEntry.subject_id == Subject.id
                 ).join(
                     Teacher, TimetableEntry.teacher_id == Teacher.user_id
                 ).join(
-                    SchoolUsers, Teacher.user_id == SchoolUsers.id
+                    InstitutionUsers, Teacher.user_id == InstitutionUsers.id
                 ).filter(
                     TimetableEntry.timetable_id == timetable.id,
                     TimetableEntry.is_active == True
@@ -305,7 +305,7 @@ class SchoolAdminDashboardService:
                         'section_name': section_obj.section_name if section_obj else None,
                         'semester': timetable.semester,
                         'period_duration': timetable.period_duration,
-                        'school_start_time': timetable.school_start_time.strftime('%H:%M') if timetable.school_start_time else None,
+                        'institution_start_time': timetable.institution_start_time.strftime('%H:%M') if timetable.institution_start_time else None,
                         'lunch_start_time': timetable.lunch_start_time.strftime('%H:%M') if timetable.lunch_start_time else None,
                         'lunch_duration': timetable.lunch_duration,
                         'total_periods': timetable.total_periods
@@ -321,7 +321,7 @@ class SchoolAdminDashboardService:
     def get_attendance_overview(skid, academic_year_id, class_id=None, section_id=None):
         """Get attendance overview for the current week, optionally filtered by class/section"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 today = date.today()
                 # Get Monday of current week
                 monday = today - timedelta(days=today.weekday())
@@ -440,9 +440,9 @@ class SchoolAdminDashboardService:
 
     @staticmethod
     def get_finance_summary(skid, academic_year_id):
-        """Get finance summary for school admin dashboard"""
+        """Get finance summary for institution admin dashboard"""
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Fee collection summary
                 fee_stats = tenant_session.query(
                     func.coalesce(func.sum(StudentFee.total_amount), 0).label('total_fees'),
@@ -472,14 +472,14 @@ class SchoolAdminDashboardService:
                 recent_payments = tenant_session.query(
                     FeePayment,
                     StudentFee,
-                    SchoolUsers.first_name,
-                    SchoolUsers.last_name
+                    InstitutionUsers.first_name,
+                    InstitutionUsers.last_name
                 ).join(
                     StudentFee, FeePayment.student_fee_id == StudentFee.id
                 ).join(
                     Student, StudentFee.student_id == Student.user_id
                 ).join(
-                    SchoolUsers, Student.user_id == SchoolUsers.id
+                    InstitutionUsers, Student.user_id == InstitutionUsers.id
                 ).filter(
                     StudentFee.academic_year_id == academic_year_id,
                     FeePayment.is_cancelled == False

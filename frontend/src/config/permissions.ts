@@ -110,15 +110,15 @@ export interface RoutePermissionConfig {
 /**
  * Maps route paths to required permissions.
  * Routes not listed here are accessible to any authenticated user.
- * `superAdminOnly: true` means only SUPER_ADMIN can access (School Management).
+ * `superAdminOnly: true` means only SUPER_ADMIN can access (Institution Management).
  */
 export const ROUTE_PERMISSION_MAP: Record<string, RoutePermissionConfig> = {
-  // School Management — super admin only
-  '/schools': { superAdminOnly: true },
-  '/schools/new': { superAdminOnly: true },
-  '/schools/:id/edit': { superAdminOnly: true },
-  '/schools/:id': { superAdminOnly: true },
-  '/school-admins': { superAdminOnly: true },
+  // Institution Management — super admin only
+  '/institutions': { superAdminOnly: true },
+  '/institutions/new': { superAdminOnly: true },
+  '/institutions/:id/edit': { superAdminOnly: true },
+  '/institutions/:id': { superAdminOnly: true },
+  '/institution-admins': { superAdminOnly: true },
   '/system-admins': { superAdminOnly: true },
 
   // User Management
@@ -242,7 +242,7 @@ export interface SidebarGroupPermissionConfig {
   superAdminOnly?: boolean;
   /** Maps sub-item paths to the permission required to show that item */
   itemPermissions: Record<string, Permission>;
-  /** Paths to hide for full-access roles (SCHOOL_ADMIN) — e.g. role-specific personal views */
+  /** Paths to hide for full-access roles (INSTITUTION_ADMIN) — e.g. role-specific personal views */
   excludeFromFullAccess?: string[];
   /** Hide a path if the user HAS a given permission (inverse check).
    *  Use case: hide "My Assignments" from users who have manage_assignments. */
@@ -252,13 +252,13 @@ export interface SidebarGroupPermissionConfig {
 }
 
 export const SIDEBAR_PERMISSION_MAP: Record<string, SidebarGroupPermissionConfig> = {
-  'School Management': {
+  'Institution Management': {
     groupPermissions: [],
     superAdminOnly: true,
     itemPermissions: {
-      '/schools': Permission.VIEW_USERS, // placeholder — superAdminOnly overrides
-      '/schools/new': Permission.MANAGE_USERS,
-      '/school-admins': Permission.VIEW_USERS,
+      '/institutions': Permission.VIEW_USERS, // placeholder — superAdminOnly overrides
+      '/institutions/new': Permission.MANAGE_USERS,
+      '/institution-admins': Permission.VIEW_USERS,
       '/system-admins': Permission.VIEW_USERS,
     },
   },

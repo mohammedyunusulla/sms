@@ -1,42 +1,42 @@
 from flask import Blueprint, request, jsonify
 from app.decorators.auth import login_required
 from app.decorators.logging import log_actions
-from app.services.school_service import SchoolService
+from app.services.institution_service import InstitutionService
 from app.models.main.User import UserRole
-from app.models.main.School import School
+from app.models.main.Institution import Institution
 import logging
 
 logger = logging.getLogger(__name__)
 
-school_bp = Blueprint('school', __name__)
+institution_bp = Blueprint('institution', __name__)
 
-@school_bp.route('/create', methods=['POST'])
+@institution_bp.route('/create', methods=['POST'])
 @login_required(['SUPER_ADMIN'])
-@log_actions('CREATE_SCHOOL')
-def create_school():
-    """Create a new school with database and initialize using models"""
+@log_actions('CREATE_INSTITUTION')
+def create_institution():
+    """Create a new institution with database and initialize using models"""
     try:
         data = request.get_json()
         
         if not data:
             return jsonify({'message': 'No data provided'}), 400
         
-        # Check if school with same code exists
-        existing_school = School.query.filter_by(code=data.get('code')).first()
-        if existing_school:
+        # Check if institution with same code exists
+        existing_institution = Institution.query.filter_by(code=data.get('code')).first()
+        if existing_institution:
             return jsonify({
-                'message': f"School with code '{data['code']}' already exists.",
+                'message': f"Institution with code '{data['code']}' already exists.",
                 'status': 'error',
                 'code': 409
             }), 409
         
-        # Create school
-        result = SchoolService.create_school(data)
+        # Create institution
+        result = InstitutionService.create_institution(data)
         
         if result['success']:
             return jsonify({
                 'message': result['message'],
-                'school': result['data'],
+                'institution': result['data'],
                 'status': 'success',
                 'code': 200
             }), 200
@@ -44,27 +44,27 @@ def create_school():
             return jsonify({'message': result['message']}), 400
             
     except Exception as e:
-        logger.error(f"Error creating school: {str(e)}")
+        logger.error(f"Error creating institution: {str(e)}")
         return jsonify({'message': 'Internal server error'}), 500
 
 
-@school_bp.route('/update/<int:school_id>', methods=['PUT'])
+@institution_bp.route('/update/<int:institution_id>', methods=['PUT'])
 @login_required(['SUPER_ADMIN'])
-@log_actions('UPDATE_SCHOOL')
-def update_school(school_id):
-    """Update school"""
+@log_actions('UPDATE_INSTITUTION')
+def update_institution(institution_id):
+    """Update institution"""
     try:
         data = request.get_json()
         
         if not data:
             return jsonify({'message': 'No data provided'}), 400
             
-        result = SchoolService.update_school(school_id, data)
+        result = InstitutionService.update_institution(institution_id, data)
         
         if result['success']:
             return jsonify({
                 'message': result['message'],
-                'school': result['data'],
+                'institution': result['data'],
                 'status': 'success',
                 'code': 200
             }), 200
@@ -73,22 +73,22 @@ def update_school(school_id):
             return jsonify({'message': result['message']}), status_code
             
     except Exception as e:
-        logger.error(f"Error updating school {school_id}: {str(e)}")
+        logger.error(f"Error updating institution {institution_id}: {str(e)}")
         return jsonify({'message': 'Internal server error'}), 500
 
 
-@school_bp.route('/list', methods=['GET'])
+@institution_bp.route('/list', methods=['GET'])
 @login_required(['SUPER_ADMIN'])
-@log_actions('GET_SCHOOLS')
-def get_schools():
-    """Get list of schools"""
+@log_actions('GET_INSTITUTIONS')
+def get_institutions():
+    """Get list of institutions"""
     try:
         
-        result = SchoolService.get_schools()
+        result = InstitutionService.get_institutions()
         
         if result['success']:
             return jsonify({
-                'message': 'Schools retrieved successfully',
+                'message': 'Institutions retrieved successfully',
                 'data': result['data'],
                 'status': 'success',
                 'code': 200
@@ -97,17 +97,17 @@ def get_schools():
             return jsonify({'message': result['message']}), 400
         
     except Exception as e:
-        logger.error(f"Error getting schools: {str(e)}")
+        logger.error(f"Error getting institutions: {str(e)}")
         return jsonify({'message': 'Internal server error'}), 500
 
 
-@school_bp.route('/dashboard/stats', methods=['GET'])
+@institution_bp.route('/dashboard/stats', methods=['GET'])
 @login_required(['SUPER_ADMIN'])
 @log_actions('GET_SUPER_ADMIN_DASHBOARD')
 def get_super_admin_dashboard():
     """Get system-wide dashboard stats for super admin"""
     try:
-        result = SchoolService.get_super_admin_dashboard_stats()
+        result = InstitutionService.get_super_admin_dashboard_stats()
 
         if result['success']:
             return jsonify({
@@ -127,32 +127,32 @@ def get_super_admin_dashboard():
         return jsonify({'message': 'Internal server error'}), 500
 
 
-@school_bp.route('/<int:school_id>', methods=['GET'])
+@institution_bp.route('/<int:institution_id>', methods=['GET'])
 @login_required(['SUPER_ADMIN'])
-@log_actions('GET_SCHOOL')
-def get_school(school_id):
-    """Get school by ID"""
+@log_actions('GET_INSTITUTION')
+def get_institution(institution_id):
+    """Get institution by ID"""
     try:
-        result = SchoolService.get_school_by_id(school_id)
+        result = InstitutionService.get_institution_by_id(institution_id)
         
         if result['success']:
             return jsonify({
-                'message': 'School retrieved successfully',
-                'school': result['data']
+                'message': 'Institution retrieved successfully',
+                'institution': result['data']
             }), 200
         else:
             return jsonify({'message': result['message']}), 404
             
     except Exception as e:
-        logger.error(f"Error getting school {school_id}: {str(e)}")
+        logger.error(f"Error getting institution {institution_id}: {str(e)}")
         return jsonify({'message': 'Internal server error'}), 500
 
 
-@school_bp.route('/<int:school_id>/users', methods=['GET'])
+@institution_bp.route('/<int:institution_id>/users', methods=['GET'])
 @login_required(['SUPER_ADMIN'])
-@log_actions('GET_SCHOOL_USERS')
-def get_school_users(school_id):
-    """Get users for a specific school"""
+@log_actions('GET_INSTITUTION_USERS')
+def get_institution_users(institution_id):
+    """Get users for a specific institution"""
     try:
         page = request.args.get('page', 1, type=int)
         per_page = request.args.get('per_page', 10, type=int)
@@ -161,32 +161,32 @@ def get_school_users(school_id):
         if per_page > 100:
             per_page = 100
         
-        result = SchoolService.get_school_users(school_id, page, per_page, role)
+        result = InstitutionService.get_institution_users(institution_id, page, per_page, role)
         
         if result['success']:
             return jsonify({
-                'message': 'School users retrieved successfully',
+                'message': 'Institution users retrieved successfully',
                 'data': result['data']
             }), 200
         else:
             return jsonify({'message': result['message']}), 404
             
     except Exception as e:
-        logger.error(f"Error getting users for school {school_id}: {str(e)}")
+        logger.error(f"Error getting users for institution {institution_id}: {str(e)}")
         return jsonify({'message': 'Internal server error'}), 500
 
 
-@school_bp.route('/list/school-admins', methods=['GET'])
+@institution_bp.route('/list/institution-admins', methods=['GET'])
 @login_required(['SUPER_ADMIN'])
-@log_actions('GET_SCHOOL_ADMINS')
-def get_school_admins():
-    """Get list of school admins"""
+@log_actions('GET_INSTITUTION_ADMINS')
+def get_institution_admins():
+    """Get list of institution admins"""
     try:
-        result = SchoolService.get_school_admins()
+        result = InstitutionService.get_institution_admins()
         
         if result['success']:
             return jsonify({
-                'message': 'School admins retrieved successfully',
+                'message': 'Institution admins retrieved successfully',
                 'data': result['data'],
                 'status': 'success',
                 'code': 200
@@ -195,15 +195,15 @@ def get_school_admins():
             return jsonify({'message': result['message']}), 400
         
     except Exception as e:
-        logger.error(f"Error getting school admins: {str(e)}")
+        logger.error(f"Error getting institution admins: {str(e)}")
         return jsonify({'message': 'Internal server error'}), 500
 
 
-@school_bp.route('/school-admin/change-password/<int:admin_id>', methods=['PATCH'])
+@institution_bp.route('/institution-admin/change-password/<int:admin_id>', methods=['PATCH'])
 @login_required(['SUPER_ADMIN'])
 @log_actions('CHANGE_ADMIN_PASSWORD')
 def change_admin_password(admin_id):
-    """Change password for a school admin"""
+    """Change password for an institution admin"""
     try:
         data = request.get_json()
         
@@ -212,7 +212,7 @@ def change_admin_password(admin_id):
         
         new_password = data.get('new_password')
         
-        result = SchoolService.change_admin_password(admin_id, new_password)
+        result = InstitutionService.change_admin_password(admin_id, new_password)
         
         if result['success']:
             return jsonify({
@@ -228,13 +228,13 @@ def change_admin_password(admin_id):
         return jsonify({'message': 'Internal server error'}), 500
 
 
-@school_bp.route('/activate/<int:school_id>', methods=['PATCH'])
+@institution_bp.route('/activate/<int:institution_id>', methods=['PATCH'])
 @login_required(['SUPER_ADMIN'])
-@log_actions('ACTIVATE_SCHOOL')
-def activate_school(school_id):
-    """Activate school"""
+@log_actions('ACTIVATE_INSTITUTION')
+def activate_institution(institution_id):
+    """Activate institution"""
     try:
-        result = SchoolService.toggle_school_status(school_id, activate=True)
+        result = InstitutionService.toggle_institution_status(institution_id, activate=True)
         
         if result['success']:
             return jsonify({
@@ -246,17 +246,17 @@ def activate_school(school_id):
             return jsonify({'message': result['message']}), 404
             
     except Exception as e:
-        logger.error(f"Error activating school {school_id}: {str(e)}")
+        logger.error(f"Error activating institution {institution_id}: {str(e)}")
         return jsonify({'message': 'Internal server error'}), 500
 
 
-@school_bp.route('/deactivate/<int:school_id>', methods=['PATCH'])
+@institution_bp.route('/deactivate/<int:institution_id>', methods=['PATCH'])
 @login_required(['SUPER_ADMIN'])
-@log_actions('DEACTIVATE_SCHOOL')
-def deactivate_school(school_id):
-    """Deactivate school"""
+@log_actions('DEACTIVATE_INSTITUTION')
+def deactivate_institution(institution_id):
+    """Deactivate institution"""
     try:
-        result = SchoolService.toggle_school_status(school_id, activate=False)
+        result = InstitutionService.toggle_institution_status(institution_id, activate=False)
         
         if result['success']:
             return jsonify({
@@ -268,25 +268,25 @@ def deactivate_school(school_id):
             return jsonify({'message': result['message']}), 404
             
     except Exception as e:
-        logger.error(f"Error deactivating school {school_id}: {str(e)}")
+        logger.error(f"Error deactivating institution {institution_id}: {str(e)}")
         return jsonify({'message': 'Internal server error'}), 500
         
 
-@school_bp.route('/delete/<int:school_id>', methods=['DELETE'])
+@institution_bp.route('/delete/<int:institution_id>', methods=['DELETE'])
 @login_required(['SUPER_ADMIN'])
-@log_actions('HARD_DELETE_SCHOOL')
-def hard_delete_school(school_id):
-    """Hard delete school - removes all users and drops database"""
+@log_actions('HARD_DELETE_INSTITUTION')
+def hard_delete_institution(institution_id):
+    """Hard delete institution - removes all users and drops database"""
     try:
-        # the school's code must be typed back, so a stray request or double click can't drop a school (QA S14)
-        school = School.query.get(school_id)
-        if not school:
-            return jsonify({'message': 'School not found', 'status': 'error', 'code': 404}), 404
+        # the institution's code must be typed back, so a stray request or double click can't drop an institution (QA S14)
+        institution = Institution.query.get(institution_id)
+        if not institution:
+            return jsonify({'message': 'Institution not found', 'status': 'error', 'code': 404}), 404
         typed = str((request.get_json(silent=True) or {}).get('confirm_code') or '').strip().lower()
-        if typed != (school.code or '').strip().lower():
-            return jsonify({'message': "Type the school's code to confirm the delete", 'status': 'error', 'code': 400}), 400
+        if typed != (institution.code or '').strip().lower():
+            return jsonify({'message': "Type the institution's code to confirm the delete", 'status': 'error', 'code': 400}), 400
 
-        result = SchoolService.hard_delete_school(school_id)
+        result = InstitutionService.hard_delete_institution(institution_id)
         
         if result['success']:
             response = {
@@ -302,5 +302,5 @@ def hard_delete_school(school_id):
             return jsonify({'message': result['message']}), 404
             
     except Exception as e:
-        logger.error(f"Error hard deleting school {school_id}: {str(e)}")
+        logger.error(f"Error hard deleting institution {institution_id}: {str(e)}")
         return jsonify({'message': 'Internal server error'}), 500

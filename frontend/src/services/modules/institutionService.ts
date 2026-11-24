@@ -1,21 +1,21 @@
 /**
- * School Service
- * Handles API calls for school management operations
+ * Institution Service
+ * Handles API calls for institution management operations
  * Uses centralized API client from services/api/client.ts
  */
 
 import { getApiClient } from '../api/client';
-import { ISchool } from '../../types/index';
+import { IInstitution } from '../../types/index';
 
-interface ISchoolListParams {
+interface IInstitutionListParams {
     search?: string;
     status?: 'active' | 'inactive';
     page?: number;
     limit?: number;
 }
 
-interface ISchoolListResponse {
-    data: ISchool[];
+interface IInstitutionListResponse {
+    data: IInstitution[];
     meta: {
         total: number;
         page: number;
@@ -24,112 +24,112 @@ interface ISchoolListResponse {
     };
 }
 
-class SchoolService {
-    private baseUrl = '/school';
+class InstitutionService {
+    private baseUrl = '/institution';
 
     /**
-     * Get list of all schools
+     * Get list of all institutions
      */
-    async listSchools(): Promise<{ data: ISchool[] }> {
+    async listInstitutions(): Promise<{ data: IInstitution[] }> {
         const api = getApiClient();
         const response = await api.get(`${this.baseUrl}/list`);
         if (response.code === 200 && response.status === 'success') {
             return { data: response?.data };
         }
-        throw new Error(response.data?.message || 'Failed to fetch schools');
+        throw new Error(response.data?.message || 'Failed to fetch institutions');
     }
 
     /**
-     * Get list of schools with optional filtering
+     * Get list of institutions with optional filtering
      */
-    async list(params?: ISchoolListParams): Promise<ISchoolListResponse> {
+    async list(params?: IInstitutionListParams): Promise<IInstitutionListResponse> {
         const api = getApiClient();
         const response = await api.get(`${this.baseUrl}/list`, { params });
         return response.data;
     }
 
     /**
-     * Get single school by ID
+     * Get single institution by ID
      */
-    async getById(id: string): Promise<ISchool> {
+    async getById(id: string): Promise<IInstitution> {
         const api = getApiClient();
         const response = await api.get(`${this.baseUrl}/${id}`);
-        return response.school;
+        return response.institution;
     }
 
     /**
-     * Create new school
+     * Create new institution
      */
-    async create(data: Omit<ISchool, 'id' | 'created_at' | 'updated_at'>): Promise<ISchool> {
+    async create(data: Omit<IInstitution, 'id' | 'created_at' | 'updated_at'>): Promise<IInstitution> {
         const api = getApiClient();
         const response = await api.post(`${this.baseUrl}/create`, data);
         if (response.code === 200 && response.status === 'success') {
-            // the client already unwraps the body: the school is at the top level (response.data was undefined)
-            return response.school;
+            // the client already unwraps the body: the institution is at the top level (response.data was undefined)
+            return response.institution;
         }
-        throw new Error(response.data?.message || 'Failed to create school');
+        throw new Error(response.data?.message || 'Failed to create institution');
     }
 
     /**
-     * Update existing school
+     * Update existing institution
      */
-    async update(id: string, data: Partial<ISchool>): Promise<ISchool> {
+    async update(id: string, data: Partial<IInstitution>): Promise<IInstitution> {
         const api = getApiClient();
         const response = await api.put(`${this.baseUrl}/update/${id}`, data);
         if (response.code === 200 && response.status === 'success') {
-            return response.school;
+            return response.institution;
         }
-        throw new Error(response.message || 'Failed to update school');
+        throw new Error(response.message || 'Failed to update institution');
     }
 
     /**
-     * Delete school
+     * Delete institution
      */
-    async deleteSchool(id: string, confirmCode: string): Promise<void> {
+    async deleteInstitution(id: string, confirmCode: string): Promise<void> {
         const api = getApiClient();
-        // the server deletes only with the school's code typed back (QA S14)
+        // the server deletes only with the institution's code typed back (QA S14)
         const response = await api.delete(`${this.baseUrl}/delete/${id}`, { data: { confirm_code: confirmCode } });
         if (response.code !== 200 || response.status !== 'success') {
-            throw new Error(response.data?.message || 'Failed to delete school');
+            throw new Error(response.data?.message || 'Failed to delete institution');
         }
     }
 
     /**
-     * Activate school
+     * Activate institution
      */
-    async activateSchool(id: string): Promise<void> {
+    async activateInstitution(id: string): Promise<void> {
         const api = getApiClient();
         const response = await api.patch(`${this.baseUrl}/activate/${id}`);
         if (response.code !== 200 || response.status !== 'success') {
-            throw new Error(response.data?.message || 'Failed to activate school');
+            throw new Error(response.data?.message || 'Failed to activate institution');
         }
     }
 
     /**
-     * Deactivate school
+     * Deactivate institution
      */
-    async deactivateSchool(id: string): Promise<void> {
+    async deactivateInstitution(id: string): Promise<void> {
         const api = getApiClient();
         const response = await api.patch(`${this.baseUrl}/deactivate/${id}`);
         if (response.code !== 200 || response.status !== 'success') {
-            throw new Error(response.data?.message || 'Failed to deactivate school');
+            throw new Error(response.data?.message || 'Failed to deactivate institution');
         }
     }
 
     /**
-     * Update school status (activate/deactivate)
+     * Update institution status (activate/deactivate)
      */
-    async updateStatus(id: string, status: 'active' | 'inactive'): Promise<ISchool> {
+    async updateStatus(id: string, status: 'active' | 'inactive'): Promise<IInstitution> {
         if (status === 'active') {
-            await this.activateSchool(id);
+            await this.activateInstitution(id);
         } else {
-            await this.deactivateSchool(id);
+            await this.deactivateInstitution(id);
         }
         return await this.getById(id);
     }
 
     /**
-     * Bulk delete schools
+     * Bulk delete institutions
      */
     async bulkDelete(ids: string[]): Promise<void> {
         const api = getApiClient();
@@ -137,9 +137,9 @@ class SchoolService {
     }
 
     /**
-     * Export schools to CSV
+     * Export institutions to CSV
      */
-    async exportToCSV(params?: ISchoolListParams): Promise<Blob> {
+    async exportToCSV(params?: IInstitutionListParams): Promise<Blob> {
         const api = getApiClient();
         const response = await api.get(`${this.baseUrl}/export/csv`, {
             params,
@@ -149,46 +149,46 @@ class SchoolService {
     }
 
     /**
-     * Get list of school admins
+     * Get list of institution admins
      */
-    async listSchoolAdmins(): Promise<{ data: any[] }> {
+    async listInstitutionAdmins(): Promise<{ data: any[] }> {
         const api = getApiClient();
-        const response = await api.get(`${this.baseUrl}/list/school-admins`);
+        const response = await api.get(`${this.baseUrl}/list/institution-admins`);
         if (response.code === 200 && response.status === 'success') {
             return { data: response?.data };
         }
-        throw new Error(response.data?.message || 'Failed to fetch school admins');
+        throw new Error(response.data?.message || 'Failed to fetch institution admins');
     }
 
     /**
-     * Soft delete a school admin (inactive + login disabled; can be reactivated).
-     * Uses the admin's own school id: a super admin doesn't belong to a school.
+     * Soft delete an institution admin (inactive + login disabled; can be reactivated).
+     * Uses the admin's own institution id: a super admin doesn't belong to an institution.
      */
-    async deactivateSchoolAdmin(skid: string, schoolUserId: number | string): Promise<string> {
+    async deactivateInstitutionAdmin(skid: string, institutionUserId: number | string): Promise<string> {
         const api = getApiClient();
-        const response = await api.delete(`/users/delete/${skid}/${schoolUserId}`);
+        const response = await api.delete(`/users/delete/${skid}/${institutionUserId}`);
         if (response.code === 200 && response.status === 'success') {
-            return response.message || 'School admin deleted';
+            return response.message || 'Institution admin deleted';
         }
-        throw new Error(response.message || 'Failed to delete school admin');
+        throw new Error(response.message || 'Failed to delete institution admin');
     }
 
-    /** Reactivate a (soft-)deleted school admin. */
-    async reactivateSchoolAdmin(skid: string, schoolUserId: number | string): Promise<string> {
+    /** Reactivate a (soft-)deleted institution admin. */
+    async reactivateInstitutionAdmin(skid: string, institutionUserId: number | string): Promise<string> {
         const api = getApiClient();
-        const response = await api.patch(`/users/reactivate/${skid}/${schoolUserId}`);
+        const response = await api.patch(`/users/reactivate/${skid}/${institutionUserId}`);
         if (response.code === 200 && response.status === 'success') {
-            return response.message || 'School admin reactivated';
+            return response.message || 'Institution admin reactivated';
         }
-        throw new Error(response.message || 'Failed to reactivate school admin');
+        throw new Error(response.message || 'Failed to reactivate institution admin');
     }
 
     /**
-     * Change school admin password
+     * Change institution admin password
      */
     async changeAdminPassword(adminId: string, newPassword: string): Promise<void> {
         const api = getApiClient();
-        const response = await api.patch(`${this.baseUrl}/school-admin/change-password/${adminId}`, {
+        const response = await api.patch(`${this.baseUrl}/institution-admin/change-password/${adminId}`, {
             new_password: newPassword,
         });
         if (response.code !== 200 || response.status !== 'success') {
@@ -197,42 +197,42 @@ class SchoolService {
     }
 
     /**
-     * Get school admin by skid and admin ID
-     * Uses the /users/schoolAdmin/{skid}/{admin_id} endpoint
+     * Get institution admin by skid and admin ID
+     * Uses the /users/institutionAdmin/{skid}/{admin_id} endpoint
      */
-    async getSchoolAdmin(skid: string, adminId: string): Promise<any> {
+    async getInstitutionAdmin(skid: string, adminId: string): Promise<any> {
         const api = getApiClient();
-        const response = await api.get(`/users/schoolAdmin/${skid}/${adminId}`) as any;
+        const response = await api.get(`/users/institutionAdmin/${skid}/${adminId}`) as any;
         if (response.code === 200 && response.status === 'success') {
             return response.user;
         }
-        throw new Error(response.message || 'Failed to fetch school admin');
+        throw new Error(response.message || 'Failed to fetch institution admin');
     }
 
     /**
-     * Create a school admin (super admin context - no schoolId in URL)
+     * Create an institution admin (super admin context - no institutionId in URL)
      * Uses the /users/create endpoint directly
      */
-    async createSchoolAdmin(data: Record<string, any>): Promise<any> {
+    async createInstitutionAdmin(data: Record<string, any>): Promise<any> {
         const api = getApiClient();
         const response = await api.post('/users/create', data) as any;
         if (response.code === 200 && response.status === 'success') {
             return response.user;
         }
-        throw new Error(response.message || 'Failed to create school admin');
+        throw new Error(response.message || 'Failed to create institution admin');
     }
 
     /**
-     * Update a school admin (super admin context - no schoolId in URL)
+     * Update an institution admin (super admin context - no institutionId in URL)
      * Uses the /users/update/{admin_id} endpoint directly
      */
-    async updateSchoolAdmin(adminId: string, data: Record<string, any>): Promise<any> {
+    async updateInstitutionAdmin(adminId: string, data: Record<string, any>): Promise<any> {
         const api = getApiClient();
         const response = await api.put(`/users/update/${adminId}`, data) as any;
         if (response.user) {
             return response.user;
         }
-        throw new Error(response.message || 'Failed to update school admin');
+        throw new Error(response.message || 'Failed to update institution admin');
     }
 
     /**
@@ -261,4 +261,4 @@ class SchoolService {
 }
 
 // Export singleton instance
-export const schoolService = new SchoolService();
+export const institutionService = new InstitutionService();

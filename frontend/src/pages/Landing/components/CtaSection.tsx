@@ -19,7 +19,7 @@ export default function CtaSection() {
             See EduSpyre in action.
           </h2>
           <p className="relative mx-auto mt-5 max-w-xl text-lg text-brand-100">
-            Book a demo with the Klopterz team and see how EduSpyre fits the way your school works.
+            Book a demo with the Klopterz team and see how EduSpyre fits the way your institution works.
           </p>
           <div className="relative mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <a

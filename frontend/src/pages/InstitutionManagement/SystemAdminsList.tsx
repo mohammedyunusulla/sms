@@ -7,7 +7,7 @@ import { FC, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { passwordProblem } from '../../utils/formValidation';
 import { PageHeader, LoadingSpinner, DataTable, Button, Modal, Badge } from '../../components';
-import { schoolService } from '../../services/modules/schoolService';
+import { institutionService } from '../../services/modules/institutionService';
 
 interface IColumn {
   key: string;
@@ -36,7 +36,7 @@ const SystemAdminsList: FC = () => {
   const fetchAdmins = async () => {
     try {
       setLoading(true);
-      const response = await schoolService.listSuperAdmins();
+      const response = await institutionService.listSuperAdmins();
       const admins = response.data.map((admin: any, index: number) => ({
         ...admin,
         key: admin.id,
@@ -94,7 +94,7 @@ const SystemAdminsList: FC = () => {
         payload.username = identifier;
       }
 
-      await schoolService.createSuperAdmin(payload);
+      await institutionService.createSuperAdmin(payload);
       toast.success('System admin created successfully');
       setCreateOpen(false);
       resetForm();

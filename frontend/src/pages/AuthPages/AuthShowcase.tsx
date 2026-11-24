@@ -15,7 +15,7 @@ const STATS = [
 
 const HIGHLIGHTS = [
   { icon: UsersIcon, label: "Role-based dashboards" },
-  { icon: DatabaseIcon, label: "Isolated data per school" },
+  { icon: DatabaseIcon, label: "Isolated data per institution" },
   { icon: SparklesIcon, label: "AI homework tutor" },
 ];
 
@@ -53,13 +53,13 @@ export default function AuthShowcase() {
             Smart Education Management System
           </span>
           <p className="mt-5 max-w-lg text-4xl font-bold leading-tight tracking-tight text-white xl:text-5xl xl:leading-[1.1]">
-            Your whole school,{" "}
+            Your whole institution,{" "}
             <span className="bg-gradient-to-r from-blue-light-300 to-success-300 bg-clip-text text-transparent">
               one login away.
             </span>
           </p>
           <p className="mt-4 max-w-md text-base leading-relaxed text-brand-100/90">
-            Attendance, timetables, exams, fees and homework, together in one secure place for your whole school
+            Attendance, timetables, exams, fees and homework, together in one secure place for your whole campus
             community.
           </p>
 
@@ -68,7 +68,7 @@ export default function AuthShowcase() {
             <div className="rounded-3xl bg-white/10 p-5 shadow-2xl shadow-brand-950/40 ring-1 ring-white/15 backdrop-blur-md">
               <div>
                 <p className="text-xs text-brand-100/80">Good morning</p>
-                <p className="font-semibold text-white">School overview</p>
+                <p className="font-semibold text-white">Campus overview</p>
               </div>
               <ul className="mt-5 space-y-4">
                 {STATS.map((s, i) => (

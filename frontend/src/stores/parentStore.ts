@@ -8,7 +8,7 @@ import { create } from 'zustand';
 
 export interface ParentChild {
     student_id: number;
-    school_user_id?: number;
+    institution_user_id?: number;
     first_name: string;
     last_name?: string;
     full_name?: string;
@@ -36,7 +36,7 @@ interface ParentStore {
 export const SELECTED_CHILD_KEY = 'parentSelectedChild';
 const currentParentId = (): number | null => {
     try {
-        return JSON.parse(localStorage.getItem('loggedUser') || 'null')?.school_user_id ?? null;
+        return JSON.parse(localStorage.getItem('loggedUser') || 'null')?.institution_user_id ?? null;
     } catch {
         return null;
     }

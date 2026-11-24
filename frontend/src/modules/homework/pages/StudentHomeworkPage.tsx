@@ -28,7 +28,7 @@ export default function StudentHomeworkPage() {
   const { user } = useAuth();
   const [assignments, setAssignments] = useState<HomeworkAssignment[]>([]);
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<number>(0);
-  // photo of the blank notebook page with the school's QR sticker (starts the homework)
+  // photo of the blank notebook page with the institution's QR sticker (starts the homework)
   const [startPhotos, setStartPhotos] = useState<File[]>([]);
   const [session, setSession] = useState<HomeworkSession | null>(null);
   const [hintText, setHintText] = useState('');

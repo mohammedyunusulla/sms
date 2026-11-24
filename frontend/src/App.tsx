@@ -27,12 +27,12 @@ const UserProfiles = lazy(() => import("./pages/UserProfiles"));
 
 // Lazy loaded UI Elements (rarely used)
 
-// Lazy loaded School Management
-const SchoolList = lazy(() => import("./pages/SchoolManagement").then(m => ({ default: m.SchoolList })));
-const SchoolForm = lazy(() => import("./pages/SchoolManagement").then(m => ({ default: m.SchoolForm })));
-const SchoolDetail = lazy(() => import("./pages/SchoolManagement").then(m => ({ default: m.SchoolDetail })));
-const SchoolAdminsList = lazy(() => import("./pages/SchoolManagement").then(m => ({ default: m.SchoolAdminsList })));
-const SystemAdminsList = lazy(() => import("./pages/SchoolManagement").then(m => ({ default: m.SystemAdminsList })));
+// Lazy loaded Institution Management
+const InstitutionList = lazy(() => import("./pages/InstitutionManagement").then(m => ({ default: m.InstitutionList })));
+const InstitutionForm = lazy(() => import("./pages/InstitutionManagement").then(m => ({ default: m.InstitutionForm })));
+const InstitutionDetail = lazy(() => import("./pages/InstitutionManagement").then(m => ({ default: m.InstitutionDetail })));
+const InstitutionAdminsList = lazy(() => import("./pages/InstitutionManagement").then(m => ({ default: m.InstitutionAdminsList })));
+const SystemAdminsList = lazy(() => import("./pages/InstitutionManagement").then(m => ({ default: m.SystemAdminsList })));
 
 // Lazy loaded User Management
 const UserList = lazy(() => import("./pages/UserManagement").then(m => ({ default: m.UserList })));
@@ -218,12 +218,12 @@ function AppContent() {
 
                         {/* Others Page */}
                         <Route path="/profile" element={<UserProfiles />} />
-                        {/* School Management Routes */}
-                        <Route path="/schools" element={guarded('/schools', <SchoolList />)} />
-                        <Route path="/schools/new" element={guarded('/schools/new', <SchoolForm />)} />
-                        <Route path="/schools/:id/edit" element={guarded('/schools/:id/edit', <SchoolForm />)} />
-                        <Route path="/schools/:id" element={guarded('/schools/:id', <SchoolDetail />)} />
-                        <Route path="/school-admins" element={guarded('/school-admins', <SchoolAdminsList />)} />
+                        {/* Institution Management Routes */}
+                        <Route path="/institutions" element={guarded('/institutions', <InstitutionList />)} />
+                        <Route path="/institutions/new" element={guarded('/institutions/new', <InstitutionForm />)} />
+                        <Route path="/institutions/:id/edit" element={guarded('/institutions/:id/edit', <InstitutionForm />)} />
+                        <Route path="/institutions/:id" element={guarded('/institutions/:id', <InstitutionDetail />)} />
+                        <Route path="/institution-admins" element={guarded('/institution-admins', <InstitutionAdminsList />)} />
                         <Route path="/system-admins" element={guarded('/system-admins', <SystemAdminsList />)} />
 
                         {/* User Management Routes */}

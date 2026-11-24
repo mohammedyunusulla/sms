@@ -1,6 +1,6 @@
 /**
  * Exam results for students (their own) and parents (the child picked in the header dropdown).
- * Only exams whose results the school has published are shown (enforced by the backend).
+ * Only exams whose results the institution has published are shown (enforced by the backend).
  */
 import { FC } from 'react';
 import { PageHeader } from '../../components';
@@ -17,8 +17,8 @@ export const MyResults: FC = () => {
                 subtitle="Your marks and report cards for each exam"
                 breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'My Results', href: '#' }]}
             />
-            {user?.role === 'STUDENT' && user.school_user_id
-                ? <AnnualResultsView studentId={String(user.school_user_id)} forFamily />
+            {user?.role === 'STUDENT' && user.institution_user_id
+                ? <AnnualResultsView studentId={String(user.institution_user_id)} forFamily />
                 : <p className="text-sm text-gray-500 dark:text-gray-400">This page is for student accounts.</p>}
         </div>
     );

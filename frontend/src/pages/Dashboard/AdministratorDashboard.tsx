@@ -1,6 +1,6 @@
 /**
  * Administrator Dashboard
- * For SCHOOL_ADMIN and PRINCIPAL roles
+ * For INSTITUTION_ADMIN and PRINCIPAL roles
  * All data comes from independent API calls with their own loaders
  */
 
@@ -62,7 +62,7 @@ const AdministratorDashboard: FC = () => {
                     <span>
                         {user?.academic_years?.length
                             ? 'Dashboard data is unavailable until a current academic year is set.'
-                            : 'Set up your first academic year to start using the dashboard and school features.'}
+                            : 'Set up your first academic year to start using the dashboard and institution features.'}
                     </span>
                     <Button variant="primary" size="sm" onClick={() => setShowYearModal(true)}>
                         {user?.academic_years?.length ? 'Manage academic years' : 'Create academic year'}
@@ -70,21 +70,21 @@ const AdministratorDashboard: FC = () => {
                 </div>
             )}
 
-            {/* Stats Cards - Independent API: /schoolAdminDashboard/stats */}
+            {/* Stats Cards - Independent API: /institutionAdminDashboard/stats */}
             <StatsCardsSection key={`stats-${cardKey}`} />
 
             {/* Attendance + Finance Row - Two independent API calls */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Attendance Overview - API: /schoolAdminDashboard/attendance-overview */}
+                {/* Attendance Overview - API: /institutionAdminDashboard/attendance-overview */}
                 <AttendanceOverviewCard key={`attendance-${cardKey}`} />
 
-                {/* Finance Summary - API: /schoolAdminDashboard/finance-summary */}
+                {/* Finance Summary - API: /institutionAdminDashboard/finance-summary */}
                 <FinanceSummaryCard key={`finance-${cardKey}`} />
             </div>
 
             {/* Expense Trend + Announcements - Two independent API calls */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Expense Trend Chart - API: /schoolAdminDashboard/breakdown/monthly */}
+                {/* Expense Trend Chart - API: /institutionAdminDashboard/breakdown/monthly */}
                 <div className="lg:col-span-2">
                     <ExpenseTrendCard key={`expense-${cardKey}`} />
                 </div>
@@ -222,7 +222,7 @@ const AdministratorDashboard: FC = () => {
                 </div>
             </div>
 
-            {/* Class Timetable - Independent API: /schoolAdminDashboard/timetable + /classes/list + /classes/sections */}
+            {/* Class Timetable - Independent API: /institutionAdminDashboard/timetable + /classes/list + /classes/sections */}
             <TimetableCard key={`timetable-${cardKey}`} />
 
             <AcademicYearManagementModal isOpen={showYearModal} onClose={() => setShowYearModal(false)} />

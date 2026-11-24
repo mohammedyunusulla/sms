@@ -62,7 +62,7 @@ const REST: Feature[] = [
   {
     icon: WalletIcon,
     title: "Fees & expenses",
-    body: "Set up fee structures, record collections and keep school expenses in check.",
+    body: "Set up fee structures, record collections and keep expenses in check.",
     tone: "blue",
   },
   {
@@ -74,7 +74,7 @@ const REST: Feature[] = [
   {
     icon: MegaphoneIcon,
     title: "Announcements",
-    body: "Share notices and updates with your whole school community instantly.",
+    body: "Share notices and updates with your whole community instantly.",
     tone: "orange",
   },
   {
@@ -151,10 +151,10 @@ function BusTile() {
             <BusIcon className="size-6" />
           </span>
           <h3 className="mt-5 text-2xl font-semibold tracking-tight text-gray-900 dark:text-white">
-            Safer school transport
+            Safer student transport
           </h3>
           <p className="mt-3 text-sm leading-relaxed text-gray-600 dark:text-gray-400">
-            Bus staff record every boarding and drop-off with a quick QR scan, with daily reports for the school.
+            Bus staff record every boarding and drop-off with a quick QR scan, with daily reports for the institution.
             Live map tracking for parents is coming soon in the EduSpyre mobile app.
           </p>
           <ul className="mt-5 flex flex-wrap gap-2">
@@ -188,11 +188,11 @@ function BusTile() {
               Home stop
             </text>
 
-            {/* School */}
+            {/* Campus */}
             <circle cx="296" cy="34" r="12" className="fill-success-500/20" />
             <circle cx="296" cy="34" r="7" className="fill-success-500" />
             <text x="296" y="62" textAnchor="middle" className="fill-gray-500 text-[9px] font-medium dark:fill-gray-400">
-              School
+              Campus
             </text>
 
             {/* Bus */}
@@ -227,7 +227,7 @@ export default function FeaturesSection() {
             eyebrow="Features"
             title={
               <>
-                Everything your school runs on, <span className="landing-gradient-text">in one platform</span>
+                Everything your institution runs on, <span className="landing-gradient-text">in one platform</span>
               </>
             }
             description="Replace scattered spreadsheets, paper registers and group chats with connected modules that share the same students, classes and academic year."

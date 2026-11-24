@@ -1,6 +1,6 @@
 import api from "../../lib/axios";
 
-const BASE = "/schoolAdminDashboard";
+const BASE = "/institutionAdminDashboard";
 
 const dashboardService = {
   async getStats(skid, academicYearId) {

@@ -14,7 +14,7 @@ import {
     formatDateShort,
     loadPdfFonts,
 } from './HeaderAndFooterComponent';
-import type { SchoolData, PdfAction, AttendanceReportData } from './printTypes';
+import type { InstitutionData, PdfAction, AttendanceReportData } from './printTypes';
 
 // A4 landscape width in points
 const A4_WIDTH = 841.89;
@@ -24,7 +24,7 @@ const A4_WIDTH = 841.89;
  */
 export const generateAttendanceReport = async (
     reportData: AttendanceReportData,
-    schoolData: SchoolData,
+    institutionData: InstitutionData,
     action: PdfAction = 'download'
 ): Promise<void> => {
     await loadPdfFonts();
@@ -316,8 +316,8 @@ export const generateAttendanceReport = async (
     // Signature section
     content.push(getSignatureSection());
 
-    // Insert full school header as first content element (page 1 only)
-    content.unshift(getReportHeader(schoolData, title, subtitle, pageOrientation, true));
+    // Insert full institution header as first content element (page 1 only)
+    content.unshift(getReportHeader(institutionData, title, subtitle, pageOrientation, true));
 
     // Compact top margin: just enough for page 2+ continuation header
     const topMargin = 45;
@@ -352,7 +352,7 @@ export const generateAttendanceReport = async (
             };
         },
         footer: (currentPage: number, pageCount: number) => {
-            return getReportFooter(currentPage, pageCount, schoolData?.generatedBy);
+            return getReportFooter(currentPage, pageCount, institutionData?.generatedBy);
         },
         content,
         styles: commonPdfStyles,

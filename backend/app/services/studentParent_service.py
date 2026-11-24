@@ -1,6 +1,6 @@
 from app import db
 from app.models.tenant import StudentParent, Student, Parent
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from sqlalchemy import and_
 from typing import List, Dict, Optional
 
@@ -12,7 +12,7 @@ class StudentParentService:
         Assign multiple students to a parent
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 parent_user_id = data.get('parent_user_id')
                 student_user_ids = data.get('student_user_ids', [])
                 relation_type = data.get('relation_type', 'guardian')
@@ -87,7 +87,7 @@ class StudentParentService:
         4. Update relation type only (same parent, different relation)
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Validate student exists
                 student = tenant_session.query(Student).filter_by(
                     user_id=student_user_id
@@ -172,7 +172,7 @@ class StudentParentService:
         Get all students linked to a parent
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Check if parent exists
                 parent = tenant_session.query(Parent).filter_by(user_id=parent_user_id).first()
                 if not parent:
@@ -212,7 +212,7 @@ class StudentParentService:
         Get all parents linked to a student
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Check if student exists
                 student = tenant_session.query(Student).filter_by(user_id=student_user_id).first()
                 if not student:
@@ -251,7 +251,7 @@ class StudentParentService:
         Remove a student-parent relationship
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 link = tenant_session.query(StudentParent).filter_by(
                     student_user_id=student_user_id,
                     parent_user_id=parent_user_id
@@ -272,7 +272,7 @@ class StudentParentService:
         Update the relation type between a parent and student
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 link = tenant_session.query(StudentParent).filter_by(
                     student_user_id=student_user_id,
                     parent_user_id=parent_user_id
@@ -294,10 +294,10 @@ class StudentParentService:
     @staticmethod
     def get_all_relationships(skid: str):
         """
-        Get all parent-student relationships for a school
+        Get all parent-student relationships for an institution
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 relationships = tenant_session.query(
                     StudentParent, Student, Parent
                 ).join(
@@ -334,8 +334,8 @@ class StudentParentService:
         Used by the parent mobile app to populate child selector tabs.
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
-                from app.models.tenant.SchoolUsers import SchoolUsers
+            with switch_to_institution_db(skid) as tenant_session:
+                from app.models.tenant.InstitutionUsers import InstitutionUsers
                 from app.models.tenant.Class import Class
                 from app.models.tenant.Sections import Section
 
@@ -345,14 +345,14 @@ class StudentParentService:
                     Student.roll_no,
                     Student.class_id,
                     Student.section_id,
-                    SchoolUsers.first_name,
-                    SchoolUsers.last_name,
+                    InstitutionUsers.first_name,
+                    InstitutionUsers.last_name,
                     Class.class_name,
                     Section.section_name,
                 ).join(
                     Student, StudentParent.student_user_id == Student.user_id
                 ).join(
-                    SchoolUsers, Student.user_id == SchoolUsers.id
+                    InstitutionUsers, Student.user_id == InstitutionUsers.id
                 ).outerjoin(
                     Class, Student.class_id == Class.id
                 ).outerjoin(

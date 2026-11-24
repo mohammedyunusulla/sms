@@ -1,6 +1,6 @@
 /**
  * Dashboard Service
- * API calls for school admin / principal dashboard
+ * API calls for institution admin / principal dashboard
  */
 
 import { getApiClient } from './api/client';
@@ -98,7 +98,7 @@ export interface TimetableData {
         section_name: string;
         total_periods: number;
         period_duration: number;
-        school_start_time: string;
+        institution_start_time: string;
         lunch_start_time: string;
         lunch_duration: number;
     } | null;
@@ -252,7 +252,7 @@ const dashboardService = {
         skid: string,
         academicYearId: number,
         userRole: string,
-        schoolUserId: number
+        institutionUserId: number
     ): Promise<AnnouncementItem[]> => {
         const client = getApiClient();
         const response: any = await client.get(
@@ -261,7 +261,7 @@ const dashboardService = {
                 params: {
                     academic_year_id: academicYearId,
                     user_role: userRole,
-                    school_user_id: schoolUserId,
+                    institution_user_id: institutionUserId,
                 },
             }
         );
@@ -296,12 +296,12 @@ const dashboardService = {
     },
 
     /**
-     * Get classes list for a school
+     * Get classes list for an institution
      */
     getClasses: async (skid: string): Promise<ClassItem[]> => {
         const client = getApiClient();
         const response: any = await client.get(
-            API_ENDPOINTS.CLASSES.LIST_BY_SCHOOL(skid)
+            API_ENDPOINTS.CLASSES.LIST_BY_INSTITUTION(skid)
         );
         if (response.code === 200) {
             return response.data || [];

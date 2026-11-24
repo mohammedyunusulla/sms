@@ -8,8 +8,8 @@
  * Backend role names exactly as defined
  */
 export enum UserRole {
-  SUPER_ADMIN = 'SUPER_ADMIN',      // System admin - creates schools
-  SCHOOL_ADMIN = 'SCHOOL_ADMIN',    // School admin - manages school
+  SUPER_ADMIN = 'SUPER_ADMIN',      // System admin - creates institutions
+  INSTITUTION_ADMIN = 'INSTITUTION_ADMIN',    // Institution admin - manages institution
   PRINCIPAL = 'PRINCIPAL',          // Principal/Leadership
   TEACHER = 'TEACHER',              // Teacher/Educator
   STUDENT = 'STUDENT',              // Student/Learner
@@ -23,7 +23,7 @@ export enum UserRole {
  */
 export const USER_ROLE_DISPLAY: Record<UserRole, string> = {
   [UserRole.SUPER_ADMIN]: 'System Administrator',
-  [UserRole.SCHOOL_ADMIN]: 'School Administrator',
+  [UserRole.INSTITUTION_ADMIN]: 'Institution Administrator',
   [UserRole.PRINCIPAL]: 'Principal',
   [UserRole.TEACHER]: 'Teacher',
   [UserRole.STUDENT]: 'Student',

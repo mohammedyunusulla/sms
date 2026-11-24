@@ -8,12 +8,12 @@ class StudentQRSticker(BaseModelTenant, BaseModelTenantMixin):
     __tablename__ = "student_qr_stickers"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    student_id = Column(Integer, ForeignKey("school_users.id"), nullable=False, unique=True, index=True)
+    student_id = Column(Integer, ForeignKey("institution_users.id"), nullable=False, unique=True, index=True)
     qr_code_value = Column(String(120), nullable=False, unique=True, index=True)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=func.current_timestamp())
 
-    student = relationship("SchoolUsers")
+    student = relationship("InstitutionUsers")
 
 
 class HomeworkAssignment(BaseModelTenant, BaseModelTenantMixin):
@@ -42,7 +42,7 @@ class StudentHomeworkSession(BaseModelTenant, BaseModelTenantMixin):
     __tablename__ = "student_homework_sessions"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    student_id = Column(Integer, ForeignKey("school_users.id"), nullable=False, index=True)
+    student_id = Column(Integer, ForeignKey("institution_users.id"), nullable=False, index=True)
     assignment_id = Column(Integer, ForeignKey("homework_assignments.id"), nullable=False, index=True)
     status = Column(String(20), default="in_progress", nullable=False, index=True)
     started_at = Column(DateTime, default=func.current_timestamp(), nullable=False)
@@ -65,5 +65,5 @@ class StudentHomeworkSession(BaseModelTenant, BaseModelTenantMixin):
     created_at = Column(DateTime, default=func.current_timestamp())
     updated_at = Column(DateTime, default=func.current_timestamp(), onupdate=func.current_timestamp())
 
-    student = relationship("SchoolUsers")
+    student = relationship("InstitutionUsers")
     assignment = relationship("HomeworkAssignment")

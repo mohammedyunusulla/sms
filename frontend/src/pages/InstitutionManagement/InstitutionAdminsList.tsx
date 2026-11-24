@@ -1,14 +1,14 @@
 /**
- * School Admins List Page
- * Manage school administrators with edit, password change, and delete functionality
+ * Institution Admins List Page
+ * Manage institution administrators with edit, password change, and delete functionality
  */
 
 import { FC, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { passwordProblem } from '../../utils/formValidation';
 import { PageHeader, LoadingSpinner, DataTable, Button, Modal, ConfirmDialog, Badge } from '../../components';
-import { schoolService } from '../../services/modules/schoolService';
-import SchoolAdminForm from './schoolAdminForm';
+import { institutionService } from '../../services/modules/institutionService';
+import InstitutionAdminForm from './institutionAdminForm';
 
 interface IColumn {
   key: string;
@@ -17,14 +17,14 @@ interface IColumn {
   render?: (value: any, row: any) => React.ReactNode;
 }
 
-const SchoolAdminsList: FC = () => {
+const InstitutionAdminsList: FC = () => {
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<any[]>([]);
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<any>(null);
-  const [selectedSchool, setSelectedSchool] = useState<any>(null);
+  const [selectedInstitution, setSelectedInstitution] = useState<any>(null);
   const [newPassword, setNewPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState<string | null>(null);
@@ -49,7 +49,7 @@ const SchoolAdminsList: FC = () => {
   const fetchAdmins = async () => {
     try {
       setLoading(true);
-      const response = await schoolService.listSchoolAdmins();
+      const response = await institutionService.listInstitutionAdmins();
       const admins = response.data.map((admin: any, index: number) => ({
         ...admin,
         key: admin.id,
@@ -57,8 +57,8 @@ const SchoolAdminsList: FC = () => {
       }));
       setRows(admins);
     } catch (error: any) {
-      console.error('Error fetching school admins:', error);
-      toast.error('Failed to fetch school admins');
+      console.error('Error fetching institution admins:', error);
+      toast.error('Failed to fetch institution admins');
       setRows([]);
     } finally {
       setLoading(false);
@@ -66,21 +66,21 @@ const SchoolAdminsList: FC = () => {
   };
 
   const handleEdit = (admin: any) => {
-    const schoolObj = {
-      id: admin.school_id,
-      name: admin.school_name,
-      code: admin.school_code,
+    const institutionObj = {
+      id: admin.institution_id,
+      name: admin.institution_name,
+      code: admin.institution_code,
       skid: admin.skid,
-      school_admin_id: admin.id,
+      institution_admin_id: admin.id,
     };
-    setSelectedSchool(schoolObj);
+    setSelectedInstitution(institutionObj);
     setEditDialogOpen(true);
     setShowActionsMenu(null);
   };
 
   const handleEditClose = () => {
     setEditDialogOpen(false);
-    setSelectedSchool(null);
+    setSelectedInstitution(null);
     fetchAdmins();
   };
 
@@ -101,7 +101,7 @@ const SchoolAdminsList: FC = () => {
 
     try {
       setLoading(true);
-      await schoolService.changeAdminPassword(selectedAdmin.id, newPassword);
+      await institutionService.changeAdminPassword(selectedAdmin.id, newPassword);
       toast.success('Password changed successfully!');
       setPasswordDialogOpen(false);
       setNewPassword('');
@@ -135,7 +135,7 @@ const SchoolAdminsList: FC = () => {
     if (!selectedAdmin) return;
     try {
       setLoading(true);
-      await schoolService.deactivateSchoolAdmin(selectedAdmin.skid, selectedAdmin.school_user_id);
+      await institutionService.deactivateInstitutionAdmin(selectedAdmin.skid, selectedAdmin.institution_user_id);
       toast.success(`${selectedAdmin.first_name} ${selectedAdmin.last_name} deleted. They can be reactivated from this list.`);
       setDeleteConfirmOpen(false);
       fetchAdmins();
@@ -146,11 +146,11 @@ const SchoolAdminsList: FC = () => {
     }
   };
 
-  const handleReactivate = async (admin: { skid: string; school_user_id: number; first_name?: string; last_name?: string }) => {
+  const handleReactivate = async (admin: { skid: string; institution_user_id: number; first_name?: string; last_name?: string }) => {
     setShowActionsMenu(null);
     try {
       setLoading(true);
-      await schoolService.reactivateSchoolAdmin(admin.skid, admin.school_user_id);
+      await institutionService.reactivateInstitutionAdmin(admin.skid, admin.institution_user_id);
       toast.success(`${admin.first_name ?? ''} ${admin.last_name ?? ''} reactivated`.trim());
       fetchAdmins();
     } catch (err: unknown) {
@@ -192,14 +192,14 @@ const SchoolAdminsList: FC = () => {
       width: 130,
     },
     {
-      key: 'school_name',
-      label: 'School',
+      key: 'institution_name',
+      label: 'Institution',
       width: 160,
       render: (value, row) => (
         <div>
           <div className="font-medium text-gray-900 dark:text-white truncate">{value}</div>
-          {row.school_code && row.school_code !== '-' && (
-            <Badge variant="info">{row.school_code}</Badge>
+          {row.institution_code && row.institution_code !== '-' && (
+            <Badge variant="info">{row.institution_code}</Badge>
           )}
         </div>
       ),
@@ -217,17 +217,17 @@ const SchoolAdminsList: FC = () => {
   ];
 
   if (loading && rows.length === 0) {
-    return <LoadingSpinner fullHeight message="Loading school admins..." />;
+    return <LoadingSpinner fullHeight message="Loading institution admins..." />;
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="School Administrators"
-        subtitle="Manage school admin users and their access"
+        title="Institution Administrators"
+        subtitle="Manage institution admin users and their access"
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
-          { label: 'School Admins', href: '#' },
+          { label: 'Institution Admins', href: '#' },
         ]}
       />
 
@@ -315,14 +315,14 @@ const SchoolAdminsList: FC = () => {
         </>
       )}
 
-      {/* Edit School Admin Modal */}
+      {/* Edit Institution Admin Modal */}
       <Modal
         isOpen={editDialogOpen}
         onClose={handleEditClose}
-        title={`Edit School Admin for "${selectedSchool?.name}"`}
+        title={`Edit Institution Admin for "${selectedInstitution?.name}"`}
         size="lg"
       >
-        {selectedSchool && <SchoolAdminForm school={selectedSchool} onClose={handleEditClose} />}
+        {selectedInstitution && <InstitutionAdminForm institution={selectedInstitution} onClose={handleEditClose} />}
       </Modal>
 
       {/* Change Password Modal */}
@@ -397,7 +397,7 @@ const SchoolAdminsList: FC = () => {
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={deleteConfirmOpen}
-        title="Delete School Admin"
+        title="Delete Institution Admin"
         message={`Delete ${selectedAdmin?.first_name} ${selectedAdmin?.last_name}? They will be marked inactive and can no longer log in. Their records are kept, and you can reactivate them from this list.`}
         type="danger"
         confirmText="Delete"
@@ -410,4 +410,4 @@ const SchoolAdminsList: FC = () => {
   );
 };
 
-export default SchoolAdminsList;
+export default InstitutionAdminsList;

@@ -10,7 +10,7 @@ import { Modal, FormField, FormSelect, PrintActions, LoadingSpinner, DataTable }
 import { examService } from '@/services/modules/examService';
 import { useAuthStore } from '@/stores/authStore';
 import { generateExamTimetablePdf } from '@/prints';
-import type { SchoolData, PdfAction } from '@/prints';
+import type { InstitutionData, PdfAction } from '@/prints';
 
 export interface StudentExamTimetableModalProps {
     isOpen: boolean;
@@ -106,11 +106,11 @@ const StudentExamTimetableModal: FC<StudentExamTimetableModalProps> = ({ isOpen,
             const studentName = student?.full_name || student?.name || '';
 
             const authUser = useAuthStore.getState().user;
-            const schoolData: SchoolData = {
-                schoolName: authUser?.school_name || 'School Name',
-                schoolAddress: '',
-                schoolPhone: '',
-                schoolEmail: authUser?.email || '',
+            const institutionData: InstitutionData = {
+                institutionName: authUser?.institution_name || 'Institution Name',
+                institutionAddress: '',
+                institutionPhone: '',
+                institutionEmail: authUser?.email || '',
                 logo: null,
                 generatedBy: authUser?.full_name || authUser?.name || 'System',
             };
@@ -123,7 +123,7 @@ const StudentExamTimetableModal: FC<StudentExamTimetableModalProps> = ({ isOpen,
                     studentName,
                     entries,
                 },
-                schoolData,
+                institutionData,
                 action
             );
             toast.success(

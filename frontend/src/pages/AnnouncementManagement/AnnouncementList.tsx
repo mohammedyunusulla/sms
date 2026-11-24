@@ -177,7 +177,7 @@ const AnnouncementList: FC = () => {
             {/* Page Header */}
             <PageHeader
                 title="Announcements"
-                subtitle="View school announcements and updates"
+                subtitle="View announcements and updates"
                 breadcrumbs={[
                     { label: 'Dashboard', href: '/dashboard' },
                     { label: 'Announcements', href: '#' },

@@ -1,4 +1,4 @@
-import { getApiClient, getSchoolId } from '../api/client';
+import { getApiClient, getInstitutionId } from '../api/client';
 import { IAssignment, IAssignmentSubmission, ITeacherClassSubject } from '../../types/index';
 
 class AssignmentService {
@@ -9,13 +9,13 @@ class AssignmentService {
      */
     async getTeacherClassSubjects(teacherId: number): Promise<ITeacherClassSubject[]> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response: any = await api.get(`${this.baseUrl}/teacher-classes/${schoolId}`, {
+        const response: any = await api.get(`${this.baseUrl}/teacher-classes/${institutionId}`, {
             params: { teacher_id: teacherId },
         });
         return response.data || [];
@@ -35,13 +35,13 @@ class AssignmentService {
         assignment_date: string;
     }): Promise<IAssignment> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response: any = await api.post(`${this.baseUrl}/create/${schoolId}`, data);
+        const response: any = await api.post(`${this.baseUrl}/create/${institutionId}`, data);
         if (response.code === 200 && response.status === 'success') {
             return response.data;
         }
@@ -53,13 +53,13 @@ class AssignmentService {
      */
     async update(assignmentId: number, data: { assignment_text?: string; assignment_drawing?: string }): Promise<IAssignment> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response: any = await api.put(`${this.baseUrl}/update/${assignmentId}/${schoolId}`, data);
+        const response: any = await api.put(`${this.baseUrl}/update/${assignmentId}/${institutionId}`, data);
         if (response.code === 200 && response.status === 'success') {
             return response.data;
         }
@@ -75,13 +75,13 @@ class AssignmentService {
         academicYearId: number
     ): Promise<IAssignment[]> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response: any = await api.get(`${this.baseUrl}/list/${schoolId}`, {
+        const response: any = await api.get(`${this.baseUrl}/list/${institutionId}`, {
             params: {
                 teacher_id: teacherId,
                 date,
@@ -96,13 +96,13 @@ class AssignmentService {
      */
     async getWithStudents(assignmentId: number): Promise<IAssignment & { students: IAssignmentSubmission[] }> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response: any = await api.get(`${this.baseUrl}/${assignmentId}/${schoolId}`);
+        const response: any = await api.get(`${this.baseUrl}/${assignmentId}/${institutionId}`);
         if (response.code === 200 && response.status === 'success') {
             return response.data;
         }
@@ -122,14 +122,14 @@ class AssignmentService {
         reviewerId: number
     ): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const response: any = await api.post(
-            `${this.baseUrl}/${assignmentId}/submissions/${schoolId}`,
+            `${this.baseUrl}/${assignmentId}/submissions/${institutionId}`,
             {
                 submissions,
                 reviewer_id: reviewerId,
@@ -149,10 +149,10 @@ class AssignmentService {
         date?: string
     ): Promise<IAssignment[]> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const params: any = {
@@ -161,7 +161,7 @@ class AssignmentService {
         };
         if (date) params.date = date;
 
-        const response: any = await api.get(`${this.baseUrl}/student/${schoolId}`, { params });
+        const response: any = await api.get(`${this.baseUrl}/student/${institutionId}`, { params });
         return response.data || [];
     }
 
@@ -170,13 +170,13 @@ class AssignmentService {
      */
     async delete(assignmentId: number): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response: any = await api.delete(`${this.baseUrl}/${assignmentId}/${schoolId}`);
+        const response: any = await api.delete(`${this.baseUrl}/${assignmentId}/${institutionId}`);
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.message || 'Failed to delete assignment');
         }

@@ -6,14 +6,14 @@ from app.services.academic_year_service import AcademicYearService
 academic_year_bp = Blueprint('academic-years', __name__)
 
 @academic_year_bp.route('/get/<skid>', methods=['GET'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission=('manage_academic_years', 'manage_students'))
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission=('manage_academic_years', 'manage_students'))
 def get_academic_years(skid):
     """
-    Get all academic years for a school
+    Get all academic years for an institution
     """
     try:
         if not skid:
-            return jsonify({'message': 'School ID is required'}), 400
+            return jsonify({'message': 'Institution ID is required'}), 400
         
         academic_years = AcademicYearService.get_all_academic_years(skid)
         
@@ -31,7 +31,7 @@ def get_academic_years(skid):
 
 
 @academic_year_bp.route('/create/<skid>', methods=['POST'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_academic_years')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_academic_years')
 @log_actions('CREATE_ACADEMIC_YEAR')
 def create_academic_year(skid):
     """
@@ -53,7 +53,7 @@ def create_academic_year(skid):
             return jsonify({'message': 'No data provided'}), 400
             
         if not skid:
-            return jsonify({'message': 'School ID is required'}), 400
+            return jsonify({'message': 'Institution ID is required'}), 400
         
         # Validate required fields
         required_fields = ['year_name', 'start_date', 'end_date']
@@ -81,7 +81,7 @@ def create_academic_year(skid):
 
 
 @academic_year_bp.route('/update/<skid>/<int:year_id>', methods=['PUT'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_academic_years')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_academic_years')
 @log_actions('UPDATE_ACADEMIC_YEAR')
 def update_academic_year(skid, year_id):
     """
@@ -101,7 +101,7 @@ def update_academic_year(skid, year_id):
             return jsonify({'message': 'No data provided'}), 400
             
         if not skid:
-            return jsonify({'message': 'School ID is required'}), 400
+            return jsonify({'message': 'Institution ID is required'}), 400
         
         # Update academic year
         academic_year = AcademicYearService.update_academic_year(data, skid, year_id)
@@ -120,7 +120,7 @@ def update_academic_year(skid, year_id):
 
 
 @academic_year_bp.route('/delete/<skid>/<int:year_id>', methods=['DELETE'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_academic_years')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_academic_years')
 @log_actions('DELETE_ACADEMIC_YEAR')
 def delete_academic_year(skid, year_id):
     """
@@ -128,7 +128,7 @@ def delete_academic_year(skid, year_id):
     """
     try:
         if not skid:
-            return jsonify({'message': 'School ID is required'}), 400
+            return jsonify({'message': 'Institution ID is required'}), 400
 
         result = AcademicYearService.delete_academic_year(skid, year_id)
 
@@ -146,7 +146,7 @@ def delete_academic_year(skid, year_id):
 
 
 @academic_year_bp.route('/patch/<skid>/<int:year_id>/set-current', methods=['PATCH'])
-@login_required(['SUPER_ADMIN', 'SCHOOL_ADMIN'], permission='manage_academic_years')
+@login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_academic_years')
 @log_actions('SET_CURRENT_ACADEMIC_YEAR')
 def set_current_academic_year(skid, year_id):
     """
@@ -155,7 +155,7 @@ def set_current_academic_year(skid, year_id):
     """
     try:
         if not skid:
-            return jsonify({'message': 'School ID is required'}), 400
+            return jsonify({'message': 'Institution ID is required'}), 400
         
         # Set as current
         result = AcademicYearService.set_current_academic_year(skid, year_id)

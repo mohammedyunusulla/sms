@@ -1,11 +1,11 @@
-# School Management System Backend
+# Institution Management System Backend
 
-A comprehensive Flask-based backend system for managing multiple schools with role-based access control and multi-tenant architecture.
+A comprehensive Flask-based backend system for managing multiple institutions with role-based access control and multi-tenant architecture.
 
 ## Features
 
-- **Multi-tenant Architecture**: Separate database for each school
-- **Role-based Access Control**: Super Admin, School Admin, Principal, Teacher, Student, Parent
+- **Multi-tenant Architecture**: Separate database for each institution
+- **Role-based Access Control**: Super Admin, Institution Admin, Principal, Teacher, Student, Parent
 - **JWT Authentication**: Secure authentication with refresh tokens
 - **Session Management**: Track user login/logout sessions
 - **Comprehensive Logging**: Action logging with IP tracking
@@ -29,7 +29,7 @@ alembic init migrations_tenant
 ## Project Structure
 
 ```
-school_management_backend/
+institution_management_backend/
 │
 ├── app/
 │   ├── __init__.py              # Flask app factory
@@ -37,20 +37,20 @@ school_management_backend/
 │   │   ├── __init__.py
 │   │   ├── base.py
 |   │   ├── main/
-│   │       ├── School.py           # Base model with common fields
+│   │       ├── Institution.py           # Base model with common fields
 │   │       ├── User.py             # User model 
-│   │       ├── UserSession.py      # School model
+│   │       ├── UserSession.py      # Institution model
 |   │   ├── tenant/
 |   |       ├── __init__.py           
 |   |       ├── Student.py           
 |   |       ├── Teacher.py           
 |   |       ├── Roles.py             
-│   │       └── SchoolUsers.py     
+│   │       └── InstitutionUsers.py     
 │   ├── api/                     # API endpoints
 │   │   ├── __init__.py
 │   │   ├── auth.py             # Authentication endpoints
 │   │   └── user.py             # User management endpoints
-|   |   |__ school.py            # school management endpoints
+|   |   |__ institution.py            # institution management endpoints
 │   ├── decorators/              # Custom decorators
 │   │   ├── __init__.py
 │   │   ├── auth.py             # Authentication decorators
@@ -59,7 +59,7 @@ school_management_backend/
 │   │   ├── __init__.py
 │   │   ├── auth_service.py     # Authentication service
 │   │   └── user_service.py     # User service
-|   |   |__ school_service.py   # school service
+|   |   |__ institution_service.py   # institution service
 │   └── utils/                   # Utility functions
 │       ├── __init__.py
 │       ├── database.py         # Database utilities
@@ -77,9 +77,9 @@ school_management_backend/
 
 ## User Roles
 
-1. **Super Admin**: Manages all schools, creates school admins
-2. **School Admin**: Manages specific school, creates users within school
-3. **Principal**: School admin features + timetable management
+1. **Super Admin**: Manages all institutions, creates institution admins
+2. **Institution Admin**: Manages specific institution, creates users within institution
+3. **Principal**: Institution admin features + timetable management
 4. **Teacher**: Manages classes, assignments, progress reports
 5. **Student**: Views timetable, assignments, submits work
 6. **Parent**: Views child's progress, communicates with teachers
@@ -97,7 +97,7 @@ school_management_backend/
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd school_management_backend
+   cd institution_management_backend
    ```
 
 2. **Create virtual environment**
@@ -121,7 +121,7 @@ school_management_backend/
    ```
 
 5. **Setup PostgreSQL**
-   - Create a PostgreSQL database for super admin - skool_main
+   - Create a PostgreSQL database for super admin - eduspyre_main
    - Update database credentials in `.env`
 
 6. **Initialize database for main db**
@@ -137,22 +137,22 @@ school_management_backend/
    python run.py
    ```
 ## For tenant migrations follow the steps
-   - Initially the school db will be created in the database
+   - Initially the institution db will be created in the database
    - Create Versions Folder in the migrations_tenant folder if not present
    - Replace one tenant db name in the db-url present in the env.py of migrations_tenant folder
-   - run-tenant_dbupgrade only if needed to upgrade the db, because the schema will be created automatically while creating a school.
+   - run-tenant_dbupgrade only if needed to upgrade the db, because the schema will be created automatically while creating an institution.
 
 
 ## Multi-Tenant Architecture
 
-Each school has its own database, created automatically when a new school is registered:
+Each institution has its own database, created automatically when a new institution is registered:
 
-1. **Super Admin Database**: Contains schools and super admin users
-2. **School Databases**: Individual databases for each school (school_ABC123, school_XYZ456, etc.)
+1. **Super Admin Database**: Contains institutions and super admin users
+2. **Institution Databases**: Individual databases for each institution (institution_ABC123, institution_XYZ456, etc.)
 
 ### Database Naming Convention
-- Super Admin DB: `skool_main`
-- School DBs: `school_{school_code}` (e.g., `school_abc123`)
+- Super Admin DB: `eduspyre_main`
+- Institution DBs: `institution_{institution_code}` (e.g., `institution_abc123`)
 
 ## Security Features
 
@@ -183,7 +183,7 @@ Create a `.env` file based on `.env.example`:
 FLASK_ENV=development
 SECRET_KEY=your-secret-key
 JWT_SECRET_KEY=your-jwt-secret
-SUPER_ADMIN_DATABASE_URL=postgresql://user:pass@localhost/skool_main
+SUPER_ADMIN_DATABASE_URL=postgresql://user:pass@localhost/eduspyre_main
 ```
 
 ## Development

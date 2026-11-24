@@ -3,7 +3,7 @@
  * Handles API calls for Academic Year CRUD operations
  */
 
-import { getApiClient, getSchoolId } from '../api/client';
+import { getApiClient, getInstitutionId } from '../api/client';
 import { API_ENDPOINTS } from '../api/config';
 import { AcademicYear } from '../../types/auth';
 
@@ -17,13 +17,13 @@ export interface AcademicYearFormData {
 
 class AcademicYearService {
     /**
-     * All academic years of the school, fresh from the server (the copy cached at login misses
+     * All academic years of the institution, fresh from the server (the copy cached at login misses
      * years created later).
      */
     async listAcademicYears(): Promise<AcademicYear[]> {
-        const skid = getSchoolId();
+        const skid = getInstitutionId();
         if (!skid) {
-            throw new Error('School ID not found');
+            throw new Error('Institution ID not found');
         }
         const response = (await getApiClient().get(`/academic-years/get/${skid}`)) as unknown as
             | { data?: AcademicYear[]; message?: string }
@@ -37,9 +37,9 @@ class AcademicYearService {
      * Create a new academic year
      */
     async createAcademicYear(data: AcademicYearFormData): Promise<AcademicYear> {
-        const skid = getSchoolId();
+        const skid = getInstitutionId();
         if (!skid) {
-            throw new Error('School ID not found');
+            throw new Error('Institution ID not found');
         }
 
         const payload = {
@@ -64,9 +64,9 @@ class AcademicYearService {
      * Update an academic year
      */
     async updateAcademicYear(yearId: string, data: AcademicYearFormData): Promise<AcademicYear> {
-        const skid = getSchoolId();
+        const skid = getInstitutionId();
         if (!skid) {
-            throw new Error('School ID not found');
+            throw new Error('Institution ID not found');
         }
 
         const response: any = await getApiClient().put(
@@ -85,9 +85,9 @@ class AcademicYearService {
      * Set an academic year as current
      */
     async setCurrentAcademicYear(yearId: string): Promise<void> {
-        const skid = getSchoolId();
+        const skid = getInstitutionId();
         if (!skid) {
-            throw new Error('School ID not found');
+            throw new Error('Institution ID not found');
         }
 
         const response: any = await getApiClient().patch(

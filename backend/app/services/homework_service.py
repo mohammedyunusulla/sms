@@ -7,11 +7,11 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
-from app.models.tenant import HomeworkAssignment, SchoolUsers, Student, StudentHomeworkSession
+from app.models.tenant import HomeworkAssignment, InstitutionUsers, Student, StudentHomeworkSession
 from app.models.tenant.Class import Class
 from app.models.tenant.Sections import Section
 from app.services.homework_gemini_service import HomeworkGeminiService
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from app.utils.qr_reader import QrReadError, read_qr_codes
 from app.utils.teaching_scope import student_section_id, teacher_section_ids
 
@@ -68,7 +68,7 @@ def load_images(paths) -> List[Tuple[bytes, str]]:
 
 class HomeworkService:
     STUDENT_ROLE = "STUDENT"
-    STAFF_UNRESTRICTED = ("SUPER_ADMIN", "SCHOOL_ADMIN", "PRINCIPAL")
+    STAFF_UNRESTRICTED = ("SUPER_ADMIN", "INSTITUTION_ADMIN", "PRINCIPAL")
 
     @staticmethod
     def _is_late(assignment, session) -> bool:
@@ -101,7 +101,7 @@ class HomeworkService:
         """None = unrestricted (admin / principal / super admin); otherwise the sections this teacher works in."""
         if cls._role(current_user) in cls.STAFF_UNRESTRICTED:
             return None
-        return teacher_section_ids(tenant_session, current_user.school_user_id)
+        return teacher_section_ids(tenant_session, current_user.institution_user_id)
 
     @staticmethod
     def read_images(files, max_count: int) -> Tuple[Optional[List[Tuple[bytes, str]]], Optional[str]]:
@@ -242,7 +242,7 @@ class HomeworkService:
     @classmethod
     def create_assignment(cls, skid: str, payload: Dict[str, Any], current_user, photos: Optional[Sequence[Tuple[bytes, str]]] = None):
         photos = list(photos or [])
-        with switch_to_school_db(skid) as tenant_session:
+        with switch_to_institution_db(skid) as tenant_session:
             cls._ensure_tables(tenant_session)
             values, error = cls._validate_new_homework(tenant_session, payload, has_photos=bool(photos))
             if error:
@@ -256,7 +256,7 @@ class HomeworkService:
                 return cls._error("Pick a subject taught in the selected section", 422)
             values["subject"] = offered[values["subject"].lower()]
 
-            assignment = HomeworkAssignment(**values, created_by=current_user.school_user_id, is_active=True, instruction_image_paths=[])
+            assignment = HomeworkAssignment(**values, created_by=current_user.institution_user_id, is_active=True, instruction_image_paths=[])
             tenant_session.add(assignment)
             tenant_session.flush()  # need the id for the photo folder
 
@@ -284,13 +284,13 @@ class HomeworkService:
     @classmethod
     def homework_photo(cls, skid: str, assignment_id: int, index: int, current_user):
         """Path + mime of one homework photo, if this user may see the homework. Returns (path, mime, error)."""
-        with switch_to_school_db(skid) as tenant_session:
+        with switch_to_institution_db(skid) as tenant_session:
             cls._ensure_tables(tenant_session)
             assignment = tenant_session.query(HomeworkAssignment).filter_by(id=assignment_id, is_active=True).first()
             if not assignment:
                 return None, None, cls._error("Homework not found", 404)
             if cls._role(current_user) == cls.STUDENT_ROLE:
-                if assignment.section_id != student_section_id(tenant_session, current_user.school_user_id):
+                if assignment.section_id != student_section_id(tenant_session, current_user.institution_user_id):
                     return None, None, cls._error("This homework isn't for your class", 403)
             else:
                 allowed = cls._teacher_sections(tenant_session, current_user)
@@ -323,7 +323,7 @@ class HomeworkService:
         section_id: Optional[int] = None,
     ):
         is_student = cls._role(current_user) == cls.STUDENT_ROLE
-        with switch_to_school_db(skid) as tenant_session:
+        with switch_to_institution_db(skid) as tenant_session:
             cls._ensure_tables(tenant_session)
             query = tenant_session.query(HomeworkAssignment).filter_by(is_active=True).order_by(HomeworkAssignment.created_at.desc())
             if class_id:
@@ -333,7 +333,7 @@ class HomeworkService:
 
             if is_student:
                 # the student's current section (active enrollment first)
-                own_section = student_section_id(tenant_session, current_user.school_user_id)
+                own_section = student_section_id(tenant_session, current_user.institution_user_id)
                 query = query.filter(HomeworkAssignment.section_id == (own_section if own_section else -1))
             else:
                 allowed = cls._teacher_sections(tenant_session, current_user)
@@ -345,7 +345,7 @@ class HomeworkService:
             if is_student:
                 rows = (
                     tenant_session.query(StudentHomeworkSession)
-                    .filter_by(student_id=current_user.school_user_id)
+                    .filter_by(student_id=current_user.institution_user_id)
                     .order_by(StudentHomeworkSession.id.desc())
                     .all()
                 )
@@ -364,9 +364,9 @@ class HomeworkService:
     def start_session(cls, skid: str, student_user_id: int, assignment_id: int, start_image: Optional[Tuple[bytes, str]]):
         """
         Start (or resume) a homework. A new start needs a photo of the notebook page while it is still blank,
-        with the school's QR sticker on it: the QR identifies the page, and one page is used for one homework.
+        with the institution's QR sticker on it: the QR identifies the page, and one page is used for one homework.
         """
-        with switch_to_school_db(skid) as tenant_session:
+        with switch_to_institution_db(skid) as tenant_session:
             cls._ensure_tables(tenant_session)
             assignment = tenant_session.query(HomeworkAssignment).filter_by(id=assignment_id, is_active=True).first()
             if not assignment:
@@ -449,7 +449,7 @@ class HomeworkService:
 
     @classmethod
     def toggle_pause(cls, skid: str, student_user_id: int, session_id: int):
-        with switch_to_school_db(skid) as tenant_session:
+        with switch_to_institution_db(skid) as tenant_session:
             cls._ensure_tables(tenant_session)
             session = tenant_session.query(StudentHomeworkSession).filter_by(
                 id=session_id, student_id=student_user_id, is_active=True
@@ -483,7 +483,7 @@ class HomeworkService:
         student_doubt: str,
         student_images: Optional[Sequence[Tuple[bytes, str]]] = None,
     ):
-        with switch_to_school_db(skid) as tenant_session:
+        with switch_to_institution_db(skid) as tenant_session:
             cls._ensure_tables(tenant_session)
             session = tenant_session.query(StudentHomeworkSession).filter_by(
                 id=session_id, student_id=student_user_id, is_active=True
@@ -544,7 +544,7 @@ class HomeworkService:
         session_id: int,
         images: Sequence[Tuple[bytes, str]],
     ):
-        with switch_to_school_db(skid) as tenant_session:
+        with switch_to_institution_db(skid) as tenant_session:
             cls._ensure_tables(tenant_session)
             session = tenant_session.query(StudentHomeworkSession).filter_by(
                 id=session_id, student_id=student_user_id, is_active=True
@@ -655,7 +655,7 @@ class HomeworkService:
 
     @classmethod
     def latest_session(cls, skid: str, student_user_id: int, assignment_id: int):
-        with switch_to_school_db(skid) as tenant_session:
+        with switch_to_institution_db(skid) as tenant_session:
             cls._ensure_tables(tenant_session)
             assignment = tenant_session.query(HomeworkAssignment).filter_by(id=assignment_id, is_active=True).first()
             if not assignment:
@@ -678,13 +678,13 @@ class HomeworkService:
         A session's photo: kind 'start' (the blank page) or 'page' (finished pages, by index).
         For the student who owns it, and for staff who may see that section. Returns (path, mime, error).
         """
-        with switch_to_school_db(skid) as tenant_session:
+        with switch_to_institution_db(skid) as tenant_session:
             cls._ensure_tables(tenant_session)
             session = tenant_session.query(StudentHomeworkSession).filter_by(id=session_id, is_active=True).first()
             if not session:
                 return None, None, cls._error("Session not found", 404)
             if cls._role(current_user) == cls.STUDENT_ROLE:
-                if session.student_id != current_user.school_user_id:
+                if session.student_id != current_user.institution_user_id:
                     return None, None, cls._error("Session not found", 404)
             else:
                 assignment = tenant_session.query(HomeworkAssignment).filter_by(id=session.assignment_id).first()
@@ -709,7 +709,7 @@ class HomeworkService:
     # ------------------------------------------------------------------ analytics
     @classmethod
     def assignment_analytics(cls, skid: str, assignment_id: int, current_user):
-        with switch_to_school_db(skid) as tenant_session:
+        with switch_to_institution_db(skid) as tenant_session:
             cls._ensure_tables(tenant_session)
             assignment = tenant_session.query(HomeworkAssignment).filter_by(id=assignment_id, is_active=True).first()
             if not assignment:
@@ -719,8 +719,8 @@ class HomeworkService:
                 return cls._error("You can only view analytics for sections you teach", 403)
 
             sessions = tenant_session.query(StudentHomeworkSession).filter_by(assignment_id=assignment_id, is_active=True).all()
-            names = {u.id: f"{u.first_name} {u.last_name or ''}".strip() for u in tenant_session.query(SchoolUsers).filter(
-                SchoolUsers.id.in_([s.student_id for s in sessions] or [-1])).all()}
+            names = {u.id: f"{u.first_name} {u.last_name or ''}".strip() for u in tenant_session.query(InstitutionUsers).filter(
+                InstitutionUsers.id.in_([s.student_id for s in sessions] or [-1])).all()}
             total = len(sessions)
             submitted = [s for s in sessions if s.status in ("submitted", "graded")]
             graded = [s for s in sessions if s.status == "graded"]
@@ -809,13 +809,13 @@ class HomeworkService:
             TimetableEntry.subject_id.isnot(None),
         )}
         if cls._role(current_user) not in cls.STAFF_UNRESTRICTED:
-            ids = {sid for sid in ids if teaches(tenant_session, current_user.school_user_id, section_id, sid)}
+            ids = {sid for sid in ids if teaches(tenant_session, current_user.institution_user_id, section_id, sid)}
         subjects = tenant_session.query(Subject).filter(Subject.id.in_(ids or [-1])).order_by(Subject.subject_name).all()
         return [{"id": s.id, "subject_name": s.subject_name, "subject_code": s.subject_code} for s in subjects]
 
     @classmethod
     def section_subjects(cls, skid: str, section_id: int, current_user):
-        with switch_to_school_db(skid) as tenant_session:
+        with switch_to_institution_db(skid) as tenant_session:
             if not tenant_session.query(Section).filter_by(id=section_id).first():
                 return cls._error("Section not found", 404)
             allowed = cls._teacher_sections(tenant_session, current_user)
@@ -827,7 +827,7 @@ class HomeworkService:
     @classmethod
     def teaching_scope(cls, skid: str, current_user):
         """Which classes/sections this user may use on the teacher page (all, for admins)."""
-        with switch_to_school_db(skid) as tenant_session:
+        with switch_to_institution_db(skid) as tenant_session:
             allowed = cls._teacher_sections(tenant_session, current_user)
             query = tenant_session.query(Section, Class).join(Class, Class.id == Section.class_id)
             if allowed is not None:

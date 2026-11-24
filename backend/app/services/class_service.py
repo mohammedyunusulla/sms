@@ -1,7 +1,7 @@
 from app import db
-from app.models.tenant import Class, Teacher, SchoolUsers, Student, StudentEnrollment
+from app.models.tenant import Class, Teacher, InstitutionUsers, Student, StudentEnrollment
 from app.models.tenant.Sections import Section
-from app.utils.db_manager import switch_to_school_db
+from app.utils.db_manager import switch_to_institution_db
 from app.utils.usage_check import usage_summary, CLASS_REFERENCES, SECTION_REFERENCES, blocked_message
 from sqlalchemy import text, func
 from datetime import date
@@ -35,11 +35,11 @@ class ClassService:
         """
         try:
             if not skid:
-                raise ValueError("School ID (skid) is required")
+                raise ValueError("Institution ID (skid) is required")
             
             name = _class_name(data)
             # Create class in tenant DB
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Check if class name already exists (any capitalisation)
                 existing_class = tenant_session.query(Class).filter(
                     func.lower(Class.class_name) == name.lower()
@@ -70,7 +70,7 @@ class ClassService:
         Update an existing class
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 class_obj = tenant_session.query(Class).filter_by(id=class_id).first()
                 if not class_obj:
                     raise ValueError("Class not found")
@@ -102,7 +102,7 @@ class ClassService:
         Delete a class and all its Section
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 class_obj = tenant_session.query(Class).filter_by(id=class_id).first()
                 if not class_obj:
                     raise ValueError("Class not found")
@@ -127,12 +127,12 @@ class ClassService:
             raise Exception(f"Failed to delete class: {str(e)}")
 
     @staticmethod
-    def get_classes_by_school(skid):
+    def get_classes_by_institution(skid):
         """
-        Get all classes for a specific school
+        Get all classes for a specific institution
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 classes = tenant_session.query(Class).all()
                 
                 for cls in classes:
@@ -153,7 +153,7 @@ class ClassService:
         Get a specific class by ID with student count
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 class_obj = tenant_session.query(Class).filter_by(id=class_id).first()
                 if not class_obj:
                     raise ValueError("Class not found")
@@ -181,7 +181,7 @@ class ClassService:
         Create a new section in tenant database
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Validate class exists
                 class_obj = tenant_session.query(Class).filter_by(id=data['class_id']).first()
                 if not class_obj:
@@ -225,7 +225,7 @@ class ClassService:
         Get all Section for a specific class
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # by name: with no order the tabs swapped after an edit (QA A39)
                 sections = tenant_session.query(Section).filter_by(class_id=class_id).order_by(Section.section_name, Section.id).all()
     
@@ -233,9 +233,9 @@ class ClassService:
                     if section.teacher_id:
                         teacher = tenant_session.query(Teacher).filter_by(user_id=section.teacher_id).first()
                         if teacher:
-                            school_user = tenant_session.query(SchoolUsers).filter_by(id=teacher.user_id).first()
-                            if school_user:
-                                section.teacher_name = f"{school_user.first_name} {school_user.last_name}"
+                            institution_user = tenant_session.query(InstitutionUsers).filter_by(id=teacher.user_id).first()
+                            if institution_user:
+                                section.teacher_name = f"{institution_user.first_name} {institution_user.last_name}"
                                 
                     # Same rule as the class list: current-year active enrollments
                     from app.utils.enrollment import current_section_count
@@ -255,7 +255,7 @@ class ClassService:
             if 'section_name' not in data:
                 raise ValueError("Section name is required")
             
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 section = tenant_session.query(Section).filter_by(id=section_id).first()
                 if not section:
                     raise ValueError("Section not found")
@@ -295,7 +295,7 @@ class ClassService:
         Delete a section
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 section = tenant_session.query(Section).filter_by(id=section_id).first()
                 if not section:
                     raise ValueError("Section not found")
@@ -321,7 +321,7 @@ class ClassService:
         Get a specific section by ID
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 section = tenant_session.query(Section).filter_by(id=section_id).first()
                 if not section:
                     raise ValueError("Section not found")
@@ -338,7 +338,7 @@ class ClassService:
         Ensures a student can only be in ONE section at a time
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Verify section exists
                 section = tenant_session.query(Section).filter_by(id=section_id).first()
                 if not section:
@@ -432,7 +432,7 @@ class ClassService:
         Also cleans up the student's current assignment
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Only the current year's enrollment in this section is removed (older years stay)
                 from app.utils.enrollment import unplace_student
                 student = tenant_session.query(Student).filter_by(user_id=student_id).first()
@@ -458,7 +458,7 @@ class ClassService:
         This is safer than remove + add
         """
         try:
-            with switch_to_school_db(skid) as tenant_session:
+            with switch_to_institution_db(skid) as tenant_session:
                 # Verify new section exists
                 new_section = tenant_session.query(Section).filter_by(id=new_section_id).first()
                 if not new_section:

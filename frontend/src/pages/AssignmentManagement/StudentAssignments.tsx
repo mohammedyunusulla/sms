@@ -18,16 +18,16 @@ const StudentAssignments: FC = () => {
     const [filterSubject, setFilterSubject] = useState('');
 
     useEffect(() => {
-        if (user?.school_user_id && user?.current_academic_year?.id) {
+        if (user?.institution_user_id && user?.current_academic_year?.id) {
             fetchAssignments();
         }
-    }, [user?.school_user_id, user?.current_academic_year?.id, academicYearVersion, filterDate]);
+    }, [user?.institution_user_id, user?.current_academic_year?.id, academicYearVersion, filterDate]);
 
     const fetchAssignments = async () => {
         setLoading(true);
         try {
             const data = await assignmentService.getStudentAssignments(
-                user!.school_user_id,
+                user!.institution_user_id,
                 user!.current_academic_year.id,
                 filterDate || undefined
             );

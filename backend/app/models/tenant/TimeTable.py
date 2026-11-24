@@ -16,7 +16,7 @@ class Timetable(BaseModelTenant, BaseModelTenantMixin):
     
     # Time configuration
     period_duration = Column(Integer, default=45)       # Duration in minutes
-    school_start_time = Column(Time, nullable=True)    # e.g., 09:00
+    institution_start_time = Column(Time, nullable=True)    # e.g., 09:00
     lunch_start_time = Column(Time, nullable=True)     # e.g., 12:30
     lunch_duration = Column(Integer, default=30)        # Duration in minutes
     total_periods = Column(Integer, default=7)          # Total periods per day
@@ -47,7 +47,7 @@ class Timetable(BaseModelTenant, BaseModelTenantMixin):
 
 # Database indexes for better performance
 """
-CREATE INDEX idx_timetable_school_class_section ON timetables( class_id, section_id);
+CREATE INDEX idx_timetable_institution_class_section ON timetables( class_id, section_id);
 CREATE INDEX idx_timetable_academic_year_semester ON timetables(academic_year_id, semester);
 CREATE INDEX idx_timetable_entries_day_period ON timetable_entries(day_of_week, period_number);
 CREATE INDEX idx_timetable_entries_teacher_time ON timetable_entries(teacher_id, day_of_week, start_time);

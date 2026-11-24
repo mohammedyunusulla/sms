@@ -87,9 +87,9 @@ const SyllabusList: FC = () => {
             let data: ISyllabus[];
             const academicYearId = authUser.current_academic_year.id.toString();
 
-            if (authUser.role === 'TEACHER' && authUser?.school_user_id) {
+            if (authUser.role === 'TEACHER' && authUser?.institution_user_id) {
                 data = await syllabusService.fetchSyllabiByTeacher(
-                    authUser.school_user_id.toString(),
+                    authUser.institution_user_id.toString(),
                     academicYearId
                 );
             } else {

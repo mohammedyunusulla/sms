@@ -135,7 +135,7 @@ export default function TimetableViewScreen() {
             <View className="flex-1 bg-white rounded-xl p-3 items-center shadow-sm">
               <Text className="font-lexend text-[10px] text-dark-400">Start</Text>
               <Text className="font-lexend-bold text-base text-dark-900">
-                {formatTimeDisplay(timetable.configuration.school_start_time) || "-"}
+                {formatTimeDisplay(timetable.configuration.institution_start_time) || "-"}
               </Text>
             </View>
             <View className="flex-1 bg-white rounded-xl p-3 items-center shadow-sm">

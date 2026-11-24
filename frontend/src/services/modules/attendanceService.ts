@@ -4,7 +4,7 @@
 // Uses centralized API client from services/api/client.ts
 
 
-import { getApiClient, getSchoolId } from '../api/client';
+import { getApiClient, getInstitutionId } from '../api/client';
 import { IAttendanceRecord, AttendanceStatus } from '../../types/index';
 
 // API Response interface for type assertions
@@ -57,13 +57,13 @@ class AttendanceService {
     // Get list of attendance records with optional filtering 
     async list(params?: IAttendanceListParams): Promise<IAttendanceListResponse> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/list/${schoolId}`, { params }) as unknown as ApiResponse<IAttendanceRecord[]>;
+        const response = await api.get(`${this.baseUrl}/list/${institutionId}`, { params }) as unknown as ApiResponse<IAttendanceRecord[]>;
 
         // Handle API response format
         const records = response.attendance || response.data || [];
@@ -87,13 +87,13 @@ class AttendanceService {
     // Get single attendance record by ID 
     async getById(id: string): Promise<IAttendanceRecord> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/${id}/${schoolId}`) as unknown as ApiResponse<IAttendanceRecord>;
+        const response = await api.get(`${this.baseUrl}/${id}/${institutionId}`) as unknown as ApiResponse<IAttendanceRecord>;
         return response.data as IAttendanceRecord;
     }
 
@@ -101,13 +101,13 @@ class AttendanceService {
     // Mark attendance for a class on a specific date 
     async markAttendance(data: IMarkAttendanceRequest): Promise<IAttendanceRecord[]> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/mark/${schoolId}`, data) as unknown as ApiResponse<IAttendanceRecord[]>;
+        const response = await api.post(`${this.baseUrl}/mark/${institutionId}`, data) as unknown as ApiResponse<IAttendanceRecord[]>;
         if (response.code === 200 && response.status === 'success') {
             return response.data || [];
         }
@@ -118,13 +118,13 @@ class AttendanceService {
     // Update single attendance record 
     async update(id: string, data: Partial<IAttendanceRecord>): Promise<IAttendanceRecord> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.put(`${this.baseUrl}/${id}/${schoolId}`, data) as unknown as ApiResponse<IAttendanceRecord>;
+        const response = await api.put(`${this.baseUrl}/${id}/${institutionId}`, data) as unknown as ApiResponse<IAttendanceRecord>;
         if (response.code === 200 && response.status === 'success') {
             return response.data as IAttendanceRecord;
         }
@@ -135,13 +135,13 @@ class AttendanceService {
     // Delete attendance record 
     async delete(id: string): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.delete(`${this.baseUrl}/${id}/${schoolId}`) as unknown as ApiResponse;
+        const response = await api.delete(`${this.baseUrl}/${id}/${institutionId}`) as unknown as ApiResponse;
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.message || 'Failed to delete attendance');
         }
@@ -155,13 +155,13 @@ class AttendanceService {
         endDate: string
     ): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/class/${classId}/summary/${schoolId}`, {
+        const response = await api.get(`${this.baseUrl}/class/${classId}/summary/${institutionId}`, {
             params: { startDate, endDate },
         }) as unknown as ApiResponse;
         return response.data || response;
@@ -178,16 +178,16 @@ class AttendanceService {
         records?: { date: string; status: string }[];
     }> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
         const params: Record<string, string> = {};
         if (startDate) params.start_date = startDate;
         if (endDate) params.end_date = endDate;
-        const response = await api.get(`${this.baseUrl}/student/${schoolId}/${studentId}`, { params }) as unknown as ApiResponse;
+        const response = await api.get(`${this.baseUrl}/student/${institutionId}/${studentId}`, { params }) as unknown as ApiResponse;
         if (response.code !== 200) {
             throw new Error(response.message || 'Failed to fetch attendance');
         }
@@ -203,13 +203,13 @@ class AttendanceService {
         endDate: string
     ): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/student/${studentId}/summary/${schoolId}`, {
+        const response = await api.get(`${this.baseUrl}/student/${studentId}/summary/${institutionId}`, {
             params: { startDate, endDate },
         }) as unknown as ApiResponse;
         return response.data || response;
@@ -219,13 +219,13 @@ class AttendanceService {
     // Get students in a class for marking attendance 
     async getClassStudentsForAttendance(classId: string, date?: string): Promise<any[]> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/class/${classId}/students/${schoolId}`, {
+        const response = await api.get(`${this.baseUrl}/class/${classId}/students/${institutionId}`, {
             params: { date },
         }) as unknown as ApiResponse<unknown[]>;
         return response.data || [];
@@ -240,13 +240,13 @@ class AttendanceService {
         limit: number = 100
     ): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/class/${classId}/report/${schoolId}`, {
+        const response = await api.get(`${this.baseUrl}/class/${classId}/report/${institutionId}`, {
             params: { startDate, endDate, limit },
         }) as unknown as ApiResponse;
         return response.data || response;
@@ -270,13 +270,13 @@ class AttendanceService {
         }
     ): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/record/bulk/${schoolId}`, data) as unknown as ApiResponse;
+        const response = await api.post(`${this.baseUrl}/record/bulk/${institutionId}`, data) as unknown as ApiResponse;
         if (response.code === 200 && response.status === 'success') {
             return response.data || [];
         }
@@ -302,13 +302,13 @@ class AttendanceService {
         }
     ): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/update/bulk/${schoolId}`, data) as unknown as ApiResponse;
+        const response = await api.post(`${this.baseUrl}/update/bulk/${institutionId}`, data) as unknown as ApiResponse;
         if (response.code === 200 && response.status === 'success') {
             return response.data || [];
         }
@@ -324,13 +324,13 @@ class AttendanceService {
         academicYearId: string
     ): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/view/${schoolId}/${academicYearId}`, {
+        const response = await api.get(`${this.baseUrl}/view/${institutionId}/${academicYearId}`, {
             params: {
                 class_id: classId,
                 section_id: sectionId,
@@ -350,13 +350,13 @@ class AttendanceService {
         academicYearId: string
     ): Promise<any> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/monthly/${schoolId}/${academicYearId}`, {
+        const response = await api.get(`${this.baseUrl}/monthly/${institutionId}/${academicYearId}`, {
             params: {
                 class_id: classId,
                 section_id: sectionId,
@@ -380,13 +380,13 @@ class AttendanceService {
         attendanceData: Array<{ studentId: string; status: AttendanceStatus; remarks?: string }>
     ): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/bulk-mark/${schoolId}`, {
+        const response = await api.post(`${this.baseUrl}/bulk-mark/${institutionId}`, {
             classId,
             date,
             attendance: attendanceData,
@@ -400,13 +400,13 @@ class AttendanceService {
     // Bulk delete attendance records 
     async bulkDelete(ids: string[]): Promise<void> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.post(`${this.baseUrl}/bulk-delete/${schoolId}`, { ids }) as unknown as ApiResponse;
+        const response = await api.post(`${this.baseUrl}/bulk-delete/${institutionId}`, { ids }) as unknown as ApiResponse;
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.message || 'Failed to delete attendance records');
         }
@@ -416,13 +416,13 @@ class AttendanceService {
     // Export attendance to CSV 
     async exportToCSV(params?: IAttendanceListParams): Promise<Blob> {
         const api = getApiClient();
-        const schoolId = getSchoolId();
+        const institutionId = getInstitutionId();
 
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
 
-        const response = await api.get(`${this.baseUrl}/export/csv/${schoolId}`, {
+        const response = await api.get(`${this.baseUrl}/export/csv/${institutionId}`, {
             params,
             responseType: 'blob',
         }) as unknown as ApiResponse<Blob>;

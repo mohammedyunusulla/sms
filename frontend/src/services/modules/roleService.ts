@@ -3,7 +3,7 @@
  * Handles API calls for role and permissions management
  */
 
-import { getApiClient, getSchoolId } from '../api/client';
+import { getApiClient, getInstitutionId } from '../api/client';
 
 // Generic API response interface for type assertions
 interface ApiResponse {
@@ -39,12 +39,12 @@ interface IRoleListResponse {
 class RoleService {
     private baseUrl = '/roles';
 
-    private getSchoolIdOrThrow(): string {
-        const schoolId = getSchoolId();
-        if (!schoolId) {
-            throw new Error('School ID not found. Please log in again.');
+    private getInstitutionIdOrThrow(): string {
+        const institutionId = getInstitutionId();
+        if (!institutionId) {
+            throw new Error('Institution ID not found. Please log in again.');
         }
-        return schoolId;
+        return institutionId;
     }
 
     /**
@@ -52,10 +52,10 @@ class RoleService {
      */
     async list(params?: IRoleListParams): Promise<IRoleListResponse> {
         const api = getApiClient();
-        const schoolId = this.getSchoolIdOrThrow();
+        const institutionId = this.getInstitutionIdOrThrow();
 
         try {
-            const response = (await api.get(`${this.baseUrl}/list/${schoolId}`, { params })) as ApiResponse;
+            const response = (await api.get(`${this.baseUrl}/list/${institutionId}`, { params })) as ApiResponse;
 
             if (response.data && response.meta) {
                 return {
@@ -86,9 +86,9 @@ class RoleService {
      */
     async getById(id: string | number): Promise<any> {
         const api = getApiClient();
-        const schoolId = this.getSchoolIdOrThrow();
+        const institutionId = this.getInstitutionIdOrThrow();
 
-        const response = (await api.get(`${this.baseUrl}/role/${schoolId}/${id}`)) as ApiResponse;
+        const response = (await api.get(`${this.baseUrl}/role/${institutionId}/${id}`)) as ApiResponse;
         if (response.code === 200 && response.status === 'success') {
             return response.data;
         }
@@ -101,9 +101,9 @@ class RoleService {
      */
     async create(data: any): Promise<any> {
         const api = getApiClient();
-        const schoolId = this.getSchoolIdOrThrow();
+        const institutionId = this.getInstitutionIdOrThrow();
 
-        const response = (await api.post(`${this.baseUrl}/create/role/${schoolId}`, data)) as ApiResponse;
+        const response = (await api.post(`${this.baseUrl}/create/role/${institutionId}`, data)) as ApiResponse;
         if (response.code === 200 && response.status === 'success') {
             return response.data;
         }
@@ -116,9 +116,9 @@ class RoleService {
      */
     async update(id: string | number, data: any): Promise<any> {
         const api = getApiClient();
-        const schoolId = this.getSchoolIdOrThrow();
+        const institutionId = this.getInstitutionIdOrThrow();
 
-        const response = (await api.put(`${this.baseUrl}/update/role/${schoolId}/${id}`, data)) as ApiResponse;
+        const response = (await api.put(`${this.baseUrl}/update/role/${institutionId}/${id}`, data)) as ApiResponse;
         if (response.code === 200 && response.status === 'success') {
             return response.data;
         }
@@ -131,9 +131,9 @@ class RoleService {
      */
     async delete(id: string | number): Promise<void> {
         const api = getApiClient();
-        const schoolId = this.getSchoolIdOrThrow();
+        const institutionId = this.getInstitutionIdOrThrow();
 
-        const response = (await api.delete(`${this.baseUrl}/delete/role/${schoolId}/${id}`)) as ApiResponse;
+        const response = (await api.delete(`${this.baseUrl}/delete/role/${institutionId}/${id}`)) as ApiResponse;
         if (response.code !== 200 || response.status !== 'success') {
             throw new Error(response.message || 'Failed to delete role');
         }
@@ -145,8 +145,8 @@ class RoleService {
      */
     async toggleStatus(id: string | number): Promise<unknown> {
         const api = getApiClient();
-        const schoolId = this.getSchoolIdOrThrow();
-        const response = (await api.patch(`${this.baseUrl}/toggleRole/${schoolId}/${id}`)) as ApiResponse;
+        const institutionId = this.getInstitutionIdOrThrow();
+        const response = (await api.patch(`${this.baseUrl}/toggleRole/${institutionId}/${id}`)) as ApiResponse;
         if (response.code === 200 && response.status === 'success') {
             return response.data;
         }
@@ -160,10 +160,10 @@ class RoleService {
      */
     async assignPermissions(roleId: string | number, permissions: string[]): Promise<any> {
         const api = getApiClient();
-        const schoolId = this.getSchoolIdOrThrow();
+        const institutionId = this.getInstitutionIdOrThrow();
 
         const response = (await api.put(
-            `${this.baseUrl}/addPermissionsToRole/${schoolId}/${roleId}`,
+            `${this.baseUrl}/addPermissionsToRole/${institutionId}/${roleId}`,
             { permissions }
         )) as ApiResponse;
         if (response.code === 200 && response.status === 'success') {

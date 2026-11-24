@@ -7,7 +7,7 @@ import enum
 
 class UserRole(enum.Enum):
     SUPER_ADMIN = "SUPER_ADMIN"
-    SCHOOL_ADMIN = "SCHOOL_ADMIN"
+    INSTITUTION_ADMIN = "INSTITUTION_ADMIN"
     PRINCIPAL = "PRINCIPAL"
     TEACHER = "TEACHER"
     STUDENT = "STUDENT"
@@ -29,14 +29,14 @@ class User(BaseModel):
     last_login = Column(DateTime)
     skid = Column(String(50))
     plan = Column(String(10), default='BASIC')
-    school_id = Column(Integer, ForeignKey('schools.id'), nullable=True)  # Null for super admin
-    school_user_id = Column(Integer, nullable=True)  # Links to student/teacher ID in school DB and Null for super admin
+    institution_id = Column(Integer, ForeignKey('institutions.id'), nullable=True)  # Null for super admin
+    institution_user_id = Column(Integer, nullable=True)  # Links to student/teacher ID in institution DB and Null for super admin
     # Account lockout fields
     failed_login_attempts = Column(Integer, default=0, nullable=True)
     locked_until = Column(DateTime, nullable=True)
 
     # Relationships
-    school = relationship("School", back_populates="users")
+    institution = relationship("Institution", back_populates="users")
     sessions = relationship("UserSession", back_populates="user", cascade="all, delete-orphan")
 
     def set_password(self, password):
@@ -100,9 +100,9 @@ class User(BaseModel):
         return cls.query.filter_by(email=email, is_active=True).first()
     
     @classmethod
-    def get_by_school(cls, school_id):
-        """Get all users by school"""
-        return cls.query.filter_by(school_id=school_id, is_active=True).all()
+    def get_by_institution(cls, institution_id):
+        """Get all users by institution"""
+        return cls.query.filter_by(institution_id=institution_id, is_active=True).all()
     
     # Fields that should never be sent to the client
     SENSITIVE_FIELDS = ['password_hash', 'failed_login_attempts', 'locked_until']
@@ -117,12 +117,12 @@ class User(BaseModel):
         data = super().to_dict(exclude_fields)
         data['full_name'] = self.full_name
 
-        if self.school:
-            data['school_name'] = self.school.name
-            data['school_code'] = self.school.code
+        if self.institution:
+            data['institution_name'] = self.institution.name
+            data['institution_code'] = self.institution.code
             # printed on certificates, receipts and report cards (they used to come out blank - QA A27)
-            data['school_address'] = self.school.address
-            data['school_phone'] = self.school.phone
-            data['school_email'] = self.school.email
-            data['skid'] = self.school.skid
+            data['institution_address'] = self.institution.address
+            data['institution_phone'] = self.institution.phone
+            data['institution_email'] = self.institution.email
+            data['skid'] = self.institution.skid
         return data

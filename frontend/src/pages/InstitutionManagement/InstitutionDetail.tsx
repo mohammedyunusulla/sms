@@ -1,6 +1,6 @@
 /**
- * School Detail Page
- * View detailed information about a specific school
+ * Institution Detail Page
+ * View detailed information about a specific institution
  */
 
 import { FC, useEffect, useState } from 'react';
@@ -14,71 +14,71 @@ import {
     EmptyState,
     ConfirmDialog,
 } from '../../components';
-import { schoolService } from '../../services/modules/schoolService';
+import { institutionService } from '../../services/modules/institutionService';
 import { usePermissions } from '../../hooks/usePermissions';
-import { ISchool } from '../../types/index';
+import { IInstitution } from '../../types/index';
 
-// Schools have is_active (there is no `status` field; reading status.charAt crashed the page)
-const isSchoolActive = (school: unknown): boolean => {
-    const value = school as { is_active?: boolean; status?: string };
+// Institutions have is_active (there is no `status` field; reading status.charAt crashed the page)
+const isInstitutionActive = (institution: unknown): boolean => {
+    const value = institution as { is_active?: boolean; status?: string };
     return value.is_active ?? String(value.status ?? '').toLowerCase() === 'active';
 };
 
-const SchoolDetail: FC = () => {
+const InstitutionDetail: FC = () => {
     const navigate = useNavigate();
     const { id } = useParams();
     const { isSuperAdmin } = usePermissions();
 
-    const [selectedSchool, setSelectedSchool] = useState<ISchool | null>(null);
+    const [selectedInstitution, setSelectedInstitution] = useState<IInstitution | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Fetch school data on mount
+    // Fetch institution data on mount
     useEffect(() => {
         if (id) {
-            const fetchSchool = async () => {
+            const fetchInstitution = async () => {
                 setLoading(true);
                 try {
-                    const school = await schoolService.getById(id);
-                    setSelectedSchool(school);
+                    const institution = await institutionService.getById(id);
+                    setSelectedInstitution(institution);
                 } catch (err: any) {
-                    setError(err.message || 'Failed to fetch school');
+                    setError(err.message || 'Failed to fetch institution');
                 } finally {
                     setLoading(false);
                 }
             };
-            fetchSchool();
+            fetchInstitution();
         }
     }, [id]);
 
     // Handle delete
-    // Deleting needs the school's code typed back (QA S14: it was one confirm click)
+    // Deleting needs the institution's code typed back (QA S14: it was one confirm click)
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [deleteCode, setDeleteCode] = useState('');
     const [deleting, setDeleting] = useState(false);
     const handleDelete = () => {
-        if (!selectedSchool) return;
+        if (!selectedInstitution) return;
         setDeleteCode('');
         setDeleteOpen(true);
     };
     const confirmDelete = async () => {
-        if (!selectedSchool) return;
+        if (!selectedInstitution) return;
         try {
             setDeleting(true);
-            await schoolService.deleteSchool(selectedSchool.id, deleteCode.trim());
-            toast.success('School deleted successfully');
+            await institutionService.deleteInstitution(selectedInstitution.id, deleteCode.trim());
+            toast.success('Institution deleted successfully');
             setDeleteOpen(false);
-            setTimeout(() => navigate('/schools'), 1500);
+            setTimeout(() => navigate('/institutions'), 1500);
         } catch (err: any) {
-            toast.error(err.message || 'Failed to delete school');
+            toast.error(err.message || 'Failed to delete institution');
         } finally {
             setDeleting(false);
         }
     };
 
     // Show loading spinner
-    if (loading && !selectedSchool) {
-        return <LoadingSpinner fullHeight message="Loading school details..." />;
+    if (loading && !selectedInstitution) {
+        return <LoadingSpinner fullHeight message="Loading institution details..." />;
     }
 
     // Show error message
@@ -86,44 +86,44 @@ const SchoolDetail: FC = () => {
         return (
             <div className="space-y-6">
                 <PageHeader
-                    title="School Details"
-                    subtitle="View school information"
+                    title="Institution Details"
+                    subtitle="View institution information"
                     breadcrumbs={[
                         { label: 'Dashboard', href: '/dashboard' },
-                        { label: 'Schools', href: '/schools' },
+                        { label: 'Institutions', href: '/institutions' },
                         { label: 'Details', href: '#' },
                     ]}
                 />
                 <div className="p-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                     <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
-                    <Button variant="secondary" onClick={() => navigate('/schools')}>
-                        Back to Schools
+                    <Button variant="secondary" onClick={() => navigate('/institutions')}>
+                        Back to Institutions
                     </Button>
                 </div>
             </div>
         );
     }
 
-    // Show empty state if no school found
-    if (!selectedSchool) {
+    // Show empty state if no institution found
+    if (!selectedInstitution) {
         return (
             <div className="space-y-6">
                 <PageHeader
-                    title="School Details"
-                    subtitle="View school information"
+                    title="Institution Details"
+                    subtitle="View institution information"
                     breadcrumbs={[
                         { label: 'Dashboard', href: '/dashboard' },
-                        { label: 'Schools', href: '/schools' },
+                        { label: 'Institutions', href: '/institutions' },
                         { label: 'Details', href: '#' },
                     ]}
                 />
                 <EmptyState
                     icon="🏫"
-                    title="School Not Found"
-                    description="The school you're looking for doesn't exist or has been deleted."
+                    title="Institution Not Found"
+                    description="The institution you're looking for doesn't exist or has been deleted."
                     action={
-                        <Button variant="secondary" onClick={() => navigate('/schools')}>
-                            Back to Schools
+                        <Button variant="secondary" onClick={() => navigate('/institutions')}>
+                            Back to Institutions
                         </Button>
                     }
                 />
@@ -135,21 +135,21 @@ const SchoolDetail: FC = () => {
         <div className="space-y-6">
             {/* Page Header */}
             <PageHeader
-                title={selectedSchool.name}
-                subtitle="View and manage school information"
+                title={selectedInstitution.name}
+                subtitle="View and manage institution information"
                 breadcrumbs={[
                     { label: 'Dashboard', href: '/dashboard' },
-                    { label: 'Schools', href: '/schools' },
-                    { label: selectedSchool.name, href: '#' },
+                    { label: 'Institutions', href: '/institutions' },
+                    { label: selectedInstitution.name, href: '#' },
                 ]}
                 actions={
                     <div className="flex items-center gap-3">
                         {isSuperAdmin && (
                             <Button
                                 variant="secondary"
-                                onClick={() => navigate(`/schools/${selectedSchool.id}/edit`)}
+                                onClick={() => navigate(`/institutions/${selectedInstitution.id}/edit`)}
                             >
-                                Edit School
+                                Edit Institution
                             </Button>
                         )}
                         {isSuperAdmin && (
@@ -157,7 +157,7 @@ const SchoolDetail: FC = () => {
                                 variant="danger"
                                 onClick={handleDelete}
                             >
-                                Delete School
+                                Delete Institution
                             </Button>
                         )}
                     </div>
@@ -173,17 +173,17 @@ const SchoolDetail: FC = () => {
                             Basic Information
                         </h3>
                         <div className="space-y-4">
-                            {/* School Name and Status */}
+                            {/* Institution Name and Status */}
                             <div className="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-700">
                                 <div>
-                                    <p className="text-sm text-gray-600 dark:text-gray-400">School Name</p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">Institution Name</p>
                                     <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                                        {selectedSchool.name}
+                                        {selectedInstitution.name}
                                     </p>
                                 </div>
                                 <Badge
-                                    variant={isSchoolActive(selectedSchool) ? 'success' : 'warning'}
-                                    text={isSchoolActive(selectedSchool) ? 'Active' : 'Inactive'}
+                                    variant={isInstitutionActive(selectedInstitution) ? 'success' : 'warning'}
+                                    text={isInstitutionActive(selectedInstitution) ? 'Active' : 'Inactive'}
                                 />
                             </div>
 
@@ -191,11 +191,11 @@ const SchoolDetail: FC = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <p className="text-sm text-gray-600 dark:text-gray-400">Email</p>
-                                    <p className="text-gray-900 dark:text-white font-medium">{selectedSchool.email}</p>
+                                    <p className="text-gray-900 dark:text-white font-medium">{selectedInstitution.email}</p>
                                 </div>
                                 <div>
                                     <p className="text-sm text-gray-600 dark:text-gray-400">Phone</p>
-                                    <p className="text-gray-900 dark:text-white font-medium">{selectedSchool.phone}</p>
+                                    <p className="text-gray-900 dark:text-white font-medium">{selectedInstitution.phone}</p>
                                 </div>
                             </div>
                         </div>
@@ -210,29 +210,29 @@ const SchoolDetail: FC = () => {
                             {/* Full Address */}
                             <div>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">Street Address</p>
-                                <p className="text-gray-900 dark:text-white font-medium">{selectedSchool.address}</p>
+                                <p className="text-gray-900 dark:text-white font-medium">{selectedInstitution.address}</p>
                             </div>
 
                             {/* City, State, Postal Code */}
                             <div className="grid grid-cols-3 gap-4">
                                 <div>
                                     <p className="text-sm text-gray-600 dark:text-gray-400">City</p>
-                                    <p className="text-gray-900 dark:text-white font-medium">{selectedSchool.city}</p>
+                                    <p className="text-gray-900 dark:text-white font-medium">{selectedInstitution.city}</p>
                                 </div>
                                 <div>
                                     <p className="text-sm text-gray-600 dark:text-gray-400">State</p>
-                                    <p className="text-gray-900 dark:text-white font-medium">{selectedSchool.state}</p>
+                                    <p className="text-gray-900 dark:text-white font-medium">{selectedInstitution.state}</p>
                                 </div>
                                 <div>
                                     <p className="text-sm text-gray-600 dark:text-gray-400">Postal Code</p>
-                                    <p className="text-gray-900 dark:text-white font-medium">{selectedSchool.postal_code}</p>
+                                    <p className="text-gray-900 dark:text-white font-medium">{selectedInstitution.postal_code}</p>
                                 </div>
                             </div>
 
                             {/* Country */}
                             <div>
                                 <p className="text-sm text-gray-600 dark:text-gray-400">Country</p>
-                                <p className="text-gray-900 dark:text-white font-medium">{selectedSchool.country}</p>
+                                <p className="text-gray-900 dark:text-white font-medium">{selectedInstitution.country}</p>
                             </div>
                         </div>
                     </div>
@@ -280,14 +280,14 @@ const SchoolDetail: FC = () => {
                         </h3>
                         <div className="space-y-3">
                             <div>
-                                <p className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide">School ID</p>
-                                <p className="text-sm font-mono text-gray-900 dark:text-white break-all">{selectedSchool.id}</p>
+                                <p className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide">Institution ID</p>
+                                <p className="text-sm font-mono text-gray-900 dark:text-white break-all">{selectedInstitution.id}</p>
                             </div>
                             <div>
                                 <p className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide">Created At</p>
                                 <p className="text-sm text-gray-900 dark:text-white">
-                                    {selectedSchool.created_at
-                                        ? new Date(selectedSchool.created_at).toLocaleDateString('en-US', {
+                                    {selectedInstitution.created_at
+                                        ? new Date(selectedInstitution.created_at).toLocaleDateString('en-US', {
                                             year: 'numeric',
                                             month: 'long',
                                             day: 'numeric',
@@ -300,8 +300,8 @@ const SchoolDetail: FC = () => {
                             <div>
                                 <p className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide">Last Updated</p>
                                 <p className="text-sm text-gray-900 dark:text-white">
-                                    {selectedSchool.updated_at
-                                        ? new Date(selectedSchool.updated_at).toLocaleDateString('en-US', {
+                                    {selectedInstitution.updated_at
+                                        ? new Date(selectedInstitution.updated_at).toLocaleDateString('en-US', {
                                             year: 'numeric',
                                             month: 'long',
                                             day: 'numeric',
@@ -315,17 +315,17 @@ const SchoolDetail: FC = () => {
                     </div>
 
                     {/* Status Card */}
-                    <div className={`p-6 rounded-lg border ${isSchoolActive(selectedSchool)
+                    <div className={`p-6 rounded-lg border ${isInstitutionActive(selectedInstitution)
                         ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
                         : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800'
                         }`}>
-                        <p className={`text-sm font-medium ${isSchoolActive(selectedSchool)
+                        <p className={`text-sm font-medium ${isInstitutionActive(selectedInstitution)
                             ? 'text-green-700 dark:text-green-400'
                             : 'text-yellow-700 dark:text-yellow-400'
                             }`}>
-                            {isSchoolActive(selectedSchool)
-                                ? '✅ School is active and operational'
-                                : '⚠️ School is inactive'}
+                            {isInstitutionActive(selectedInstitution)
+                                ? '✅ Institution is active and operational'
+                                : '⚠️ Institution is inactive'}
                         </p>
                     </div>
                 </div>
@@ -333,23 +333,23 @@ const SchoolDetail: FC = () => {
 
             <ConfirmDialog
                 isOpen={deleteOpen}
-                title="Delete School - CRITICAL ACTION"
-                message={`This will permanently delete the school "${selectedSchool?.name}" including all users, dedicated database, and academic data. This action cannot be undone.`}
+                title="Delete Institution - CRITICAL ACTION"
+                message={`This will permanently delete the institution "${selectedInstitution?.name}" including all users, dedicated database, and academic data. This action cannot be undone.`}
                 type="danger"
                 confirmText="Yes, Permanently Delete"
                 cancelText="Cancel"
                 isLoading={deleting}
                 onConfirm={confirmDelete}
                 onCancel={() => setDeleteOpen(false)}
-                confirmDisabled={deleteCode.trim().toLowerCase() !== String(selectedSchool?.code || '').toLowerCase()}
+                confirmDisabled={deleteCode.trim().toLowerCase() !== String(selectedInstitution?.code || '').toLowerCase()}
             >
                 <div className="mt-4">
-                    <label htmlFor="delete-school-code" className="block text-sm text-gray-700 dark:text-gray-300">
-                        Type <strong className="font-mono">{selectedSchool?.code}</strong> to confirm
+                    <label htmlFor="delete-institution-code" className="block text-sm text-gray-700 dark:text-gray-300">
+                        Type <strong className="font-mono">{selectedInstitution?.code}</strong> to confirm
                     </label>
                     <input
-                        id="delete-school-code"
-                        name="delete_school_code"
+                        id="delete-institution-code"
+                        name="delete_institution_code"
                         value={deleteCode}
                         onChange={(e) => setDeleteCode(e.target.value)}
                         autoComplete="off"
@@ -361,4 +361,4 @@ const SchoolDetail: FC = () => {
     );
 };
 
-export default SchoolDetail;
+export default InstitutionDetail;

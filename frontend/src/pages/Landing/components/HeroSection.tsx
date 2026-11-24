@@ -4,7 +4,7 @@ import HeroPreview from "./HeroPreview";
 import { ArrowRightIcon, CalendarIcon, CheckIcon, SparklesIcon } from "../../../components/common/StrokeIcons";
 import Reveal from "./Reveal";
 
-const HIGHLIGHTS = ["Role-based dashboards", "Isolated data per school", "Mobile app coming soon"];
+const HIGHLIGHTS = ["Role-based dashboards", "Isolated data per institution", "Mobile app coming soon"];
 
 export default function HeroSection() {
   return (
@@ -30,13 +30,13 @@ export default function HeroSection() {
 
           <Reveal delay={80}>
             <h1 className="mt-6 text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl lg:text-6xl lg:leading-[1.08] dark:text-white">
-              Run your whole school <span className="landing-gradient-text">from one place.</span>
+              Run your whole institution <span className="landing-gradient-text">from one place.</span>
             </h1>
           </Reveal>
 
           <Reveal delay={160}>
             <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-gray-600 lg:mx-0 dark:text-gray-400">
-              <strong className="font-semibold text-gray-900 dark:text-white">EduSpyre</strong> brings attendance, timetables, exams, fees, homework and school transport together,
+              <strong className="font-semibold text-gray-900 dark:text-white">EduSpyre</strong> brings attendance, timetables, exams, fees, homework and campus transport together,
               with a dashboard tailored to every administrator, teacher, parent and student.
             </p>
           </Reveal>

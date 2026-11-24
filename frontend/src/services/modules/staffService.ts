@@ -1,4 +1,4 @@
-import { getApiClient, getSchoolId } from '../api/client';
+import { getApiClient, getInstitutionId } from '../api/client';
 import { API_ENDPOINTS } from '../api/config';
 
 export interface CreateStaffPayload {
@@ -29,7 +29,7 @@ export interface StaffMember {
 
 const staffService = {
     create: async (payload: CreateStaffPayload): Promise<StaffMember> => {
-        const skid = getSchoolId();
+        const skid = getInstitutionId();
         const client = getApiClient();
         const res = await client.post(API_ENDPOINTS.STAFF.CREATE(skid), payload) as any;
         if (res.code === 200 && res.status === 'success') {
@@ -39,7 +39,7 @@ const staffService = {
     },
 
     list: async (): Promise<StaffMember[]> => {
-        const skid = getSchoolId();
+        const skid = getInstitutionId();
         const client = getApiClient();
         const res = await client.get(API_ENDPOINTS.STAFF.LIST(skid)) as any;
         return res.data ?? [];

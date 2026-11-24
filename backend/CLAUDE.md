@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This is the **School Management System Backend**, a Flask-based REST API implementing a multi-tenant architecture where each school has its own PostgreSQL database. The system supports role-based access control with seven user roles: Super Admin, School Admin, Principal, Teacher, Student, Parent, and Bus Staff.
+This is the **Institution Management System Backend**, a Flask-based REST API implementing a multi-tenant architecture where each institution has its own PostgreSQL database. The system supports role-based access control with seven user roles: Super Admin, Institution Admin, Principal, Teacher, Student, Parent, and Bus Staff.
 
 ## Technology Stack
 
@@ -59,7 +59,7 @@ gunicorn --workers 4 --bind 0.0.0.0:5000 "app:create_app()"
 
 ### Database Migrations
 
-**Main Database (`skool_main`):**
+**Main Database (`eduspyre_main`):**
 ```bash
 alembic -c migrations_main/alembic_main.ini revision --autogenerate -m "description"
 # Windows
@@ -68,7 +68,7 @@ run-main_dbupgrade.bat
 ./run-main_dbupgrade.sh
 ```
 
-**Tenant Databases (per-school):**
+**Tenant Databases (per-institution):**
 ```bash
 alembic -c migrations_tenant/alembic_tenant.ini revision --autogenerate -m "description"
 # Windows
@@ -76,23 +76,23 @@ run-tenant_dbupgrade.bat
 # Linux/Mac
 ./run-tenant_dbupgrade.sh
 ```
-> Tenant schemas are auto-created when a school registers. Only run tenant migrations to update existing tenants.
+> Tenant schemas are auto-created when an institution registers. Only run tenant migrations to update existing tenants.
 
 ## Multi-Tenant Architecture
 
 **Database-per-tenant model:**
 
-1. **Main Database** (`skool_main`) — Central repository:
-   - Schools registry (`school_code`, `school_name`, etc.)
+1. **Main Database** (`eduspyre_main`) — Central repository:
+   - Institutions registry (`institution_code`, `institution_name`, etc.)
    - Super admin users
    - User sessions with IP tracking
 
-2. **Tenant Databases** (`skool_{school_code}`) — One per school:
-   - Auto-created on school registration
-   - Contains all school data: students, teachers, classes, attendance, timetables, fees, exams, marks, syllabus, assignments, bus scans, rooms, seating, etc.
-   - Fully isolated from other schools
+2. **Tenant Databases** (`eduspyre_{institution_code}`) — One per institution:
+   - Auto-created on institution registration
+   - Contains all institution data: students, teachers, classes, attendance, timetables, fees, exams, marks, syllabus, assignments, bus scans, rooms, seating, etc.
+   - Fully isolated from other institutions
 
-3. **Tenant Switching:** `app/utils/tenant_db.py` switches the database connection per request based on authenticated user's school.
+3. **Tenant Switching:** `app/utils/tenant_db.py` switches the database connection per request based on authenticated user's institution.
 
 **Key files:**
 - `app/utils/tenant_db.py` — connection switching
@@ -108,7 +108,7 @@ app/
 ├── api/                     # RESTful API route handlers
 │   ├── auth.py             # Login, logout, token refresh
 │   ├── user.py             # User management
-│   ├── school.py           # School management (Super Admin)
+│   ├── institution.py           # Institution management (Super Admin)
 │   ├── teacher.py          # Teacher CRUD
 │   ├── student.py          # Student CRUD
 │   ├── parent.py           # Parent CRUD
@@ -121,7 +121,7 @@ app/
 │   ├── marks_routes.py     # Marks entry and retrieval
 │   ├── fee.py              # Fee structures and collection
 │   ├── expense_routes.py   # Expense tracking
-│   ├── announcement.py     # School announcements
+│   ├── announcement.py     # Institution announcements
 │   ├── progress_card_routes.py  # Progress card generation
 │   ├── academic_year.py    # Academic year management
 │   ├── syllabus.py         # Syllabus, topics, subtopics, progress tracking
@@ -130,19 +130,19 @@ app/
 │   ├── bus_scan.py         # Bus QR scan boarding/exit records
 │   ├── room_routes.py      # Exam room management
 │   ├── seating_routes.py   # Seating arrangement per room
-│   ├── staff_routes.py     # School staff (non-teacher) management
+│   ├── staff_routes.py     # Institution staff (non-teacher) management
 │   ├── roles.py            # Role definitions and permissions
 │   ├── userRoles.py        # User-role assignments
 │   ├── teacher_dashboard_routes.py       # Teacher dashboard data
-│   ├── school_admin_dashboard_routes.py  # Admin dashboard data
+│   ├── institution_admin_dashboard_routes.py  # Admin dashboard data
 │   └── student_dashboard_routes.py       # Student dashboard data
 ├── models/
 │   ├── base.py             # Base model classes
 │   ├── main/               # Main database models
-│   │   ├── School.py
+│   │   ├── Institution.py
 │   │   ├── User.py
 │   │   └── UserSession.py
-│   └── tenant/             # Per-school models
+│   └── tenant/             # Per-institution models
 │       ├── AcademicYear.py
 │       ├── Announcement.py
 │       ├── Assignment.py
@@ -160,8 +160,8 @@ app/
 │       ├── PromotionHistory.py
 │       ├── Roles.py
 │       ├── Room.py                 # Exam rooms
-│       ├── SchoolAdmin.py
-│       ├── SchoolUsers.py
+│       ├── InstitutionAdmin.py
+│       ├── InstitutionUsers.py
 │       ├── SeatingArrangement.py   # Student seating per room/exam
 │       ├── SectionSubject.py
 │       ├── Sections.py
@@ -183,7 +183,7 @@ app/
 ├── services/               # Business logic layer
 │   ├── auth_service.py
 │   ├── user_service.py
-│   ├── school_service.py
+│   ├── institution_service.py
 │   ├── student_service.py
 │   ├── teacher_service.py
 │   ├── parent_service.py
@@ -209,7 +209,7 @@ app/
 │   ├── roles_service.py
 │   ├── userRole_service.py
 │   ├── teacher_dashboard_service.py
-│   ├── school_admin_dashboard_service.py
+│   ├── institution_admin_dashboard_service.py
 │   └── student_dashboard_service.py
 ├── decorators/
 │   ├── auth.py            # @login_required, @super_admin_required, etc.
@@ -246,13 +246,13 @@ HTTP Request → API Route (app/api/) → Service (app/services/) → Model/DB �
 **Decorators in `app/decorators/auth.py`:**
 - `@login_required(allowed_roles=[...])` — validates JWT, checks role
 - `@super_admin_required` — super admin only
-- `@school_admin_required` — school admin or higher
+- `@institution_admin_required` — institution admin or higher
 - `@teacher_required` — teacher or higher
-- `@same_school_required` — prevents cross-school data access
+- `@same_institution_required` — prevents cross-institution data access
 
 ```python
 @blueprint.route('/api/example', methods=['GET'])
-@login_required(allowed_roles=['TEACHER', 'SCHOOL_ADMIN'])
+@login_required(allowed_roles=['TEACHER', 'INSTITUTION_ADMIN'])
 def example():
     user = request.current_user   # attached by decorator
     return jsonify(result)
@@ -269,8 +269,8 @@ def example():
 - REST fallback: `POST /api/bus-location/update/<skid>` when WebSocket unavailable
 - Stop endpoint: `POST /api/bus-location/stop/<skid>`
 
-### skid (School User ID)
-Many routes are scoped by `skid` — the school-specific user identifier (not the global user ID). It appears in URL paths: `/api/assignments/create/<skid>`, `/api/bus-location/update/<skid>`, etc.
+### skid (Institution User ID)
+Many routes are scoped by `skid` — the institution-specific user identifier (not the global user ID). It appears in URL paths: `/api/assignments/create/<skid>`, `/api/bus-location/update/<skid>`, etc.
 
 ## User Roles & Access Control
 
@@ -278,8 +278,8 @@ Seven roles:
 
 | Role | Access | Scope |
 |---|---|---|
-| `SUPER_ADMIN` | Manage schools, create school admins | Main DB only |
-| `SCHOOL_ADMIN` | All school operations, user management | Tenant DB |
+| `SUPER_ADMIN` | Manage institutions, create institution admins | Main DB only |
+| `INSTITUTION_ADMIN` | All institution operations, user management | Tenant DB |
 | `PRINCIPAL` | All admin features + timetable approval | Tenant DB |
 | `TEACHER` | Attendance, marks, assignments, syllabus | Assigned classes only |
 | `STUDENT` | View timetable, assignments, marks | Own data only |
@@ -303,7 +303,7 @@ FLASK_HOST=0.0.0.0
 FLASK_PORT=5000
 SECRET_KEY=...
 JWT_SECRET_KEY=...
-SUPER_ADMIN_DATABASE_URL=postgresql://user:pass@localhost:5432/skool_main
+SUPER_ADMIN_DATABASE_URL=postgresql://user:pass@localhost:5432/eduspyre_main
 POSTGRES_HOST=localhost
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
@@ -334,7 +334,7 @@ from app.services.something_service import SomethingService
 something_bp = Blueprint('something', __name__)
 
 @something_bp.route('/create/<skid>', methods=['POST'])
-@login_required(['TEACHER', 'SCHOOL_ADMIN'])
+@login_required(['TEACHER', 'INSTITUTION_ADMIN'])
 def create(skid):
     data = request.get_json()
     result = SomethingService.create_something(skid, data)
@@ -355,12 +355,12 @@ app.register_blueprint(something_bp, url_prefix='/api/something')
 
 ## Important Notes
 
-- **Never hardcode database names** — use `db_name_generator.py` with `school_code`
-- **Always use `@same_school_required`** to prevent cross-tenant data leakage
+- **Never hardcode database names** — use `db_name_generator.py` with `institution_code`
+- **Always use `@same_institution_required`** to prevent cross-tenant data leakage
 - **Password hashing** — always use Werkzeug's `generate_password_hash()` / `check_password_hash()`
-- **Main vs Tenant models** — `app/models/main/` (global) vs `app/models/tenant/` (per-school)
+- **Main vs Tenant models** — `app/models/main/` (global) vs `app/models/tenant/` (per-institution)
 - **Access tokens** — short-lived (1 hour); refresh tokens — long-lived (30 days)
 - **Never log sensitive data** — use `app.logger` for events only
 - **CORS** — currently `origins: "*"`; restrict to specific domains in production
-- **`skid` in routes** — school-scoped user ID; used throughout tenant API URLs
-- **Migrations are auto-applied** when new schools register via `tenant_migration.py`
+- **`skid` in routes** — institution-scoped user ID; used throughout tenant API URLs
+- **Migrations are auto-applied** when new institutions register via `tenant_migration.py`
