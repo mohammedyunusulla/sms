@@ -7,6 +7,8 @@ import { useAuth } from "./hooks/useAuth";
 import { Toaster } from "react-hot-toast";
 import AppLoader from "./components/common/AppLoader";
 import { ScrollToTop } from "./components/common/ScrollToTop";
+import PwaUpdater from "./components/pwa/PwaUpdater";
+import OfflineBanner from "./components/pwa/OfflineBanner";
 
 // Eager imports (critical for initial load)
 import AppLayout from "./layout/AppLayout";
@@ -153,6 +155,8 @@ function AppContent() {
 
     return (
         <>
+            <PwaUpdater />
+            <OfflineBanner />
             <Toaster
                 position="top-right"
                 containerStyle={{ zIndex: 999999 }}
