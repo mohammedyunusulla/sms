@@ -14,10 +14,10 @@ COPY requirements.txt .
 RUN pip install --upgrade pip \
     && pip install -r requirements.txt
 
-# Homework AI QR reader: installed from the bundled wheels (no internet needed - see wheels/README.md).
+# Homework AI QR reader + push notifications: installed from the bundled wheels (no internet needed - see wheels/README.md).
 # A separate step after requirements.txt, so it never invalidates the cached package install above.
 COPY wheels/ /tmp/wheels/
-RUN pip install --no-index --find-links /tmp/wheels zxing-cpp==3.1.1 pillow==13.0.0     && rm -rf /tmp/wheels
+RUN pip install --no-index --find-links /tmp/wheels zxing-cpp==3.1.1 pillow==13.0.0 pywebpush==1.14.1 py-vapid==1.9.2 http-ece==1.2.1     && rm -rf /tmp/wheels
 
 COPY . .
 

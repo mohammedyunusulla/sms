@@ -1,0 +1,9 @@
+# Push notifications (app/services/push_service.py).
+# Kept out of requirements.txt on purpose: the server can't reach pypi.org, so it installs these from
+# backend/wheels/ (see wheels/README.md), and changing requirements.txt would force it to re-download every package.
+# Older pywebpush / py-vapid on purpose: newer ones need cryptography>=46 (requirements.txt pins 41.0.4).
+# Local setup:
+#   pip install -r requirements.txt -r requirements-qr.txt -r requirements-push.txt
+pywebpush==1.14.1
+py-vapid==1.9.2
+http-ece==1.2.1

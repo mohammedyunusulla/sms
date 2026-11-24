@@ -15,7 +15,3 @@ flask-socketio>=5.3,<6.0
 eventlet>=0.36,<1.0
 google-genai==0.8.0
 python-multipart==0.0.20
-# Push notifications. Older pywebpush/py-vapid on purpose: newer ones need cryptography>=46 (pinned 41.0.4 above)
-pywebpush==1.14.1
-py-vapid==1.9.2
-http-ece==1.2.1
