@@ -5,7 +5,7 @@
  * - Hidden when already running as the installed app, or when the browser can't install.
  */
 import { useEffect, useRef, useState } from "react";
-import { SmartphoneIcon } from "../common/StrokeIcons";
+import { InstallAppIcon } from "../common/StrokeIcons";
 
 interface BeforeInstallPromptEvent extends Event {
     prompt: () => Promise<void>;
@@ -94,7 +94,7 @@ export default function InstallAppButton({
                 title="Install the EduSpyre app"
                 className={`inline-flex shrink-0 items-center gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-4 ${STYLES[variant]}`}
             >
-                <SmartphoneIcon className={variant === "landing" ? "size-4.5 sm:size-4" : "size-4"} />
+                <InstallAppIcon className={variant === "landing" ? "size-5 sm:size-4" : "size-4"} />
                 <span className={variant === "landing" ? "max-sm:hidden" : undefined}>Install app</span>
             </button>
             {ios && showIosHelp && (
@@ -106,7 +106,10 @@ export default function InstallAppButton({
                     <p className="mb-2 font-semibold text-gray-800 dark:text-white">Install on iPhone / iPad</p>
                     <ol className="list-decimal space-y-1 pl-4">
                         <li>
-                            Tap the <span className="font-medium">Share</span> button in Safari.
+                            Tap the <span className="font-medium">Share</span> button from the browser.
+                        </li>
+                        <li>
+                            Tap <span className="font-medium">View More</span> or scroll down.
                         </li>
                         <li>
                             Choose <span className="font-medium">Add to Home Screen</span>.

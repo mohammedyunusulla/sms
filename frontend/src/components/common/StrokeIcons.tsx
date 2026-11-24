@@ -287,6 +287,15 @@ export const SmartphoneIcon = (p: IconProps) => (
   </Svg>
 );
 
+/** phone with a download arrow: "install the app" */
+export const InstallAppIcon = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="6" y="2.5" width="12" height="19" rx="2.5" />
+    <path d="M12 6.5v7.5M9 11l3 3 3-3" />
+    <path d="M11 18.5h2" />
+  </Svg>
+);
+
 export const MonitorIcon = (p: IconProps) => (
   <Svg {...p}>
     <rect x="3" y="4" width="18" height="12" rx="2" />

@@ -194,6 +194,21 @@ layer(base);
   }
 }
 
+/*
+  iPhone/iPad Safari zooms the page into any text field whose font is under 16px
+  (most fields here use text-sm = 14px). On touchscreens, fields get 16px text.
+  Desktop keeps its sizes. Kept outside @layer on purpose so it wins over the
+  text-xs/text-sm utility classes. Not done with `maximum-scale=1` in the viewport,
+  which would also block pinch-to-zoom on Android.
+*/
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 @utility menu-item {
   @apply relative flex items-center w-full gap-3 px-3 py-2 font-medium rounded-lg text-theme-sm;
 }
