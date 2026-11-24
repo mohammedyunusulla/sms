@@ -158,7 +158,7 @@ function AppContent() {
             <PwaUpdater />
             <OfflineBanner />
             <Toaster
-                position="top-right"
+                position="top-center"
                 containerStyle={{ zIndex: 999999 }}
                 toastOptions={{
                     style: {
