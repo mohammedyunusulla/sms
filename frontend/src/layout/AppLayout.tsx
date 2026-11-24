@@ -6,11 +6,13 @@ import AppSidebar from "./AppSidebar";
 import { useIdleTimeout } from "../hooks/useIdleTimeout";
 import { isInstalledOnPhoneOrTablet } from "../components/pwa/platform";
 import { useRoleRefresh } from "../hooks/useRoleRefresh";
+import { usePageRefresh } from "../hooks/usePageRefresh";
 import { useAuth } from "../hooks/useAuth";
 import { SIGNED_OUT_REASON_KEY } from "../hooks/useIdleTimeout";
 
 const LayoutContent: React.FC = () => {
   useRoleRefresh(); // menu follows role tick-box changes within a minute
+  const refreshKey = usePageRefresh();
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
   const { logout, isAuthenticated } = useAuth();
 
@@ -40,7 +42,8 @@ const LayoutContent: React.FC = () => {
       >
         <AppHeader />
         <div className="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6 overflow-x-hidden">
-          <Outlet />
+          {/* key changes on refresh (button / returning to the installed app) -> the page loads its data again */}
+          <Outlet key={refreshKey} />
         </div>
       </div>
     </div>
