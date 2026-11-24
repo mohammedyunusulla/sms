@@ -1,8 +1,10 @@
 import base64
 import json
 import os
+import re
 import urllib.error
 import urllib.request
+from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from google import genai
@@ -28,6 +30,57 @@ AI_PROVIDER_ORDER = os.getenv("AI_PROVIDER_ORDER", "azure,groq,gemini,cloudflare
 
 
 class HomeworkGeminiService:
+    _ARITHMETIC_PATTERN = re.compile(
+        r"(?P<a>-?\d[\d,]*(?:\.\d+)?)\s*(?P<op>[+\-xX×*/÷])\s*(?P<b>-?\d[\d,]*(?:\.\d+)?)\s*=\s*(?P<c>-?\d[\d,]*(?:\.\d+)?)"
+    )
+
+    @staticmethod
+    def _parse_decimal(value: str) -> Optional[Decimal]:
+        try:
+            return Decimal((value or "").replace(",", "").strip())
+        except (InvalidOperation, AttributeError):
+            return None
+
+    @staticmethod
+    def _format_decimal(value: Decimal) -> str:
+        if value == value.to_integral_value():
+            return str(int(value))
+        normalized = value.normalize()
+        text = format(normalized, "f")
+        return text.rstrip("0").rstrip(".") if "." in text else text
+
+    @classmethod
+    def _fix_arithmetic_claims(cls, text: str) -> str:
+        if not isinstance(text, str) or not text.strip():
+            return text
+
+        def _replace(match: re.Match) -> str:
+            a = cls._parse_decimal(match.group("a"))
+            b = cls._parse_decimal(match.group("b"))
+            c = cls._parse_decimal(match.group("c"))
+            op = match.group("op")
+            if a is None or b is None or c is None:
+                return match.group(0)
+
+            if op in ("+",):
+                expected = a + b
+            elif op in ("-",):
+                expected = a - b
+            elif op in ("*", "x", "X", "×"):
+                expected = a * b
+            elif op in ("/", "÷"):
+                if b == 0:
+                    return match.group(0)
+                expected = a / b
+            else:
+                return match.group(0)
+
+            if expected == c:
+                return match.group(0)
+            return f"{match.group('a')} {op} {match.group('b')} = {cls._format_decimal(expected)}"
+
+        return cls._ARITHMETIC_PATTERN.sub(_replace, text)
+
     @staticmethod
     def _get_client() -> genai.Client:
         api_key = os.getenv("GEMINI_API_KEY")
@@ -401,7 +454,13 @@ class HomeworkGeminiService:
                 parsed[key] = []
             else:
                 parsed[key] = [str(item) for item in value if str(item).strip()]
+        for key in ("line_by_line_review", "strengths", "areas_to_improve"):
+            parsed[key] = [cls._fix_arithmetic_claims(item) for item in parsed.get(key, [])]
+        if isinstance(parsed.get("overall_feedback"), str):
+            parsed["overall_feedback"] = cls._fix_arithmetic_claims(parsed["overall_feedback"])
         parsed["accuracy_score"] = float(parsed.get("accuracy_score", 0))
         if "overall_summary" not in parsed and "overall_feedback" in parsed:
             parsed["overall_summary"] = parsed["overall_feedback"]
+        if isinstance(parsed.get("overall_summary"), str):
+            parsed["overall_summary"] = cls._fix_arithmetic_claims(parsed["overall_summary"])
         return parsed
