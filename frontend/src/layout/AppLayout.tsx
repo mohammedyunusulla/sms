@@ -4,21 +4,25 @@ import AppHeader from "./AppHeader";
 import Backdrop from "./Backdrop";
 import AppSidebar from "./AppSidebar";
 import { useIdleTimeout } from "../hooks/useIdleTimeout";
+import { isInstalledOnPhoneOrTablet } from "../components/pwa/platform";
 import { useRoleRefresh } from "../hooks/useRoleRefresh";
 import { useAuth } from "../hooks/useAuth";
-import toast from "react-hot-toast";
+import { SIGNED_OUT_REASON_KEY } from "../hooks/useIdleTimeout";
 
 const LayoutContent: React.FC = () => {
   useRoleRefresh(); // menu follows role tick-box changes within a minute
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
   const { logout, isAuthenticated } = useAuth();
 
-  // Auto-logout after 15 minutes of inactivity
+  // Auto-logout after 15 minutes of inactivity - in a browser tab or an app installed on a computer.
+  // The installed app on a phone/tablet is the person's own device: it stays signed in (so notifications keep coming).
   useIdleTimeout({
     timeout: 15 * 60 * 1000,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && !isInstalledOnPhoneOrTablet(),
     onIdle: () => {
-      toast.error("Session expired due to inactivity. Please login again.");
+      // The sign-in page shows the message: requests still in flight can fail after the logout and
+      // reload the page (forceLogout), which would wipe a toast shown from here.
+      sessionStorage.setItem(SIGNED_OUT_REASON_KEY, "idle");
       logout();
     },
   });

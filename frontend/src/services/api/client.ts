@@ -202,6 +202,7 @@ const forceLogout = (): void => {
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('loggedUser');
     localStorage.removeItem('parentSelectedChild');
+    localStorage.removeItem('eduspyre.lastActivity'); // idle clock (hooks/useIdleTimeout.ts)
     // Stop push notifications for the signed-out user on this device (inline, not pushClient.ts:
     // that module imports this one). Waits at most 1.5s before going to the sign-in page.
     const dropPush = navigator.serviceWorker?.getRegistration()
@@ -209,7 +210,11 @@ const forceLogout = (): void => {
         .then((sub) => sub?.unsubscribe())
         .catch(() => undefined);
     Promise.race([dropPush, new Promise((resolve) => setTimeout(resolve, 1500))])
-        .finally(() => { window.location.href = '/signin'; });
+        .finally(() => {
+            // Already on the sign-in page (e.g. a request that was still running when the user signed out):
+            // no reload, which would also wipe the message shown there.
+            if (window.location.pathname !== '/signin') window.location.href = '/signin';
+        });
 };
 
 /**

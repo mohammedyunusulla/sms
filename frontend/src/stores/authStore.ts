@@ -8,6 +8,7 @@ import { authService } from '../services/auth/authService';
 import { AuthUser, LoginRequest, AcademicYear } from '../types/auth';
 import { ApiError } from '../types/common';
 import { clearPushOnThisDevice } from '../components/pwa/pushClient';
+import { clearActivity, markActivityNow } from '../hooks/useIdleTimeout';
 
 /**
  * Auth Store State & Actions
@@ -48,6 +49,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
             // Store user in localStorage and state
             authService.storeUser(userData);
+            markActivityNow(); // the idle clock starts now, not from a previous session
 
             set({
                 user: userData,
@@ -77,6 +79,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         set({ loading: true, error: null });
         // this device stops getting the signed-out user's notifications (the server forgets it too)
         await clearPushOnThisDevice();
+        clearActivity();
         try {
             await authService.logout();
             authService.clearStoredUser();
