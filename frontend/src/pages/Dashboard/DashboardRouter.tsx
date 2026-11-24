@@ -1,6 +1,7 @@
 import { FC, lazy, Suspense } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { UserRole } from '../../types/common';
+import NotificationsCard from '../../components/pwa/NotificationsCard';
 
 // Lazy load dashboards for better performance
 const SuperAdminDashboard = lazy(() => import('./SuperAdminDashboard'));
@@ -97,7 +98,13 @@ const DashboardRouter: FC = () => {
         }
     };
 
-    return <>{getDashboard()}</>;
+    return (
+        <>
+            {/* "Turn on notifications" - only while they're off on this device, and dismissible */}
+            {user.role !== UserRole.SUPER_ADMIN && <NotificationsCard variant="prompt" />}
+            {getDashboard()}
+        </>
+    );
 };
 
 export default DashboardRouter;

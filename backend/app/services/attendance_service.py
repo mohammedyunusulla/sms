@@ -105,7 +105,14 @@ class AttendanceService:
                 # Bulk insert
                 tenant_session.bulk_insert_mappings(Attendance, records)
                 tenant_session.commit()
-                
+
+                from app.services import push_events
+                push_events.students_marked_absent(
+                    skid, tenant_session,
+                    [r['student_user_id'] for r in records if r['status'] == 'ABSENT'],
+                    attendance_day(data['records'][0]['date']),
+                )
+
                 return {
                     'total_records': len(records),
                     'date': data['records'][0]['date'],
@@ -142,7 +149,8 @@ class AttendanceService:
                                  section_id, academic_year_id)
 
                 updated_records = []
-                
+                status_before, status_after = {}, {}  # for absence alerts: only students who became absent
+
                 for record_data in records:
                     student_id = record_data['student_id']
                     status = normalize_status(record_data['status'])
@@ -157,6 +165,8 @@ class AttendanceService:
                         )
                     ).first()
                     
+                    status_before[int(student_id)] = existing_record.status if existing_record else None
+                    status_after[int(student_id)] = status
                     if existing_record:
                         # Update existing record
                         existing_record.status = status
@@ -181,6 +191,10 @@ class AttendanceService:
                         updated_records.append(new_record)
                 
                 tenant_session.commit()
+
+                from app.services import push_events
+                push_events.students_marked_absent(
+                    skid, tenant_session, push_events.newly_absent(status_before, status_after), attendance_date)
 
                 return {
                     'updated_count': len(updated_records),
@@ -635,12 +649,19 @@ class AttendanceService:
                     raise ValueError("Attendance record not found")
                 
                 # Update fields
+                old_status = record.status
                 record.status = normalize_status(status)
                 if remarks is not None:
                     record.remarks = remarks
                 record.updated_at = datetime.now()
-                
+
                 tenant_session.commit()
+
+                from app.services import push_events
+                push_events.students_marked_absent(
+                    skid, tenant_session,
+                    push_events.newly_absent({record.student_user_id: old_status}, {record.student_user_id: record.status}),
+                    record.date)
                 
                 # Fetch student details with user information
                 student = tenant_session.query(Student).filter(

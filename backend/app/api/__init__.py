@@ -29,6 +29,7 @@ from .bus_scan import bus_scan_bp
 from .staff_routes import staff_bp
 from .bus_location import bus_location_bp
 from .homework import homework_bp
+from .push import push_bp
 
 __all__ = ['auth_bp', 'user_bp', 'teacher_bp', 'student_bp',
             'school_bp', 'class_bp', 'subject_bp', 'roles_bp',
@@ -36,5 +37,5 @@ __all__ = ['auth_bp', 'user_bp', 'teacher_bp', 'student_bp',
             'fee_bp', 'announcement_bp', 'exam_bp', 'marks_bp', 'progress_card_bp',
             'school_admin_dashboard_bp', 'expense_bp', 'academic_year_bp', 'teacher_dashboard_bp',
             'syllabus_bp', 'assignment_bp', 'student_dashboard_bp', 'room_bp', 'seating_bp',
-            'bus_scan_bp', 'staff_bp', 'bus_location_bp', 'homework_bp'
+            'bus_scan_bp', 'staff_bp', 'bus_location_bp', 'homework_bp', 'push_bp'
         ]

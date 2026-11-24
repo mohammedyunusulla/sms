@@ -277,6 +277,8 @@ class HomeworkService:
 
             tenant_session.commit()
             tenant_session.refresh(assignment)
+            from app.services import push_events
+            push_events.homework_created(skid, tenant_session, assignment)
             return cls._response("Homework created successfully", cls._assignment_to_dict(assignment), 201)
 
     @classmethod

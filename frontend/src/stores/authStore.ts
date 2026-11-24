@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { authService } from '../services/auth/authService';
 import { AuthUser, LoginRequest, AcademicYear } from '../types/auth';
 import { ApiError } from '../types/common';
+import { clearPushOnThisDevice } from '../components/pwa/pushClient';
 
 /**
  * Auth Store State & Actions
@@ -74,6 +75,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     // Logout
     logout: async () => {
         set({ loading: true, error: null });
+        // this device stops getting the signed-out user's notifications (the server forgets it too)
+        await clearPushOnThisDevice();
         try {
             await authService.logout();
             authService.clearStoredUser();

@@ -50,6 +50,8 @@ There is no automated test suite in either project. Use `npm run build` (type ch
 - **Frontend ↔ backend.** In containers the frontend is built with `VITE_API_BASE_URL=/api`, and host nginx proxies `/api/*` to the backend.
 - **AI homework module** (`/api/homework`): `homework.py`, `homework_service.py`, `homework_gemini_service.py` and the `Homework` tenant model. It needs `GEMINI_API_KEY`. Uploads go to `HOMEWORK_UPLOAD_DIR` (mounted from `backend/uploads/`, which is gitignored).
 
+- **Push notifications** (`/api/push`, web/PWA only): `push_service.py` (devices, sending in a background thread), `push_events.py` (which event notifies whom: announcements, assignments/homework, results published, absence) and the main-DB `PushSubscription` model (tied to the sign-in session; logout drops it, token refresh moves it). Frontend: `components/pwa/` (`pushClient.ts`, `NotificationsCard.tsx`) and `public/push-sw.js` (imported into the service worker). Needs `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` (generate with `backend/generate_vapid_keys.py`); without them it is a no-op. `pywebpush`/`py-vapid` are pinned to old versions because newer ones need `cryptography>=46`.
+
 ## Deployment
 
 Every push or merged PR to `main` triggers `deploy-dev.yml`. The workflow rsyncs the repo (with `--delete`) to the VM and runs `compose down && build && up -d` there. The target is https://dev-sms.klopterz.in. Merging to `main` therefore deploys immediately. Environment variables are listed in `.env.example`, and `docs/ENVIRONMENT_AND_SECRETS.md` covers secrets.

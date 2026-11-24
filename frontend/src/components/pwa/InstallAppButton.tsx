@@ -6,20 +6,13 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { InstallAppIcon } from "../common/StrokeIcons";
+import { isIos, isStandalone } from "./platform";
 
 interface BeforeInstallPromptEvent extends Event {
     prompt: () => Promise<void>;
     userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-const isStandalone = () =>
-    window.matchMedia?.("(display-mode: standalone)").matches ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true;
-
-// iPadOS reports itself as a Mac, so also check for touch.
-const isIos = () =>
-    /iphone|ipad|ipod/i.test(navigator.userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
 const STYLES = {
     // sign-in page header

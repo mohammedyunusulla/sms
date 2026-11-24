@@ -23,6 +23,14 @@ export const API_ENDPOINTS = {
         FORGOT_PASSWORD: '/auth/forgot-password',
         RESET_PASSWORD: '/auth/reset-password',
     },
+    // push notifications for this device (backend: app/api/push.py)
+    PUSH: {
+        CONFIG: '/push/config',
+        SUBSCRIBE: '/push/subscribe',
+        UNSUBSCRIBE: '/push/unsubscribe',
+        STATUS: '/push/status',
+        TEST: '/push/test',
+    },
     INSTITUTIONS: {
         LIST: '/institutions',
         CREATE: '/institutions',

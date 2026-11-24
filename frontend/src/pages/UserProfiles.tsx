@@ -10,6 +10,7 @@ import { PageHeader, Button, Badge, PasswordToggleButton } from '../components';
 import { authService } from '../services/auth/authService';
 import { useAuthStore } from '../stores/authStore';
 import { fieldInputClass, isValidPhone, passwordProblem } from '../utils/formValidation';
+import NotificationsCard from '../components/pwa/NotificationsCard';
 
 interface Account {
     username?: string;
@@ -166,7 +167,7 @@ const UserProfiles: FC = () => {
     return (
         <div className="space-y-6">
             <PageMeta title="My Profile | EduSpyre - Education Management System" description="Your EduSpyre account" />
-            <PageHeader title="My Profile" subtitle="Your account details and password" />
+            <PageHeader title="My Profile" subtitle="Your account details, password and notifications" />
 
             {loadError ? (
                 <div className="p-4 rounded-lg border border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300">
@@ -265,6 +266,9 @@ const UserProfiles: FC = () => {
                             </Button>
                         </div>
                     </div>
+
+                    {/* Push notifications on this device */}
+                    <NotificationsCard variant="settings" />
                 </>
             )}
         </div>

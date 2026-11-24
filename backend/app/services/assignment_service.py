@@ -106,6 +106,9 @@ class AssignmentService:
                 assignment_dict['section_name'] = result.section_name
                 assignment_dict['subject_name'] = result.subject_name
 
+                from app.services import push_events
+                push_events.assignment_created(skid, tenant_session, assignment, result.subject_name)
+
                 return assignment_dict
 
         except Exception as e:

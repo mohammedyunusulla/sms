@@ -177,15 +177,18 @@ class AuthService:
         Otherwise, logout all active sessions for the user.
         """
         try:
+            from app.services import push_service
             if session_token:
                 session = UserSession.get_active_session(session_token)
                 if session and session.user_id == user.id:
                     session.logout()
+                    push_service.forget_session(session_token=session_token)  # this device stops getting alerts
             else:
                 # Logout all active sessions for user
                 active_sessions = UserSession.get_user_sessions(user.id, active_only=True)
                 for session in active_sessions:
                     session.logout()
+                push_service.forget_session(user_id=user.id)
 
             log_logout(user)
             return True
@@ -233,6 +236,9 @@ class AuthService:
                     user_agent=user_agent
                 )
                 new_session.save()
+                # devices with notifications on follow the user to the new session
+                from app.services import push_service
+                push_service.move_session(old_session_token, new_session_token)
 
             additional_claims = {
                 'session_token': new_session_token

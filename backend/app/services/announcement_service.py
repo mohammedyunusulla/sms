@@ -69,7 +69,10 @@ class AnnouncementService:
                 
                 tenant_session.add(announcement)
                 tenant_session.commit()
-                
+
+                from app.services import push_events
+                push_events.announcement_published(skid, tenant_session, announcement)
+
                 # Fixed: Call to_dict() on the instance, not the class
                 return announcement.to_dict()
                 

@@ -54,14 +54,20 @@ class ExamResultsService:
             row = tenant_session.query(ExamResultPublication).filter_by(
                 exam_type_id=exam_type_id, academic_year_id=academic_year_id
             ).first()
+            newly_published = False
             if published and not row:
                 row = ExamResultPublication(
                     exam_type_id=exam_type_id, academic_year_id=academic_year_id,
                     published_at=datetime.now(), published_by=user_id,
                 )
                 tenant_session.add(row)
+                newly_published = True
             elif not published and row:
                 tenant_session.delete(row)
             tenant_session.commit()
+            # notify only for a first publish in the current year (not re-saves, not past years)
+            if newly_published and int(academic_year_id) == current_year_id(tenant_session):
+                from app.services import push_events
+                push_events.results_published(skid, tenant_session, exam_type_id)
             return {'exam_type_id': exam_type_id, 'academic_year_id': academic_year_id, 'published': bool(published),
                     'published_at': row.published_at.isoformat() if published and row else None}

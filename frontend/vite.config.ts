@@ -53,6 +53,8 @@ export default defineConfig({
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api\//, /^\/socket\.io\//, /^\/uploads\//],
         cleanupOutdatedCaches: true,
+        // push notification handlers (show + open the right page on tap)
+        importScripts: ["/push-sw.js"],
         // Page chunks are cached the first time each page is opened. They are content-hashed
         // build files (no user data), so serving them from cache is always safe.
         // Nothing else has a runtime rule: /api/* always goes to the network.

@@ -202,7 +202,14 @@ const forceLogout = (): void => {
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('loggedUser');
     localStorage.removeItem('parentSelectedChild');
-    window.location.href = '/signin';
+    // Stop push notifications for the signed-out user on this device (inline, not pushClient.ts:
+    // that module imports this one). Waits at most 1.5s before going to the sign-in page.
+    const dropPush = navigator.serviceWorker?.getRegistration()
+        .then((reg) => reg?.pushManager?.getSubscription())
+        .then((sub) => sub?.unsubscribe())
+        .catch(() => undefined);
+    Promise.race([dropPush, new Promise((resolve) => setTimeout(resolve, 1500))])
+        .finally(() => { window.location.href = '/signin'; });
 };
 
 /**
