@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSidebar } from "../context/SidebarContext";
 import { ThemeToggleButton } from "../components/common/ThemeToggleButton";
 import UserDropdown from "../components/header/UserDropdown";
+import RefreshButton from "../components/pwa/RefreshButton";
 import AcademicYearDropdown from "../components/header/AcademicYearDropdown";
 import ChildSelectorDropdown from "../components/header/ChildSelectorDropdown";
 import AcademicYearManagementModal from "../components/header/AcademicYearManagementModal";
@@ -20,20 +21,16 @@ const AppHeader: React.FC = () => {
 
   const { isMobileOpen, toggleSidebar, toggleMobileSidebar } = useSidebar();
   const { user } = useAuthStore();
-  const { hasAnyPermission, hasPermission } = usePermissions();
+  const { hasPermission } = usePermissions();
 
   // Check if user can manage academic years (School Admin or Principal)
   // the same tick the server checks (School Admin always has it)
   const canManageAcademicYears = hasPermission(Permission.MANAGE_ACADEMIC_YEARS);
-  // Show child selector to anyone with a parent-view permission
-  const showChildSelector =
-    user?.role === UserRole.PARENT &&
-    hasAnyPermission([
-      Permission.VIEW_CHILD_ASSIGNMENTS,
-      Permission.VIEW_CHILD_TIMETABLE,
-      Permission.VIEW_CHILD_FEES,
-      Permission.VIEW_CHILD_SYLLABUS,
-    ]);
+  // Every parent gets the child switcher, whatever their role's tick boxes: it only picks which child
+  // the pages show (each page still checks its own permission), and it's also what loads the children -
+  // without it, pages open to every parent (attendance, results) had no way to pick a child.
+  // It hides itself when the parent has no linked children.
+  const showChildSelector = user?.role === UserRole.PARENT;
 
   const handleToggle = () => {
     if (window.innerWidth >= 1024) {
@@ -113,6 +110,9 @@ const AppHeader: React.FC = () => {
               <ChildSelectorDropdown />
             </div>
           )}
+
+          {/* Installed app only: it has no browser reload button (phone layout; wide screens below) */}
+          <RefreshButton className="h-10 w-10 lg:hidden" />
 
           <button
             onClick={toggleApplicationMenu}
@@ -213,6 +213,7 @@ const AppHeader: React.FC = () => {
                 onManageClick={canManageAcademicYears ? () => setShowAcademicYearModal(true) : undefined}
               />
             )}
+            <RefreshButton className="h-11 w-11 max-lg:hidden" />
             {/* <!-- Dark Mode Toggler --> */}
             <ThemeToggleButton />
             {/* <!-- Dark Mode Toggler --> */}
