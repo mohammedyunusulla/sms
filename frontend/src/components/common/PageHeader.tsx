@@ -1,4 +1,5 @@
 import React, { FC } from 'react';
+import { Link } from 'react-router';
 import { IPageHeaderProps } from '../../types';
 
 /**
@@ -21,13 +22,14 @@ const PageHeader: FC<IPageHeaderProps> = ({
                     {breadcrumbs.map((breadcrumb, index) => (
                         <React.Fragment key={index}>
                             {index > 0 && <span className="text-gray-400 dark:text-gray-600">/</span>}
-                            {breadcrumb.href ? (
-                                <a
-                                    href={breadcrumb.href}
+                            {/* in-app link (no full page reload); "#" / no href = the current page, shown as text */}
+                            {breadcrumb.href && breadcrumb.href !== '#' ? (
+                                <Link
+                                    to={breadcrumb.href}
                                     className="hover:text-gray-900 dark:hover:text-white transition-colors"
                                 >
                                     {breadcrumb.label}
-                                </a>
+                                </Link>
                             ) : (
                                 <span className="text-gray-900 dark:text-white font-medium">
                                     {breadcrumb.label}
