@@ -38,6 +38,7 @@ export const API_ENDPOINTS = {
         PENDING_COUNT: (skid: string) => `/leave/pending-count/${skid}`,
         DECIDE: (skid: string, id: number) => `/leave/decide/${skid}/${id}`,
         ON_LEAVE: (skid: string) => `/leave/on-leave/${skid}`,
+        POLICY: (skid: string) => `/leave/policy/${skid}`,
     },
     PUSH: {
         CONFIG: '/push/config',

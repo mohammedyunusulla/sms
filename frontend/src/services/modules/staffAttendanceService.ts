@@ -17,7 +17,9 @@ export interface StaffDayRow {
     role_name: string;
     status: StaffStatus | null;
     remarks: string | null;
+    /** approved leave that day, e.g. "Casual" or "Casual (unpaid)" */
     on_leave: string | null;
+    unpaid_leave: boolean;
 }
 
 export interface StaffDay {
@@ -28,13 +30,15 @@ export interface StaffDay {
     staff: StaffDayRow[];
 }
 
-export type StaffTotals = Record<StaffStatus | 'NOT_MARKED', number> & { days: number };
+/** UNPAID_LEAVE: approved leave days beyond the yearly balance (counted in the loss of pay) */
+export type StaffTotals = Record<StaffStatus | 'NOT_MARKED' | 'UNPAID_LEAVE', number> & { days: number };
 
 export interface StaffRegister {
     year: number;
     month: number;
     days: number;
-    staff: { user_id: number; name: string; role_name: string; days: Record<string, StaffStatus>; totals: StaffTotals }[];
+    /** a day's status, or UNPAID_LEAVE for leave beyond the balance */
+    staff: { user_id: number; name: string; role_name: string; days: Record<string, StaffStatus | 'UNPAID_LEAVE'>; totals: StaffTotals }[];
 }
 
 export interface MyStaffMonth {
@@ -43,6 +47,7 @@ export interface MyStaffMonth {
     days: number;
     records: { date: string; status: StaffStatus; remarks: string | null }[];
     approved_leave_days: string[];
+    unpaid_leave_days: string[];
     totals: StaffTotals;
 }
 

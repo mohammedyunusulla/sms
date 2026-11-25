@@ -9,7 +9,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { useParentStore } from '../../stores/parentStore';
 import { leaveErrorMessage, leaveService, LeaveRequest, MyLeaveData } from '../../services/modules/leaveService';
 import LeaveCard from './LeaveCard';
-import { addDays, localDay } from './leaveDates';
+import { addDays, countedDays, localDay } from './leaveDates';
 
 const REASON_MAX = 1000;
 
@@ -111,6 +111,23 @@ const MyLeave: FC = () => {
 
     const pending = data?.requests.filter((r) => r.status === 'PENDING').length ?? 0;
 
+    // staff: what this request would use from the balance of the chosen type
+    const preview = (() => {
+        if (data?.applicant_type !== 'STAFF' || !form.leave_type || !form.from_date || !form.to_date || form.to_date < form.from_date) return null;
+        const counted = countedDays(form.from_date, form.to_date);
+        const bal = data.balances?.find((b) => b.type === form.leave_type);
+        const label = bal?.label || form.leave_type;
+        if (!counted) return { tone: 'warn', text: 'These dates are all Sundays: no leave is needed.' };
+        const daysText = `${counted} day${counted === 1 ? '' : 's'}`;
+        if (!bal || bal.remaining === null) return { tone: 'ok', text: `This request counts ${daysText} (Sundays not counted). ${label} leave has no limit, so it's all paid.` };
+        const unpaid = Math.max(0, counted - bal.remaining);
+        if (!unpaid) return { tone: 'ok', text: `This request counts ${daysText} (Sundays not counted), leaving ${bal.remaining - counted} of ${bal.paid_days} ${label} days.` };
+        const left = bal.remaining === 0
+            ? (bal.paid_days === 0 ? `${label} leave is always unpaid` : `no paid ${label} days are left`)
+            : `only ${bal.remaining} paid ${label} day${bal.remaining === 1 ? ' is' : 's are'} left`;
+        return { tone: 'warn', text: `This request counts ${daysText}, but ${left}: if approved, ${unpaid} day${unpaid === 1 ? '' : 's'} will be unpaid.` };
+    })();
+
     return (
         <div className="space-y-6">
             <PageHeader
@@ -130,6 +147,31 @@ const MyLeave: FC = () => {
                 <div className="flex justify-center py-12"><LoadingSpinner /></div>
             ) : data ? (
                 <>
+                    {data.balances && (
+                        <div className="grid gap-3 sm:grid-cols-3" data-testid="leave-balances">
+                            {data.balances.map((b) => (
+                                <div key={b.type} className="rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">{b.label} leave</p>
+                                    {b.paid_days === null ? (
+                                        <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">No limit <span className="text-sm font-normal text-gray-500 dark:text-gray-400">· {b.used} used</span></p>
+                                    ) : b.paid_days === 0 ? (
+                                        <p className="mt-1 text-lg font-semibold text-gray-900 dark:text-white">Always unpaid</p>
+                                    ) : (
+                                        <>
+                                            <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
+                                                {b.remaining}<span className="text-sm font-normal text-gray-500 dark:text-gray-400"> of {b.paid_days} days left</span>
+                                            </p>
+                                            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+                                                <div className={`h-full rounded-full ${b.remaining === 0 ? 'bg-red-500' : 'bg-emerald-500'}`}
+                                                    style={{ width: `${b.paid_days ? Math.min(100, (b.used / b.paid_days) * 100) : 100}%` }} />
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
                     {showForm && (
                         <form onSubmit={submit} className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
                             <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
@@ -149,6 +191,13 @@ const MyLeave: FC = () => {
                                     onChange={(e) => change('reason', e.target.value)} error={errors.reason}
                                     help={`${form.reason.length}/${REASON_MAX}`} />
                             </div>
+                            {preview && (
+                                <p data-testid="leave-preview" className={`mt-3 rounded-lg px-3 py-2 text-sm ${preview.tone === 'warn'
+                                    ? 'bg-amber-50 text-amber-900 dark:bg-amber-900/20 dark:text-amber-200'
+                                    : 'bg-emerald-50 text-emerald-900 dark:bg-emerald-900/20 dark:text-emerald-200'}`}>
+                                    {preview.text}
+                                </p>
+                            )}
                             <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
                                 {data.applicant_type === 'STUDENT'
                                     ? 'The class teacher reviews the request. You get a notification when it is decided.'

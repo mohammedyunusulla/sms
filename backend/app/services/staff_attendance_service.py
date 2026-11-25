@@ -7,7 +7,8 @@ Student, Parent or an admin. Approved staff leave starts as "Leave" on the marki
 for a day already marked Absent turns it into Leave (leave_service).
 
 Salary: month summaries feed Salary Payments, which suggests a loss of pay of
-basic salary / days in the month x (Absent days + half of Half days); approved leave is paid.
+basic salary / days in the month x (Absent days + half of Half days + unpaid leave days). Approved leave is
+paid up to the yearly balance (leave_balance.py); days beyond it are unpaid leave.
 """
 import calendar
 from datetime import date, datetime
@@ -20,6 +21,7 @@ from app.models.tenant.LeaveRequest import LeaveRequest
 from app.models.tenant.Roles import Role
 from app.models.tenant.StaffAttendance import StaffAttendance
 from app.utils.db_manager import switch_to_institution_db
+from app.services.leave_balance import unpaid_leave_dates, ensure_tables as ensure_policy_table
 
 STATUSES = ('PRESENT', 'ABSENT', 'LATE', 'HALF_DAY', 'LEAVE')
 NOT_STAFF = ('STUDENT', 'PARENT', 'INSTITUTION_ADMIN', 'SUPER_ADMIN')
@@ -37,6 +39,7 @@ def ensure_tables(session):
     bind = session.connection()
     LeaveRequest.__table__.create(bind=bind, checkfirst=True)
     StaffAttendance.__table__.create(bind=bind, checkfirst=True)
+    ensure_policy_table(session)
 
 
 def _parse_day(value, label='Date'):
@@ -83,7 +86,8 @@ def _name(user):
 
 
 def approved_staff_leave(session, user_ids, start, end):
-    """{user_id: {day: leave_type}} for approved staff leave overlapping start..end."""
+    """{user_id: {day: label}} for approved staff leave overlapping start..end ("Casual", or "Casual (unpaid)"
+    for days beyond the yearly balance)."""
     ids = [int(u) for u in user_ids]
     if not ids:
         return {}
@@ -91,11 +95,15 @@ def approved_staff_leave(session, user_ids, start, end):
         LeaveRequest.applicant_type == 'STAFF', LeaveRequest.status == 'APPROVED',
         LeaveRequest.user_id.in_(ids), LeaveRequest.from_date <= end, LeaveRequest.to_date >= start,
     ).all()
+    unpaid = unpaid_leave_dates(session, ids, start, end)
     out = {}
     for leave in rows:
         day = max(leave.from_date, start)
         while day <= min(leave.to_date, end):
-            out.setdefault(leave.user_id, {})[day] = leave.leave_type.title()
+            label = leave.leave_type.title()
+            if day in unpaid.get(leave.user_id, ()):
+                label += ' (unpaid)'
+            out.setdefault(leave.user_id, {})[day] = label
             day = date.fromordinal(day.toordinal() + 1)
     return out
 
@@ -105,18 +113,24 @@ def _empty_totals():
 
 
 def month_summaries(session, user_ids, year, month):
-    """{user_id: {'PRESENT': n, ..., 'NOT_MARKED': n, 'days': n}} - not marked counts only days up to today."""
+    """
+    {user_id: {'PRESENT': n, ..., 'NOT_MARKED': n, 'UNPAID_LEAVE': n, 'days': n}}. Not marked counts only days up
+    to today. UNPAID_LEAVE: days of approved leave beyond the balance, unless the person was marked as working
+    (Present / Late) or already counted (Absent / Half day).
+    """
     start, end, days = _month(year, month)
     ids = [int(u) for u in user_ids]
-    out = {u: {**_empty_totals(), 'NOT_MARKED': 0, 'days': days} for u in ids}
+    out = {u: {**_empty_totals(), 'NOT_MARKED': 0, 'UNPAID_LEAVE': 0, 'days': days} for u in ids}
     if not ids:
         return out
-    rows = session.query(StaffAttendance.user_id, StaffAttendance.status, func.count()).filter(
-        StaffAttendance.user_id.in_(ids), StaffAttendance.date >= start, StaffAttendance.date <= end,
-    ).group_by(StaffAttendance.user_id, StaffAttendance.status).all()
-    for uid, status, n in rows:
+    marked = {}
+    for uid, day, status in session.query(StaffAttendance.user_id, StaffAttendance.date, StaffAttendance.status).filter(
+            StaffAttendance.user_id.in_(ids), StaffAttendance.date >= start, StaffAttendance.date <= end).all():
+        marked[(uid, day)] = status
         if status in out[uid]:
-            out[uid][status] += n
+            out[uid][status] += 1
+    for uid, dates in unpaid_leave_dates(session, ids, start, end).items():
+        out[uid]['UNPAID_LEAVE'] = sum(1 for d in dates if marked.get((uid, d), 'LEAVE') == 'LEAVE')
     elapsed = max(0, (min(end, date.today()) - start).days + 1)
     for uid, totals in out.items():
         totals['NOT_MARKED'] = max(0, elapsed - sum(totals[s] for s in STATUSES))
@@ -124,8 +138,9 @@ def month_summaries(session, user_ids, year, month):
 
 
 def loss_of_pay(basic_salary, totals):
-    """(days, amount): basic / days in month x (absent + half of half days)."""
-    days = Decimal(totals.get('ABSENT', 0)) + Decimal(totals.get('HALF_DAY', 0)) / 2
+    """(days, amount): basic / days in month x (absent + half of half days + unpaid leave)."""
+    days = (Decimal(totals.get('ABSENT', 0)) + Decimal(totals.get('HALF_DAY', 0)) / 2
+            + Decimal(totals.get('UNPAID_LEAVE', 0)))
     if not days or not basic_salary:
         return float(days), 0.0
     amount = (Decimal(str(basic_salary)) / Decimal(totals['days']) * days).quantize(Decimal('0.01'), ROUND_HALF_UP)
@@ -161,6 +176,7 @@ class StaffAttendanceService:
                     'status': records[u.id].status if u.id in records else None,
                     'remarks': records[u.id].remarks if u.id in records else None,
                     'on_leave': leave.get(u.id, {}).get(day),
+                    'unpaid_leave': (leave.get(u.id, {}).get(day) or '').endswith('(unpaid)'),
                 } for u, role in members],
             }
 
@@ -208,9 +224,11 @@ class StaffAttendanceService:
             members = staff_members(session)
             ids = [u.id for u, _ in members]
             grid = {}
+            unpaid = unpaid_leave_dates(session, ids, start, end)
             for r in session.query(StaffAttendance).filter(
                     StaffAttendance.user_id.in_(ids or [-1]), StaffAttendance.date >= start, StaffAttendance.date <= end).all():
-                grid.setdefault(r.user_id, {})[r.date.day] = r.status
+                status = 'UNPAID_LEAVE' if r.status == 'LEAVE' and r.date in unpaid.get(r.user_id, ()) else r.status
+                grid.setdefault(r.user_id, {})[r.date.day] = status
             totals = month_summaries(session, ids, start.year, start.month)
             return {
                 'year': start.year, 'month': start.month, 'days': days,
@@ -235,6 +253,7 @@ class StaffAttendanceService:
                 'year': start.year, 'month': start.month, 'days': days,
                 'records': [{'date': r.date.isoformat(), 'status': r.status, 'remarks': r.remarks} for r in rows],
                 'approved_leave_days': sorted(d.isoformat() for d in leave),
+                'unpaid_leave_days': sorted(d.isoformat() for d, label in leave.items() if label.endswith('(unpaid)')),
                 'totals': month_summaries(session, [me], start.year, start.month)[me],
             }
 

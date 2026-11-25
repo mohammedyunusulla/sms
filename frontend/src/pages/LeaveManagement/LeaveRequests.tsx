@@ -4,6 +4,7 @@
  */
 import { FC, useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import { Link } from 'react-router';
 import { Button, FormSelect, FormTextarea, LoadingSpinner, Modal, PageHeader } from '../../components';
 import { leaveErrorMessage, leaveService, LeaveRequest, ReviewData } from '../../services/modules/leaveService';
 import LeaveCard from './LeaveCard';
@@ -68,6 +69,7 @@ const LeaveRequests: FC = () => {
             <PageHeader
                 title="Leave Requests"
                 subtitle={data?.full_access ? 'Student and staff leave requests' : 'Leave requests from the students of your class'}
+                actions={data?.full_access ? <Link to="/leave/policy"><Button variant="outline" size="sm">Leave policy</Button></Link> : undefined}
                 breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Leave Requests', href: '#' }]}
             />
 
@@ -96,7 +98,7 @@ const LeaveRequests: FC = () => {
                             <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by name"
                                 className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white sm:w-56" />
                             {data?.full_access && (
-                                <div className="sm:w-44">
+                                <div className="sm:w-52">
                                     <FormSelect value={applicantType} onChange={(e) => setApplicantType(e.target.value)} placeholder="Students and staff"
                                         options={[{ value: 'STUDENT', label: 'Students' }, { value: 'STAFF', label: 'Staff' }]} />
                                 </div>

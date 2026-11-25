@@ -15,8 +15,9 @@ const CELL: Record<string, { code: string; cls: string }> = {
     LATE: { code: 'L', cls: 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200' },
     HALF_DAY: { code: 'H', cls: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200' },
     LEAVE: { code: 'LV', cls: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200' },
+    UNPAID_LEAVE: { code: 'UL', cls: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200' },
 };
-const TOTALS: [string, string][] = [['PRESENT', 'P'], ['ABSENT', 'A'], ['LATE', 'L'], ['HALF_DAY', 'H'], ['LEAVE', 'LV'], ['NOT_MARKED', 'NM']];
+const TOTALS: [string, string][] = [['PRESENT', 'P'], ['ABSENT', 'A'], ['LATE', 'L'], ['HALF_DAY', 'H'], ['LEAVE', 'LV'], ['UNPAID_LEAVE', 'UL'], ['NOT_MARKED', 'NM']];
 
 const StaffRegister: FC = () => {
     const [month, setMonth] = useState(() => {
@@ -125,7 +126,7 @@ const StaffRegister: FC = () => {
                         </tbody>
                     </table>
                     <p className="border-t border-gray-100 px-3 py-2 text-[11px] text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                        P Present · A Absent · L Late · H Half day · LV Leave · NM Not marked (days up to today with no entry) · Sundays in red
+                        P Present · A Absent · L Late · H Half day · LV Leave · UL Unpaid leave (beyond the yearly balance; LV counts include it) · NM Not marked (days up to today with no entry) · Sundays in red
                     </p>
                 </div>
             ) : null}

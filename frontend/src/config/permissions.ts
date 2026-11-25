@@ -169,6 +169,8 @@ export const ROUTE_PERMISSION_MAP: Record<string, RoutePermissionConfig> = {
   '/attendance/staff-register': { permission: Permission.MANAGE_STAFF_ATTENDANCE },
   // class teachers (they mark attendance) and approvers; the server limits a class teacher to their sections
   '/leave/requests': { anyPermission: [Permission.APPROVE_LEAVE, Permission.MANAGE_ATTENDANCE] },
+  // paid staff leave per year: Institution Admin and leave approvers (the server checks the same)
+  '/leave/policy': { permission: Permission.APPROVE_LEAVE },
 
   // Announcements
   '/announcements': { permission: Permission.VIEW_ANNOUNCEMENTS },

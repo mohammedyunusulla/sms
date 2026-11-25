@@ -63,6 +63,21 @@ def decide(skid, leave_id):
     return _run(LeaveService.decide, skid, request.current_user, leave_id, body.get('decision'), body.get('note'))
 
 
+@leave_bp.route('/policy/<skid>', methods=['GET'])
+@login_required(STAFF_ROLES, self_service=True)
+def get_policy(skid):
+    """Paid staff leave per type for the current academic year (None = no limit)."""
+    return _run(LeaveService.get_policy, skid)
+
+
+@leave_bp.route('/policy/<skid>', methods=['PUT'])
+@login_required(STAFF_ROLES, self_service=True)
+def save_policy(skid):
+    """{"types": [{"type": "CASUAL", "paid_days": 12}, ...]} - Institution Admin / "approve_leave" only (checked in the service)."""
+    body = request.get_json(silent=True) or {}
+    return _run(LeaveService.save_policy, skid, request.current_user, body.get('types'))
+
+
 @leave_bp.route('/on-leave/<skid>', methods=['GET'])
 @login_required(STAFF_ROLES, permission=('manage_attendance', 'view_attendance'))
 def on_leave(skid):

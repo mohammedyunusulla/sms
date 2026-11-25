@@ -43,6 +43,7 @@ const StaffMonthView: FC = () => {
 
     const byDate = useMemo(() => new Map((data?.records || []).map((r) => [r.date, r])), [data]);
     const leaveDays = useMemo(() => new Set(data?.approved_leave_days || []), [data]);
+    const unpaidDays = useMemo(() => new Set(data?.unpaid_leave_days || []), [data]);
     const cells = useMemo(() => {
         const lead = (month.getDay() + 6) % 7;
         const out: (Date | null)[] = Array.from({ length: lead }, () => null);
@@ -75,6 +76,12 @@ const StaffMonthView: FC = () => {
                         <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{loading ? '…' : t ? t[key] : 0}</p>
                     </div>
                 ))}
+                {!!t?.UNPAID_LEAVE && (
+                    <div className="rounded-lg border border-purple-200 bg-purple-50 p-3 dark:border-purple-800 dark:bg-purple-900/20">
+                        <p className="text-xs text-purple-700 dark:text-purple-300">Unpaid leave</p>
+                        <p className="mt-1 text-2xl font-bold text-purple-900 dark:text-purple-100">{t.UNPAID_LEAVE}</p>
+                    </div>
+                )}
                 <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-800">
                     <p className="text-xs text-gray-500 dark:text-gray-400">Not marked</p>
                     <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{loading ? '…' : t ? t.NOT_MARKED : 0}</p>
@@ -92,10 +99,11 @@ const StaffMonthView: FC = () => {
                         const rec = byDate.get(key);
                         const style = rec ? STYLE[rec.status] : undefined;
                         const leaveOnly = !rec && leaveDays.has(key);
+                        const unpaid = unpaidDays.has(key);
                         return (
                             <div key={key} data-status={rec?.status || ''}
-                                title={rec ? `${style?.label || rec.status}${rec.remarks ? ` - ${rec.remarks}` : ''}` : leaveOnly ? 'Approved leave' : ''}
-                                className={`flex aspect-square items-center justify-center rounded-md text-sm ${style ? style.cell : leaveOnly ? 'border border-dashed border-blue-400 text-blue-600 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500'} ${key === today ? 'ring-2 ring-blue-500' : ''}`}>
+                                title={`${rec ? `${style?.label || rec.status}${rec.remarks ? ` - ${rec.remarks}` : ''}` : leaveOnly ? 'Approved leave' : ''}${unpaid ? ' (unpaid)' : ''}`}
+                                className={`flex aspect-square items-center justify-center rounded-md text-sm ${style ? style.cell : leaveOnly ? 'border border-dashed border-blue-400 text-blue-600 dark:text-blue-300' : 'text-gray-400 dark:text-gray-500'} ${key === today ? 'ring-2 ring-blue-500' : ''} ${unpaid ? 'ring-2 ring-purple-400' : ''}`}>
                                 {day.getDate()}
                             </div>
                         );
@@ -105,7 +113,7 @@ const StaffMonthView: FC = () => {
                     {Object.values(STYLE).map((s) => (
                         <span key={s.label} className="flex items-center gap-1.5"><span className={`inline-block h-2.5 w-2.5 rounded-full ${s.dot}`} />{s.label}</span>
                     ))}
-                    <span>Dashed: approved leave not yet marked · Unmarked days are grey</span>
+                    <span>Dashed: approved leave not yet marked · Purple ring: unpaid leave · Unmarked days are grey</span>
                 </div>
             </div>
 

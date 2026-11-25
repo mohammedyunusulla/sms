@@ -31,6 +31,30 @@ export interface LeaveRequest {
     created_at: string | null;
     can_decide: boolean;
     can_cancel: boolean;
+    /** staff leave: days counted (Sundays not counted) */
+    counted_days: number | null;
+    /** staff leave, once approved: paid days (within the yearly balance) and unpaid days (beyond it) */
+    paid_days: number | null;
+    unpaid_days: number | null;
+    /** pending staff leave: balance of that type and how many days would be unpaid if approved now */
+    balance: { paid_days: number | null; used: number; remaining: number | null; would_be_unpaid: number } | null;
+}
+
+export interface LeaveBalance {
+    type: string;
+    label: string;
+    /** null = no limit */
+    paid_days: number | null;
+    used: number;
+    remaining: number | null;
+}
+
+export interface LeavePolicy {
+    academic_year_id: number | null;
+    year_name: string | null;
+    /** the policy shown comes from this earlier year (nothing saved for the current year yet) */
+    inherited_from: string | null;
+    types: { type: string; label: string; paid_days: number | null }[];
 }
 
 export interface LeaveTypeOption {
@@ -43,6 +67,8 @@ export interface MyLeaveData {
     leave_types: LeaveTypeOption[];
     days_back: number;
     max_days: number;
+    /** staff only */
+    balances: LeaveBalance[] | null;
     requests: LeaveRequest[];
 }
 
@@ -109,6 +135,16 @@ export const leaveService = {
 
     async decide(id: number, decision: 'APPROVE' | 'REJECT', note?: string): Promise<LeaveRequest> {
         const res = (await client().post(E.DECIDE(getInstitutionId(), id), { decision, note })) as unknown as Envelope<LeaveRequest>;
+        return res.data;
+    },
+
+    async getPolicy(): Promise<LeavePolicy> {
+        const res = (await client().get(E.POLICY(getInstitutionId()))) as unknown as Envelope<LeavePolicy>;
+        return res.data;
+    },
+
+    async savePolicy(types: { type: string; paid_days: number | null }[]): Promise<LeavePolicy> {
+        const res = (await client().put(E.POLICY(getInstitutionId()), { types })) as unknown as Envelope<LeavePolicy>;
         return res.data;
     },
 

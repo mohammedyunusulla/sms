@@ -21,6 +21,7 @@ from app.models.tenant.Student import Student
 from app.models.tenant.StudentParent import StudentParent
 from app.utils.db_manager import switch_to_institution_db
 from app.utils.enrollment import current_enrollment, current_year_id
+from app.services import leave_balance
 
 STUDENT, STAFF = 'STUDENT', 'STAFF'
 PENDING, APPROVED, REJECTED, CANCELLED = 'PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'
@@ -155,9 +156,30 @@ def _shape(session, leaves, user=None):
     my_sections = class_teacher_sections(session, user) if user else set()
     me = int(user.institution_user_id) if user and user.institution_user_id else None
     today = date.today()
+    balance_cache = {}
+
+    def staff_balance(l):
+        """Pending staff leave: what's left of that type, and how many of its days would be unpaid."""
+        key = (l.user_id, l.academic_year_id, l.leave_type)
+        if key not in balance_cache:
+            policy, _ = leave_balance.policy_for_year(session, l.academic_year_id)
+            quota = policy.get(l.leave_type)
+            used = leave_balance.used_paid_days(session, l.user_id, l.academic_year_id, l.leave_type)
+            balance_cache[key] = {'paid_days': quota, 'used': used,
+                                  'remaining': None if quota is None else max(0, quota - used)}
+        info = dict(balance_cache[key])
+        paid, unpaid = leave_balance.split_for(session, l)
+        info['would_be_unpaid'] = unpaid
+        return info
+
     out = []
     for l in leaves:
+        counted = len(leave_balance.chargeable_dates(l.from_date, l.to_date)) if l.applicant_type == STAFF else None
         out.append({
+            'counted_days': counted,
+            'paid_days': l.paid_days,
+            'unpaid_days': l.unpaid_days,
+            'balance': staff_balance(l) if l.applicant_type == STAFF and l.status == PENDING else None,
             'id': l.id,
             'applicant_type': l.applicant_type,
             'user_id': l.user_id,
@@ -224,8 +246,12 @@ class LeaveService:
             applicant_type, person = LeaveService._resolve_person(session, user, student_id)
             leaves = session.query(LeaveRequest).filter(LeaveRequest.user_id == person).order_by(
                 LeaveRequest.from_date.desc(), LeaveRequest.id.desc()).limit(200).all()
+            balances = None
+            if applicant_type == STAFF:
+                balances = leave_balance.balances(session, person, current_year_id(session), LEAVE_TYPES[STAFF])
             return {'applicant_type': applicant_type, 'leave_types': LeaveService.leave_types()[applicant_type],
-                    'days_back': DAYS_BACK, 'max_days': MAX_DAYS, 'requests': _shape(session, leaves, user)}
+                    'days_back': DAYS_BACK, 'max_days': MAX_DAYS, 'balances': balances,
+                    'requests': _shape(session, leaves, user)}
 
     @staticmethod
     def apply(skid, user, data):
@@ -242,6 +268,8 @@ class LeaveService:
                 raise LeaveError(f'Leave can be applied at most {DAYS_BACK} days back')
             if (end - start).days + 1 > MAX_DAYS:
                 raise LeaveError(f'One request can cover at most {MAX_DAYS} days')
+            if applicant_type == STAFF and not leave_balance.chargeable_dates(start, end):
+                raise LeaveError('These dates are all Sundays: no leave is needed')
             leave_type = str(data.get('leave_type') or '').strip().upper()
             if leave_type not in LEAVE_TYPES[applicant_type]:
                 raise LeaveError('Choose a leave type')
@@ -284,7 +312,7 @@ class LeaveService:
                 raise LeaveError('Only the person who applied can cancel this request', 403)
             if not _cancellable(leave, date.today()):
                 raise LeaveError('This request can no longer be cancelled')
-            leave.status = CANCELLED
+            leave.status = CANCELLED  # its paid days go back to the balance (only approved leave counts as used)
             session.commit()
             return _shape(session, [leave], user)[0]
 
@@ -365,6 +393,8 @@ class LeaveService:
             leave.decided_by = int(user.institution_user_id) if user.institution_user_id else None
             leave.decided_at = datetime.utcnow()
             leave.decision_note = note
+            if leave.status == APPROVED and leave.applicant_type == STAFF:
+                leave.paid_days, leave.unpaid_days = leave_balance.split_for(session, leave)
             if leave.status == APPROVED:
                 _absent_to_leave(session, leave, leave.decided_by)
             session.commit()
@@ -372,6 +402,26 @@ class LeaveService:
             from app.services import push_events
             push_events.leave_decided(skid, session, leave)
             return _shape(session, [leave], user)[0]
+
+    @staticmethod
+    def get_policy(skid):
+        with switch_to_institution_db(skid) as session:
+            ensure_table(session)
+            return leave_balance.get_policy(session, current_year_id(session), LEAVE_TYPES[STAFF])
+
+    @staticmethod
+    def save_policy(skid, user, types):
+        if not has_full_approval(user):
+            raise LeaveError('Only the Institution Admin or people who approve leave can change the leave policy', 403)
+        with switch_to_institution_db(skid) as session:
+            ensure_table(session)
+            year_id = current_year_id(session)
+            try:
+                leave_balance.save_policy(session, year_id, types, user.institution_user_id)
+            except ValueError as e:
+                raise LeaveError(str(e))
+            session.commit()
+            return leave_balance.get_policy(session, year_id, LEAVE_TYPES[STAFF])
 
     @staticmethod
     def students_on_leave(skid, section_id, day):

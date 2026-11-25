@@ -275,6 +275,9 @@ TENANT_SCHEMA_UPDATES = (
     # Runs once in effect: it only touches active rows without a section whose teacher has an assignment.
     SYLLABUS_PROGRESS_CARRY_OVER,
     SYLLABUS_PROGRESS_RETIRE_COPIED,
+    # paid / unpaid split of approved staff leave (leave balances)
+    "ALTER TABLE IF EXISTS leave_requests ADD COLUMN IF NOT EXISTS paid_days INTEGER",
+    "ALTER TABLE IF EXISTS leave_requests ADD COLUMN IF NOT EXISTS unpaid_days INTEGER",
 )
 
 
@@ -311,8 +314,10 @@ def _bootstrap_tenant_schemas(app):
                 # tables added after the institution was created (create_all only runs for new institutions)
                 from app.models.tenant.LeaveRequest import LeaveRequest
                 from app.models.tenant.StaffAttendance import StaffAttendance
+                from app.models.tenant.LeavePolicy import LeavePolicy
                 LeaveRequest.__table__.create(bind=conn, checkfirst=True)
                 StaffAttendance.__table__.create(bind=conn, checkfirst=True)
+                LeavePolicy.__table__.create(bind=conn, checkfirst=True)
         except Exception as e:
             app.logger.warning(f"Tenant schema update failed for institution {skid}: {str(e).splitlines()[0]}")
 

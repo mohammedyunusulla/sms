@@ -194,11 +194,12 @@ const SalaryPayments: FC = () => {
                 const part = (n: number | undefined, label: string, cls: string) =>
                     n ? <span className={cls}>{label} {n}</span> : null;
                 return (
-                    <div className="flex flex-wrap gap-x-2 text-xs" title="Present · Absent · Half day · Leave · Late · Not marked">
+                    <div className="flex flex-wrap gap-x-2 text-xs" title="Present · Absent · Half day · Leave · Unpaid leave · Late · Not marked">
                         <span className="text-emerald-700 dark:text-emerald-400">P {a.PRESENT || 0}</span>
                         {part(a.ABSENT, 'A', 'text-red-600 dark:text-red-400')}
                         {part(a.HALF_DAY, 'H', 'text-orange-600 dark:text-orange-400')}
                         {part(a.LEAVE, 'LV', 'text-blue-600 dark:text-blue-400')}
+                        {part(a.UNPAID_LEAVE, 'UL', 'text-purple-600 dark:text-purple-400')}
                         {part(a.LATE, 'L', 'text-amber-600 dark:text-amber-400')}
                         {part(a.NOT_MARKED, 'NM', 'text-gray-500')}
                     </div>
@@ -416,7 +417,7 @@ const SalaryPayments: FC = () => {
                 isOpen={!!lop}
                 title={lop?.apply ? 'Apply loss of pay' : 'Remove loss of pay'}
                 message={lop ? (lop.apply
-                    ? `${lop.payment.staff_name} has ${lop.payment.loss_of_pay_days} unpaid day(s) in ${lop.payment.payment_month}/${lop.payment.payment_year} (absent days, plus half of the half days; approved leave is paid). Deduct \u20B9${formatAmount(lop.payment.loss_of_pay_suggested || 0)}? (basic \u20B9${formatAmount(lop.payment.basic_salary)} / ${lop.payment.attendance?.days ?? 'days in month'} days x ${lop.payment.loss_of_pay_days})`
+                    ? `${lop.payment.staff_name} has ${lop.payment.loss_of_pay_days} unpaid day(s) in ${lop.payment.payment_month}/${lop.payment.payment_year} (absent days, half of the half days, and approved leave beyond the yearly balance). Deduct \u20B9${formatAmount(lop.payment.loss_of_pay_suggested || 0)}? (basic \u20B9${formatAmount(lop.payment.basic_salary)} / ${lop.payment.attendance?.days ?? 'days in month'} days x ${lop.payment.loss_of_pay_days})`
                     : `Remove the \u20B9${formatAmount(lop.payment.loss_of_pay_applied || 0)} loss-of-pay deduction from ${lop.payment.staff_name}'s salary for ${lop.payment.payment_month}/${lop.payment.payment_year}?`) : ''}
                 onConfirm={confirmLossOfPay}
                 onCancel={() => setLop(null)}

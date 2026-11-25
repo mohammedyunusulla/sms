@@ -67,6 +67,7 @@ const ParentAttendance = lazy(() => import("./pages/AttendanceManagement").then(
 const StaffAttendance = lazy(() => import("./pages/AttendanceManagement").then(m => ({ default: m.StaffAttendance })));
 const StaffRegister = lazy(() => import("./pages/AttendanceManagement").then(m => ({ default: m.StaffRegister })));
 const MyLeave = lazy(() => import("./pages/LeaveManagement").then(m => ({ default: m.MyLeave })));
+const LeavePolicyPage = lazy(() => import("./pages/LeaveManagement").then(m => ({ default: m.LeavePolicyPage })));
 const LeaveRequests = lazy(() => import("./pages/LeaveManagement").then(m => ({ default: m.LeaveRequests })));
 
 // Lazy loaded Announcement Management
@@ -281,6 +282,7 @@ function AppContent() {
                         <Route path="/leave/my" element={<MyLeave />} />
                         <Route path="/leave" element={<Navigate to="/leave/my" replace />} />
                         <Route path="/leave/requests" element={guarded('/leave/requests', <LeaveRequests />)} />
+                        <Route path="/leave/policy" element={guarded('/leave/policy', <LeavePolicyPage />)} />
                         {/* published exam results: every student / parent (backend limits to own child + published exams) */}
                         <Route path="/academics/my-results" element={<MyResults />} />
                         <Route path="/parent/results" element={<ParentResults />} />

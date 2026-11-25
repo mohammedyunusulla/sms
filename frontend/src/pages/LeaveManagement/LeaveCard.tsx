@@ -36,7 +36,9 @@ const LeaveCard: FC<Props> = ({ leave, showPerson = false, actions }) => (
                 <p className={showPerson ? 'text-sm text-gray-700 dark:text-gray-300' : 'font-semibold text-gray-900 dark:text-white'}>
                     {formatRange(leave.from_date, leave.to_date)}
                     <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
-                        {leave.days} day{leave.days === 1 ? '' : 's'} · {leave.leave_type_label}
+                        {leave.counted_days != null && leave.counted_days !== leave.days
+                            ? `${leave.counted_days} day${leave.counted_days === 1 ? '' : 's'} counted (no Sundays)`
+                            : `${leave.days} day${leave.days === 1 ? '' : 's'}`} · {leave.leave_type_label}
                     </span>
                 </p>
             </div>
@@ -53,6 +55,21 @@ const LeaveCard: FC<Props> = ({ leave, showPerson = false, actions }) => (
                 <p>
                     {leave.status === 'APPROVED' ? 'Approved' : 'Not approved'} by {leave.decided_by_name}
                     {leave.decided_at ? ` on ${new Date(leave.decided_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}` : ''}
+                </p>
+            )}
+            {leave.status === 'APPROVED' && !!leave.unpaid_days && (
+                <p className="font-medium text-amber-700 dark:text-amber-400">
+                    {leave.paid_days} paid · {leave.unpaid_days} unpaid (beyond the yearly balance)
+                </p>
+            )}
+            {leave.balance && (
+                <p className={leave.balance.would_be_unpaid ? 'font-medium text-amber-700 dark:text-amber-400' : ''}>
+                    {leave.balance.remaining === null
+                        ? `${leave.leave_type_label} leave: no limit`
+                        : leave.balance.paid_days === 0
+                            ? `${leave.leave_type_label} leave is always unpaid`
+                            : `${leave.leave_type_label} balance: ${leave.balance.remaining} of ${leave.balance.paid_days} days left`}
+                    {leave.balance.would_be_unpaid ? ` · ${leave.balance.would_be_unpaid} day${leave.balance.would_be_unpaid === 1 ? '' : 's'} would be unpaid` : ''}
                 </p>
             )}
             {leave.decision_note && (

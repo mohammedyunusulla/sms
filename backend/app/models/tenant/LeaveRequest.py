@@ -26,6 +26,10 @@ class LeaveRequest(BaseModelTenant, BaseModelTenantMixin):
     decided_by = Column(Integer, ForeignKey('institution_users.id'), nullable=True)
     decided_at = Column(DateTime, nullable=True)
     decision_note = Column(Text, nullable=True)
+    # staff leave, set when approved: days counted (no Sundays) split into paid (within the yearly balance)
+    # and unpaid (beyond it - the last days of the leave). See services/leave_balance.py
+    paid_days = Column(Integer, nullable=True)
+    unpaid_days = Column(Integer, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
