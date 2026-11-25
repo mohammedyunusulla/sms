@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
+import PageInfo from '../../../components/common/PageInfo';
+import { getPageHelp } from '../../../config/pageHelp';
 import { useAuth } from '../../../hooks/useAuth';
 import { homeworkApi } from '../api/homeworkApi';
 import HomeworkPhotos from '../components/HomeworkPhotos';
 import PhotoPicker from '../components/PhotoPicker';
 import SessionPhotos from '../components/SessionPhotos';
-import { HomeworkAssignment, HomeworkSession } from '../types';
+import { HomeworkAssignment, HomeworkSession } from '../types';
+
+const studentHelp = getPageHelp('/homework/student', undefined);
 
 function formatDuration(totalSeconds: number): string {
   const hours = Math.floor(totalSeconds / 3600);
@@ -189,7 +193,10 @@ export default function StudentHomeworkPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI Homework Session</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          AI Homework Session
+          {studentHelp && <span className="ml-2 inline-flex align-middle"><PageInfo title="AI Homework" help={studentHelp} /></span>}
+        </h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Photograph the blank page with its QR sticker, work with the timer, ask for hints, then photograph the finished page for AI grading.</p>
       </div>
 

@@ -1,9 +1,13 @@
 import { Fragment, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
+import PageInfo from '../../../components/common/PageInfo';
+import { getPageHelp } from '../../../config/pageHelp';
 import { homeworkApi } from '../api/homeworkApi';
 import PhotoPicker from '../components/PhotoPicker';
 import SessionPhotos from '../components/SessionPhotos';
-import { HomeworkAnalytics, HomeworkAssignment, HomeworkIntegrity } from '../types';
+import { HomeworkAnalytics, HomeworkAssignment, HomeworkIntegrity } from '../types';
+
+const teacherHelp = getPageHelp('/homework/teacher', undefined);
 
 type ClassItem = { id: number; class_name?: string; name?: string };
 type SectionItem = { id: number; section_name?: string; name?: string };
@@ -205,7 +209,10 @@ export default function TeacherHomeworkPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI Homework & Efficiency (Teacher)</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          AI Homework & Efficiency (Teacher)
+          {teacherHelp && <span className="ml-2 inline-flex align-middle"><PageInfo title="AI Homework" help={teacherHelp} /></span>}
+        </h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Create homework and review class efficiency. Students start each homework on a notebook page with an institution QR sticker.
         </p>

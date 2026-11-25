@@ -142,11 +142,188 @@ const PAGE_HELP: Record<string, HelpFor> = {
         ],
         example: 'Ravi is on leave on Monday. His Maths class for 6-B shows here. Anita, a free Maths teacher, is suggested. Assign her, and she and the class are informed.',
     },
+
+    // ---------------------------------------------------------------- round 2
+    '/timetable': {
+        lead: 'Weekly class timetables.',
+        points: [
+            'Create one for each class and section.',
+            'Teacher clashes are checked automatically.',
+            'Publish it so teachers, students and parents can see it.',
+        ],
+        example: "Make 6-B's timetable for Semester 1, publish it, and the class sees it in My Timetable.",
+    },
+
+    '/exams': {
+        lead: 'The exam types your institution holds.',
+        points: [
+            'Add types like Unit Test, Midterm and Final.',
+            'Set subjects and maximum marks per class in Subject Configuration.',
+            'These are used in the exam timetable, marks and report cards.',
+        ],
+        example: 'Add "Unit Test 1", then set Maths out of 25 for Grade 8.',
+    },
+
+    '/exams/timetable': {
+        lead: 'Dates and times for each exam paper.',
+        points: ['Schedule each subject for a class.', "Students and parents see their class's papers on the Calendar."],
+        example: 'Maths on 7 Dec, 9:00-11:00, for Grade 8.',
+    },
+
+    '/exams/seating': {
+        lead: 'Who sits where during exams.',
+        points: ["Pick a room, date and classes.", "Seats are filled from the room's layout.", 'Add an invigilator and print the plan.'],
+        example: 'Fill Hall A with Grade 8 and Grade 9 for the 7 Dec paper.',
+    },
+
+    '/academics/marks/entry': {
+        lead: 'Enter exam marks for a class.',
+        points: [
+            'Pick the exam, class and subject.',
+            'Type the marks for each student.',
+            'Students and parents see them only after results are published.',
+        ],
+        example: 'Enter Unit Test 1 Maths marks for 8-A.',
+    },
+
+    '/academics/progress/class': {
+        lead: 'How a class and each student are doing.',
+        points: ['Averages per subject and exam.', "Open a student's progress card.", 'Print report cards.'],
+        example: "See that 8-B's Science average dropped after the Midterm.",
+    },
+
+    '/finance/fee-structure': {
+        lead: 'The fees for each class.',
+        points: ['Add fee items like Tuition and Transport.', 'Split them into installments with due dates.', 'Fee Collection and Defaulters use these.'],
+        example: 'Grade 8: Tuition 30,000 in 3 installments.',
+    },
+
+    '/finance/expenses': {
+        lead: "Track the institution's spending.",
+        points: ['Add an expense with its category, amount and date.', 'Salaries paid appear here automatically.'],
+        example: 'Add "Electricity bill, 12,400, Nov".',
+    },
+
+    '/finance/salary-setup': {
+        lead: "Each staff member's monthly salary.",
+        points: ['Basic pay plus allowances, minus deductions.', 'Salary Payments are created from this every month.'],
+        example: 'Ravi: Basic 30,000 + HRA 5,000 - PF 1,800.',
+    },
+
+    '/announcements': (role) => (role === 'STUDENT' || role === 'PARENT'
+        ? {
+            lead: 'News from your institution.',
+            points: ['The latest is shown first.', 'You also get a notification.'],
+            example: '"Sports Day on 20 Dec."',
+        }
+        : {
+            lead: 'Share news with students, parents or staff.',
+            points: ['Choose who sees it: everyone, a class, or only staff.', 'A notification is sent when it is published.'],
+            example: '"School closed tomorrow due to rain", sent to everyone.',
+        }),
+
+    '/assignments': {
+        lead: 'Give work to a class and review it.',
+        points: ['Create an assignment for a section.', 'Students submit their work.', 'Review it and give feedback.'],
+        example: '"Write an essay on rivers" for 6-B, due Friday.',
+    },
+
+    '/assignments/my-assignments': {
+        lead: 'Work from your teachers.',
+        points: ['See what is due and when.', 'Submit your work here.', "See your teacher's feedback."],
+        example: 'Submit "Essay on rivers" before Friday.',
+    },
+
+    '/homework/teacher': {
+        lead: 'Homework that is checked with AI.',
+        points: [
+            'Set homework for a class, with photos if needed.',
+            'Students work on a notebook page with a QR sticker and photograph it when done.',
+            "The AI grades it; you see each student's result and the class's efficiency.",
+        ],
+        example: 'Set 5 Maths sums for 8-A and see who finished, how long they took, and their marks.',
+    },
+
+    '/homework/student': {
+        lead: 'Do your homework and get help.',
+        points: [
+            'Photograph the blank page with its QR sticker to start.',
+            'Ask for a hint if you are stuck.',
+            'Photograph the finished page; the AI grades it.',
+        ],
+        example: 'Start the Maths homework, ask for a hint on sum 3, then photograph your page.',
+    },
+
+    '/syllabus': {
+        lead: 'Plan lessons and track progress.',
+        points: [
+            'Break each subject into lessons, topics and subtopics.',
+            'Teachers mark what has been covered.',
+            'See how far each class has got.',
+        ],
+        example: 'Grade 8 Science is 60% done by November.',
+    },
+
+    '/bus-scan': {
+        lead: 'Who got on and off the bus.',
+        points: [
+            "Scan each student's QR code when they board or get off.",
+            'See who is on the bus right now.',
+            'Past scans are in the Tracking Report.',
+        ],
+        example: "Scan Arjun's ID card at 7:40, and he shows as on the bus.",
+    },
+
+    '/bus-scan/report': {
+        lead: 'Past bus boarding and drop-off records.',
+        points: ['Filter by date and student.', 'See when each student got on and off.'],
+        example: 'Check when Arjun got off the bus last Tuesday.',
+    },
+
+    '/classes': {
+        lead: 'Classes and their sections.',
+        points: [
+            'Add a class, like Grade 8, with sections A and B.',
+            'Set a class teacher for each section.',
+            'The class teacher approves student leave for that section.',
+        ],
+        example: 'Grade 8 with sections A and B; Anita is class teacher of 8-A.',
+    },
+
+    '/rooms': {
+        lead: 'Rooms, labs and halls.',
+        points: ['Add rooms with their seating layout.', 'They are used for exam seating.'],
+        example: 'Hall A, 8 rows of 6 seats.',
+    },
+
+    '/students': {
+        lead: 'Add and manage students.',
+        points: ['Add a student with their class and section.', 'Link parents.', 'Print ID cards and certificates.'],
+        example: 'Add Arjun to 8-A and link his father.',
+    },
+
+    '/teachers': {
+        lead: 'Add and manage teachers.',
+        points: ['Add a teacher.', 'Assign their subjects and classes.'],
+        example: 'Add Anita and assign Maths for Grade 8.',
+    },
+
+    '/parents': {
+        lead: 'Parents and their children.',
+        points: ['Link a parent to one or more children.', "Parents sign in to see their children's details."],
+        example: 'Link Rajesh to Arjun and Riya.',
+    },
+
+    '/users': {
+        lead: 'Everyone who can sign in.',
+        points: ['Create accounts and give each a role.', 'Turn access on or off.'],
+        example: 'Add a clerk for the fee counter.',
+    },
 };
 
 /** Help for a page address (exact match, ignoring a trailing slash), for this role; undefined if none. */
 export const getPageHelp = (pathname: string, role: string | undefined): PageHelp | undefined => {
     const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
-    const help = PAGE_HELP[path];
+    const help = PAGE_HELP[path === '/bus-scan/scan' ? '/bus-scan' : path];
     return typeof help === 'function' ? help(role) : help;
 };
