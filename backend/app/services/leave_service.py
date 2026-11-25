@@ -365,7 +365,7 @@ class LeaveService:
             leave.decided_by = int(user.institution_user_id) if user.institution_user_id else None
             leave.decided_at = datetime.utcnow()
             leave.decision_note = note
-            if leave.status == APPROVED and leave.applicant_type == STUDENT:
+            if leave.status == APPROVED:
                 _absent_to_leave(session, leave, leave.decided_by)
             session.commit()
 
@@ -405,6 +405,20 @@ def approved_student_leave(session, student_ids, day):
 
 def _absent_to_leave(session, leave, actor_id):
     """Days of the leave already marked Absent become Leave (a day marked Present / Late stays as it is)."""
+    if leave.applicant_type == STAFF:
+        from app.models.tenant.StaffAttendance import StaffAttendance
+        StaffAttendance.__table__.create(bind=session.connection(), checkfirst=True)
+        rows = session.query(StaffAttendance).filter(
+            StaffAttendance.user_id == leave.user_id,
+            StaffAttendance.date >= leave.from_date, StaffAttendance.date <= leave.to_date,
+            StaffAttendance.status == 'ABSENT',
+        ).all()
+        for row in rows:
+            row.status = 'LEAVE'
+            row.remarks = (row.remarks or '').strip() or 'Approved leave'
+            row.updated_by = actor_id
+            row.updated_at = datetime.utcnow()
+        return len(rows)
     from app.models.tenant.Attendance import Attendance
     records = session.query(Attendance).filter(
         Attendance.student_user_id == leave.user_id,

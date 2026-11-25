@@ -97,8 +97,8 @@ const LeaveRequests: FC = () => {
                                 className="h-10 rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-white sm:w-56" />
                             {data?.full_access && (
                                 <div className="sm:w-44">
-                                    <FormSelect value={applicantType} onChange={(e) => setApplicantType(e.target.value)}
-                                        options={[{ value: '', label: 'Students and staff' }, { value: 'STUDENT', label: 'Students' }, { value: 'STAFF', label: 'Staff' }]} />
+                                    <FormSelect value={applicantType} onChange={(e) => setApplicantType(e.target.value)} placeholder="Students and staff"
+                                        options={[{ value: 'STUDENT', label: 'Students' }, { value: 'STAFF', label: 'Staff' }]} />
                                 </div>
                             )}
                         </div>

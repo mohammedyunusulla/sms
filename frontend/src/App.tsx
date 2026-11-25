@@ -64,6 +64,8 @@ const MarkAttendance = lazy(() => import("./pages/AttendanceManagement").then(m 
 const AttendanceReport = lazy(() => import("./pages/AttendanceManagement").then(m => ({ default: m.AttendanceReport })));
 const MyAttendance = lazy(() => import("./pages/AttendanceManagement").then(m => ({ default: m.MyAttendance })));
 const ParentAttendance = lazy(() => import("./pages/AttendanceManagement").then(m => ({ default: m.ParentAttendance })));
+const StaffAttendance = lazy(() => import("./pages/AttendanceManagement").then(m => ({ default: m.StaffAttendance })));
+const StaffRegister = lazy(() => import("./pages/AttendanceManagement").then(m => ({ default: m.StaffRegister })));
 const MyLeave = lazy(() => import("./pages/LeaveManagement").then(m => ({ default: m.MyLeave })));
 const LeaveRequests = lazy(() => import("./pages/LeaveManagement").then(m => ({ default: m.LeaveRequests })));
 
@@ -270,6 +272,8 @@ function AppContent() {
                         {/* Attendance Routes */}
                         <Route path="/attendance/mark" element={guarded('/attendance/mark', <MarkAttendance />)} />
                         <Route path="/attendance/report" element={guarded('/attendance/report', <AttendanceReport />)} />
+                        <Route path="/attendance/staff" element={guarded('/attendance/staff', <StaffAttendance />)} />
+                        <Route path="/attendance/staff-register" element={guarded('/attendance/staff-register', <StaffRegister />)} />
                         {/* students / parents: no permission needed (each page shows only its own student) */}
                         <Route path="/attendance/my" element={<MyAttendance />} />
                         <Route path="/parent/attendance" element={<ParentAttendance />} />

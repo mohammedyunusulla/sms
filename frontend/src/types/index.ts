@@ -953,6 +953,13 @@ export interface ISalaryPayment {
     transaction_reference?: string;
     status: string; // pending, paid, cancelled
     paid_by?: number;
+    gross_amount?: number;
+    /** that month's staff attendance (Present / Absent / Late / Half day / Leave / Not marked) */
+    attendance?: Record<string, number>;
+    loss_of_pay_days?: number;
+    loss_of_pay_suggested?: number;
+    /** amount of the loss-of-pay deduction on this payment, or null */
+    loss_of_pay_applied?: number | null;
 }
 
 export interface ISalaryPaymentForm {

@@ -149,6 +149,8 @@ const allMenuItems: NavItem[] = [
         subItems: [
             { name: "Mark Attendance", path: "/attendance/mark", pro: false },
             { name: "Attendance Report", path: "/attendance/report", pro: false },
+            { name: "Staff Attendance", path: "/attendance/staff", pro: false },
+            { name: "Staff Register", path: "/attendance/staff-register", pro: false },
         ],
     },
     // Leave - approvers (class teachers, admins, "Approve leave" tick box)

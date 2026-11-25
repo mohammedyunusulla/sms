@@ -50,6 +50,7 @@ const PERMISSION_GROUPS = [
         permissions: [
             { key: Permission.VIEW_ATTENDANCE, label: 'View Attendance' },
             { key: Permission.MANAGE_ATTENDANCE, label: 'Mark / Edit Attendance' },
+            { key: Permission.MANAGE_STAFF_ATTENDANCE, label: 'Staff Attendance (mark staff attendance, monthly staff register)' },
             { key: Permission.APPROVE_LEAVE, label: 'Approve Leave (all students and staff; class teachers approve their own class without this)' },
         ],
     },

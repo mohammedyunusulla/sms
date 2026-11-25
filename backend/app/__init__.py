@@ -53,7 +53,7 @@ def create_app(config_name=None):
         parent_bp, roles_bp, user_roles_bp, timeTable_bp, studentParent_bp, fee_bp, announcement_bp,
         institution_admin_dashboard_bp, exam_bp, marks_bp, progress_card_bp, expense_bp, academic_year_bp,
         teacher_dashboard_bp, syllabus_bp, assignment_bp, student_dashboard_bp, room_bp, seating_bp,
-        bus_scan_bp, staff_bp, homework_bp, push_bp, leave_bp
+        bus_scan_bp, staff_bp, homework_bp, push_bp, leave_bp, staff_attendance_bp
     )
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(user_bp, url_prefix='/api/users')
@@ -87,6 +87,7 @@ def create_app(config_name=None):
     app.register_blueprint(homework_bp, url_prefix='/api/homework')
     app.register_blueprint(push_bp, url_prefix='/api/push')  # push notifications (installed app)
     app.register_blueprint(leave_bp, url_prefix='/api/leave')  # leave requests (students, staff)
+    app.register_blueprint(staff_attendance_bp, url_prefix='/api/staff-attendance')
 
     from app.api import bus_location_bp
     app.register_blueprint(bus_location_bp, url_prefix='/api/bus-location')
@@ -309,7 +310,9 @@ def _bootstrap_tenant_schemas(app):
                     session.execute(text(statement))
                 # tables added after the institution was created (create_all only runs for new institutions)
                 from app.models.tenant.LeaveRequest import LeaveRequest
+                from app.models.tenant.StaffAttendance import StaffAttendance
                 LeaveRequest.__table__.create(bind=conn, checkfirst=True)
+                StaffAttendance.__table__.create(bind=conn, checkfirst=True)
         except Exception as e:
             app.logger.warning(f"Tenant schema update failed for institution {skid}: {str(e).splitlines()[0]}")
 

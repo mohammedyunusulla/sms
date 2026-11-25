@@ -28,6 +28,8 @@ ALL_PERMISSIONS = [
     'manage_fee_settings',
     # decide any leave request (class teachers decide their own sections' student leave without it)
     'approve_leave',
+    # mark / edit staff attendance and see the monthly staff register
+    'manage_staff_attendance',
 ]
 
 # Default permissions for system roles in a new institution.

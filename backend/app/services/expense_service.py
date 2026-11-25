@@ -474,11 +474,15 @@ class ExpenseService:
                     SalaryPayment.payment_year.desc(),
                     SalaryPayment.payment_month.desc()
                 ).all()
-                
+
+                # that month's staff attendance and the loss-of-pay suggestion (staff_attendance_service)
+                from app.services.staff_attendance_service import salary_attendance
+                attendance = salary_attendance(tenant_session, payments)
                 return [
                     {
                         **payment.to_dict(),
-                        'staff_name': payment.staff.full_name
+                        'staff_name': payment.staff.full_name,
+                        **attendance.get(payment.id, {}),
                     }
                     for payment in payments
                 ]

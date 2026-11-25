@@ -10,6 +10,7 @@ import { financeService } from '../../services/modules/financeService';
 import { useAuthStore } from '../../stores/authStore';
 import { ISalaryPayment, ISalaryPaymentForm } from '../../types/index';
 import { formatAmount } from '../../utils/money';
+import { staffAttendanceService } from '../../services/modules/staffAttendanceService';
 
 const MONTHS = [
     { label: 'January', value: '1' }, { label: 'February', value: '2' },
@@ -47,6 +48,8 @@ const SalaryPayments: FC = () => {
         transaction_reference: '',
     });
     const [saving, setSaving] = useState(false);
+    // loss of pay: apply (true) / remove (false) on a pending payment
+    const [lop, setLop] = useState<{ payment: ISalaryPayment; apply: boolean } | null>(null);
 
     useEffect(() => {
         if (academicYearId) fetchPayments();
@@ -143,6 +146,21 @@ const SalaryPayments: FC = () => {
         }
     };
 
+    const confirmLossOfPay = async () => {
+        if (!lop) return;
+        try {
+            setSaving(true);
+            await staffAttendanceService.lossOfPay(lop.payment.id, lop.apply);
+            toast.success(lop.apply ? 'Loss of pay applied' : 'Loss of pay removed');
+            setLop(null);
+            fetchPayments();
+        } catch (error) {
+            toast.error((error as { message?: string })?.message || 'Could not update loss of pay');
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const totals = useMemo(() => {
         const result = { paid: 0, pending: 0, total: 0 };
         payments.forEach(p => {
@@ -168,6 +186,26 @@ const SalaryPayments: FC = () => {
             ),
         },
         {
+            key: 'attendance',
+            label: 'Attendance',
+            render: (_: unknown, row: ISalaryPayment) => {
+                const a = row.attendance;
+                if (!a) return <span className="text-xs text-gray-400">-</span>;
+                const part = (n: number | undefined, label: string, cls: string) =>
+                    n ? <span className={cls}>{label} {n}</span> : null;
+                return (
+                    <div className="flex flex-wrap gap-x-2 text-xs" title="Present · Absent · Half day · Leave · Late · Not marked">
+                        <span className="text-emerald-700 dark:text-emerald-400">P {a.PRESENT || 0}</span>
+                        {part(a.ABSENT, 'A', 'text-red-600 dark:text-red-400')}
+                        {part(a.HALF_DAY, 'H', 'text-orange-600 dark:text-orange-400')}
+                        {part(a.LEAVE, 'LV', 'text-blue-600 dark:text-blue-400')}
+                        {part(a.LATE, 'L', 'text-amber-600 dark:text-amber-400')}
+                        {part(a.NOT_MARKED, 'NM', 'text-gray-500')}
+                    </div>
+                );
+            },
+        },
+        {
             key: 'basic_salary',
             label: 'Basic',
             className: 'text-right',
@@ -186,9 +224,16 @@ const SalaryPayments: FC = () => {
             key: 'deductions_applied',
             label: 'Deductions',
             className: 'text-right',
-            render: (value: any) => {
-                const total = Object.values(value || {}).reduce((sum: number, val: any) => sum + (parseFloat(val) || 0), 0);
-                return <span className="text-red-600 dark:text-red-400">-{'\u20B9'}{formatAmount(total)}</span>;
+            render: (value: Record<string, number | string> | null, row: ISalaryPayment) => {
+                const total = Object.values(value || {}).reduce((sum: number, val) => sum + (parseFloat(String(val)) || 0), 0);
+                return (
+                    <div>
+                        <span className="text-red-600 dark:text-red-400">-{'\u20B9'}{formatAmount(total)}</span>
+                        {row.loss_of_pay_applied != null && (
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400">incl. loss of pay {'\u20B9'}{formatAmount(row.loss_of_pay_applied)}</p>
+                        )}
+                    </div>
+                );
             },
         },
         {
@@ -261,6 +306,7 @@ const SalaryPayments: FC = () => {
                 <div className="mt-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
                     <p className="text-sm text-blue-700 dark:text-blue-300">
                         This will generate salary payment records for all staff with active salary setups for the selected month/year.
+                        Each payment shows that month's staff attendance; for absences and half days you can apply a loss of pay before paying.
                     </p>
                 </div>
             </div>
@@ -284,6 +330,16 @@ const SalaryPayments: FC = () => {
                         {row.status === 'pending' && (
                             <Button variant="success" size="sm" onClick={() => handleMarkPaidClick(row)}>
                                 Mark Paid
+                            </Button>
+                        )}
+                        {row.status === 'pending' && row.loss_of_pay_applied == null && !!row.loss_of_pay_suggested && (
+                            <Button variant="warning" size="sm" onClick={() => setLop({ payment: row, apply: true })}>
+                                Loss of pay {'\u20B9'}{formatAmount(row.loss_of_pay_suggested)}
+                            </Button>
+                        )}
+                        {row.status === 'pending' && row.loss_of_pay_applied != null && (
+                            <Button variant="ghost" size="sm" onClick={() => setLop({ payment: row, apply: false })}>
+                                Remove loss of pay
                             </Button>
                         )}
                         {row.status === 'paid' && (
@@ -354,6 +410,20 @@ const SalaryPayments: FC = () => {
                     </div>
                 )}
             </Modal>
+
+            {/* Loss of pay */}
+            <ConfirmDialog
+                isOpen={!!lop}
+                title={lop?.apply ? 'Apply loss of pay' : 'Remove loss of pay'}
+                message={lop ? (lop.apply
+                    ? `${lop.payment.staff_name} has ${lop.payment.loss_of_pay_days} unpaid day(s) in ${lop.payment.payment_month}/${lop.payment.payment_year} (absent days, plus half of the half days; approved leave is paid). Deduct \u20B9${formatAmount(lop.payment.loss_of_pay_suggested || 0)}? (basic \u20B9${formatAmount(lop.payment.basic_salary)} / ${lop.payment.attendance?.days ?? 'days in month'} days x ${lop.payment.loss_of_pay_days})`
+                    : `Remove the \u20B9${formatAmount(lop.payment.loss_of_pay_applied || 0)} loss-of-pay deduction from ${lop.payment.staff_name}'s salary for ${lop.payment.payment_month}/${lop.payment.payment_year}?`) : ''}
+                onConfirm={confirmLossOfPay}
+                onCancel={() => setLop(null)}
+                confirmText={lop?.apply ? 'Apply' : 'Remove'}
+                type="warning"
+                isLoading={saving}
+            />
 
             {/* Mark Unpaid Confirmation */}
             <ConfirmDialog

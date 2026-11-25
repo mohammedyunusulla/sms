@@ -6,9 +6,24 @@ import { PageHeader } from '../../components';
 import { useAuthStore } from '../../stores/authStore';
 import { useParentStore } from '../../stores/parentStore';
 import StudentAttendanceView from './StudentAttendanceView';
+import StaffMonthView from './StaffMonthView';
+
+const STAFF_ROLES = ['PRINCIPAL', 'TEACHER', 'CLERK', 'BUS_STAFF'];
 
 export const MyAttendance: FC = () => {
     const user = useAuthStore((s) => s.user);
+    if (user?.role && STAFF_ROLES.includes(user.role)) {
+        return (
+            <div className="space-y-6">
+                <PageHeader
+                    title="My Attendance"
+                    subtitle="Your staff attendance month by month"
+                    breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'My Attendance', href: '#' }]}
+                />
+                <StaffMonthView />
+            </div>
+        );
+    }
     return (
         <div className="space-y-6">
             <PageHeader

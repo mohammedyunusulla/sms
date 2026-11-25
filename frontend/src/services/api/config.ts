@@ -24,6 +24,12 @@ export const API_ENDPOINTS = {
         RESET_PASSWORD: '/auth/reset-password',
     },
     // push notifications for this device (backend: app/api/push.py)
+    STAFF_ATTENDANCE: {
+        DAY: (skid: string) => `/staff-attendance/day/${skid}`,
+        REGISTER: (skid: string) => `/staff-attendance/register/${skid}`,
+        MY: (skid: string) => `/staff-attendance/my/${skid}`,
+        LOSS_OF_PAY: (skid: string, paymentId: number) => `/staff-attendance/loss-of-pay/${skid}/${paymentId}`,
+    },
     LEAVE: {
         MY: (skid: string) => `/leave/my/${skid}`,
         APPLY: (skid: string) => `/leave/apply/${skid}`,
