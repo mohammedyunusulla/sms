@@ -180,6 +180,7 @@ def _shape(session, leaves, user=None):
             'paid_days': l.paid_days,
             'unpaid_days': l.unpaid_days,
             'recount_note': l.recount_note,
+            'cover': _cover(session, l),
             'balance': staff_balance(l) if l.applicant_type == STAFF and l.status == PENDING else None,
             'id': l.id,
             'applicant_type': l.applicant_type,
@@ -205,6 +206,14 @@ def _shape(session, leaves, user=None):
             'can_cancel': me is not None and l.applied_by == me and _cancellable(l, today),
         })
     return out
+
+
+def _cover(session, leave):
+    """Approved staff leave from today on: how many of the teacher's periods have a substitute."""
+    if leave.applicant_type != STAFF or leave.status != APPROVED or leave.to_date < date.today():
+        return None
+    from app.services.substitution_service import leave_cover
+    return leave_cover(session, leave)
 
 
 def _cancellable(leave, today):

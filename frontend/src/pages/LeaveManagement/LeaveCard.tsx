@@ -63,6 +63,11 @@ const LeaveCard: FC<Props> = ({ leave, showPerson = false, actions }) => (
                 </p>
             )}
             {leave.recount_note && <p className="italic">{leave.recount_note}</p>}
+            {leave.cover && (
+                <p className={leave.cover.covered === leave.cover.periods ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'}>
+                    {leave.cover.covered === leave.cover.periods ? 'Your periods are covered' : 'Periods covered'}: {leave.cover.covered} of {leave.cover.periods}
+                </p>
+            )}
             {leave.balance && (
                 <p className={leave.balance.would_be_unpaid ? 'font-medium text-amber-700 dark:text-amber-400' : ''}>
                     {leave.balance.remaining === null

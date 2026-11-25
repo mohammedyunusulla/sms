@@ -35,6 +35,7 @@ from .staff_attendance import staff_attendance_bp
 from .holidays import holidays_bp
 from .calendar import calendar_bp
 from .events import events_bp
+from .substitutions import substitutions_bp
 
 __all__ = ['auth_bp', 'user_bp', 'teacher_bp', 'student_bp',
             'institution_bp', 'class_bp', 'subject_bp', 'roles_bp',
@@ -42,5 +43,5 @@ __all__ = ['auth_bp', 'user_bp', 'teacher_bp', 'student_bp',
             'fee_bp', 'announcement_bp', 'exam_bp', 'marks_bp', 'progress_card_bp',
             'institution_admin_dashboard_bp', 'expense_bp', 'academic_year_bp', 'teacher_dashboard_bp',
             'syllabus_bp', 'assignment_bp', 'student_dashboard_bp', 'room_bp', 'seating_bp',
-            'bus_scan_bp', 'staff_bp', 'bus_location_bp', 'homework_bp', 'push_bp', 'leave_bp', 'staff_attendance_bp', 'holidays_bp', 'calendar_bp', 'events_bp'
+            'bus_scan_bp', 'staff_bp', 'bus_location_bp', 'homework_bp', 'push_bp', 'leave_bp', 'staff_attendance_bp', 'holidays_bp', 'calendar_bp', 'events_bp', 'substitutions_bp'
         ]

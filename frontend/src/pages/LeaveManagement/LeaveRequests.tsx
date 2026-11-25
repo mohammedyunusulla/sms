@@ -5,6 +5,8 @@
 import { FC, useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router';
+import { Permission } from '../../config/permissions';
+import { usePermissions } from '../../hooks/usePermissions';
 import { Button, FormSelect, FormTextarea, LoadingSpinner, Modal, PageHeader } from '../../components';
 import { leaveErrorMessage, leaveService, LeaveRequest, ReviewData } from '../../services/modules/leaveService';
 import LeaveCard from './LeaveCard';
@@ -18,6 +20,8 @@ const TABS = [
 ];
 
 const LeaveRequests: FC = () => {
+    const { hasPermission } = usePermissions();
+    const canArrangeCover = hasPermission(Permission.MANAGE_TIMETABLE);
     const [tab, setTab] = useState('PENDING');
     const [applicantType, setApplicantType] = useState('');
     const [search, setSearch] = useState('');
@@ -53,7 +57,18 @@ const LeaveRequests: FC = () => {
         setBusyId(leave.id);
         try {
             await leaveService.decide(leave.id, decision, withNote);
-            toast.success(decision === 'APPROVE' ? `Leave approved for ${leave.name}` : 'Leave not approved');
+            if (decision === 'APPROVE' && leave.applicant_type === 'STAFF' && canArrangeCover) {
+                // a teacher on leave: offer to arrange substitutes for their periods
+                toast.success((t) => (
+                    <span>
+                        Leave approved for {leave.name}.{' '}
+                        <Link to={`/substitutions?date=${leave.from_date}`} onClick={() => toast.dismiss(t.id)}
+                            className="font-semibold text-blue-600 underline dark:text-blue-400">Arrange substitutes →</Link>
+                    </span>
+                ), { duration: 8000 });
+            } else {
+                toast.success(decision === 'APPROVE' ? `Leave approved for ${leave.name}` : 'Leave not approved');
+            }
             setDeciding(null);
             setNote('');
             load();

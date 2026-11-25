@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router";
 import { useEffect, ReactNode, lazy, Suspense } from "react";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { PermissionGuard } from "./components/auth/PermissionGuard";
@@ -81,6 +81,7 @@ const TimetableDetail = lazy(() => import("./pages/TimetableManagement").then(m 
 const TimetableEdit = lazy(() => import("./pages/TimetableManagement").then(m => ({ default: m.TimetableEdit })));
 const TimetableCreate = lazy(() => import("./pages/TimetableManagement").then(m => ({ default: m.TimetableCreate })));
 const ParentTimetable = lazy(() => import("./pages/TimetableManagement").then(m => ({ default: m.ParentTimetable })));
+const Substitutions = lazy(() => import("./pages/TimetableManagement").then(m => ({ default: m.Substitutions })));
 const StudentTimetable = lazy(() => import("./pages/TimetableManagement").then(m => ({ default: m.StudentTimetable })));
 
 // Lazy loaded Exam Management
@@ -141,6 +142,12 @@ const StudentHomeworkPage = lazy(() => import("./modules/homework/pages/StudentH
  * Wraps a route element with PermissionGuard if the path has a permission config.
  * Routes without a mapping remain freely accessible to any authenticated user.
  */
+/** Redirect to a new address, keeping ?query (e.g. ?date=) from old links */
+const RedirectKeepingQuery = ({ to }: { to: string }) => {
+    const { search } = useLocation();
+    return <Navigate to={`${to}${search}`} replace />;
+};
+
 const guarded = (path: string, element: ReactNode) => {
     const config = ROUTE_PERMISSION_MAP[path];
     if (!config) return element;
@@ -299,6 +306,8 @@ function AppContent() {
 
                         {/* Timetable Routes */}
                         <Route path="/timetable" element={guarded('/timetable', <TimetableList />)} />
+                        <Route path="/substitutions" element={guarded('/substitutions', <Substitutions />)} />
+                        <Route path="/timetable/substitutions" element={<RedirectKeepingQuery to="/substitutions" />} />
                         <Route path="/timetable/my-timetable" element={guarded('/timetable/my-timetable', <StudentTimetable />)} />
                         <Route path="/timetable/new" element={guarded('/timetable/new', <TimetableCreate />)} />
                         <Route path="/timetable/:id" element={guarded('/timetable/:id', <TimetableDetail />)} />

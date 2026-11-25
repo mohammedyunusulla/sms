@@ -300,13 +300,29 @@ const DailyTimetableView: FC<DailyTimetableViewProps> = ({ studentId, teacherId 
                                                         🏫 {period.class_label}
                                                     </p>
                                                 )}
-                                                {period.teacher_name && (
+                                                {period.teacher_name && !period.substitute_name && (
                                                     <p
                                                         className={`text-xs mt-0.5 ${
                                                             isOngoing ? 'text-white/80' : 'text-gray-500 dark:text-gray-400'
                                                         }`}
                                                     >
                                                         👤 {period.teacher_name}
+                                                    </p>
+                                                )}
+                                                {/* substitutions: the student's substitute, the teacher's cover duty, or who covers the teacher */}
+                                                {period.substitute_name && (
+                                                    <p data-testid="substitute-line" className={`text-xs mt-0.5 font-medium ${isOngoing ? 'text-white' : 'text-amber-700 dark:text-amber-400'}`}>
+                                                        🔁 Substitute: {period.substitute_name}
+                                                    </p>
+                                                )}
+                                                {period.is_substitution && (
+                                                    <p data-testid="substitute-line" className={`text-xs mt-0.5 font-medium ${isOngoing ? 'text-white' : 'text-amber-700 dark:text-amber-400'}`}>
+                                                        🔁 Substitution · for {period.substitute_for}
+                                                    </p>
+                                                )}
+                                                {period.covered_by && (
+                                                    <p data-testid="substitute-line" className={`text-xs mt-0.5 ${isOngoing ? 'text-white/80' : 'text-gray-500 dark:text-gray-400'}`}>
+                                                        Covered by {period.covered_by}
                                                     </p>
                                                 )}
                                             </div>

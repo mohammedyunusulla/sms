@@ -189,6 +189,16 @@ export const searchablePages: SearchablePage[] = [
         roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER],
     },
     {
+        id: 'substitutions',
+        name: 'Substitutions',
+        description: 'Arrange substitute teachers for absent teachers',
+        route: '/substitutions',
+        keywords: ['substitution', 'substitute', 'cover', 'proxy', 'arrangement', 'absent teacher', 'free period'],
+        category: 'Timetable',
+        icon: '🔁',
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL],
+    },
+    {
         id: 'calendar',
         name: 'Calendar',
         description: 'Holidays, events, exams and leave',

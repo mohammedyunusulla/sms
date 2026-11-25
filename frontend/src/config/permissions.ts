@@ -187,6 +187,8 @@ export const ROUTE_PERMISSION_MAP: Record<string, RoutePermissionConfig> = {
   '/timetable/:id': { permission: Permission.VIEW_TIMETABLE },
   '/timetable/:id/edit': { permission: Permission.MANAGE_TIMETABLE },
   '/timetable/my-timetable': { permission: Permission.VIEW_MY_TIMETABLE },
+  // substitute teacher planner: whoever can edit timetables
+  '/substitutions': { permission: Permission.MANAGE_TIMETABLE },
 
   // Exam Management
   '/exams': { permission: Permission.VIEW_EXAMS },
@@ -327,6 +329,10 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, SidebarGroupPermissionConfig
   },
   'Leave Requests': {
     groupPermissions: [Permission.APPROVE_LEAVE, Permission.MANAGE_ATTENDANCE],
+    itemPermissions: {},
+  },
+  'Substitutions': {
+    groupPermissions: [Permission.MANAGE_TIMETABLE],
     itemPermissions: {},
   },
   // Calendar: every institution user can view (adding holidays is checked on the page and the server)

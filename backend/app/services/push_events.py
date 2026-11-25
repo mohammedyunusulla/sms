@@ -267,3 +267,31 @@ def event_announced(skid, tenant_session, event, kind='added'):
         title, body = f"{icon} {event.title}", f"{when}" + (f" · {event.location}" if event.location else "")
     push.notify(event_recipients(tenant_session, skid, event), title, body, url="/calendar",
                 tag=f"event-{event.id}", exclude_user_id=_actor_id())
+
+
+# ---------------------------------------------------------------- substitutions
+
+@_best_effort
+def substitution_changed(skid, tenant_session, sub, teacher_id, removed=False):
+    """Tell a teacher they're covering a period (or no longer are)."""
+    from app.models.tenant.TimeTableEntry import TimetableEntry
+    from app.models.tenant.TimeTable import Timetable
+    from app.models.tenant.Class import Class
+    from app.models.tenant.Sections import Section
+    from app.models.tenant.Subject import Subject
+    row = (tenant_session.query(TimetableEntry, Class.class_name, Section.section_name, Subject.subject_name)
+           .join(Timetable, Timetable.id == TimetableEntry.timetable_id)
+           .join(Class, Class.id == Timetable.class_id).join(Section, Section.id == Timetable.section_id)
+           .join(Subject, Subject.id == TimetableEntry.subject_id)
+           .filter(TimetableEntry.id == sub.timetable_entry_id).first())
+    if not row:
+        return
+    entry, class_name, section_name, subject = row
+    when = "today" if sub.date == push.today() else sub.date.strftime('%a %d %b')
+    what = f"Period {entry.period_number} ({entry.start_time.strftime('%H:%M')}), {class_name}-{section_name} {subject}, {when}"
+    if removed:
+        title, body = "Substitution cancelled", f"You no longer need to cover {what}."
+    else:
+        title, body = "🔁 Substitution", f"Please cover {what}."
+    push.notify(push.main_user_ids_for(skid, [teacher_id]), title, body, url="/timetable/my-timetable",
+                tag=f"sub-{sub.date.isoformat()}-{sub.timetable_entry_id}", exclude_user_id=_actor_id())

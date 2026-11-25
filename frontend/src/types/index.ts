@@ -1008,6 +1008,8 @@ export interface IFormFieldProps {
 
 export interface IPageHeaderProps {
     title: string;
+    /** Shown right after the title, e.g. an info button */
+    titleAddon?: React.ReactNode;
     subtitle?: string;
     breadcrumbs?: IBreadcrumb[];
     actions?: React.ReactNode;

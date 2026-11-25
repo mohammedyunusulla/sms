@@ -153,6 +153,12 @@ const allMenuItems: NavItem[] = [
             { name: "Staff Register", path: "/attendance/staff-register", pro: false },
         ],
     },
+    // Substitute teacher planner - timetable managers
+    {
+        icon: <CalenderIcon />,
+        name: "Substitutions",
+        path: "/substitutions",
+    },
     // Calendar (holidays, weekly offs, exams, leave) - everyone in the institution
     {
         icon: <CalenderIcon />,

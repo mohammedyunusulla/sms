@@ -72,10 +72,14 @@ class TeacherDashboardService:
                     TimetableEntry.period_number
                 ).all()
 
-                # Format results
+                # Format results (substitutions: own periods someone covers, and periods this teacher covers)
+                from app.services.substitution_service import day_substitutions, covering_periods
+                subs = day_substitutions(tenant_session, date_obj)
                 periods = []
                 for entry in entries:
+                    cover = subs.get(entry.id)
                     periods.append({
+                        'covered_by': cover[1] if cover else None,
                         'id': entry.id,
                         'period_number': entry.period_number,
                         'start_time': entry.start_time.strftime('%H:%M'),
@@ -87,6 +91,8 @@ class TeacherDashboardService:
                         'room': entry.room_number,
                         'day': day_name
                     })
+                periods += covering_periods(tenant_session, date_obj, teacher_id)
+                periods.sort(key=lambda p: p['start_time'])
 
                 return periods
 

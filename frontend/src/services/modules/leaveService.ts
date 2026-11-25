@@ -38,6 +38,8 @@ export interface LeaveRequest {
     unpaid_days: number | null;
     /** set when a holiday / weekly-off change recounted this approved leave */
     recount_note: string | null;
+    /** approved staff leave from today on: the teacher's periods and how many have a substitute */
+    cover: { periods: number; covered: number } | null;
     /** pending staff leave: balance of that type and how many days would be unpaid if approved now */
     balance: { paid_days: number | null; used: number; remaining: number | null; would_be_unpaid: number } | null;
 }

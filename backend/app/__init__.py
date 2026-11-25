@@ -53,7 +53,7 @@ def create_app(config_name=None):
         parent_bp, roles_bp, user_roles_bp, timeTable_bp, studentParent_bp, fee_bp, announcement_bp,
         institution_admin_dashboard_bp, exam_bp, marks_bp, progress_card_bp, expense_bp, academic_year_bp,
         teacher_dashboard_bp, syllabus_bp, assignment_bp, student_dashboard_bp, room_bp, seating_bp,
-        bus_scan_bp, staff_bp, homework_bp, push_bp, leave_bp, staff_attendance_bp, holidays_bp, calendar_bp, events_bp
+        bus_scan_bp, staff_bp, homework_bp, push_bp, leave_bp, staff_attendance_bp, holidays_bp, calendar_bp, events_bp, substitutions_bp
     )
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(user_bp, url_prefix='/api/users')
@@ -91,6 +91,7 @@ def create_app(config_name=None):
     app.register_blueprint(holidays_bp, url_prefix='/api/holidays')  # holiday calendar, weekly offs
     app.register_blueprint(calendar_bp, url_prefix='/api/calendar')  # Calendar page: holidays, exams, leave, events
     app.register_blueprint(events_bp, url_prefix='/api/events')  # events / parent-teacher meetings
+    app.register_blueprint(substitutions_bp, url_prefix='/api/substitutions')  # substitute teacher planner
 
     from app.api import bus_location_bp
     app.register_blueprint(bus_location_bp, url_prefix='/api/bus-location')
@@ -322,12 +323,14 @@ def _bootstrap_tenant_schemas(app):
                 from app.models.tenant.LeavePolicy import LeavePolicy
                 from app.models.tenant.Holiday import Holiday, CalendarSetting
                 from app.models.tenant.Event import Event
+                from app.models.tenant.Substitution import Substitution
                 LeaveRequest.__table__.create(bind=conn, checkfirst=True)
                 StaffAttendance.__table__.create(bind=conn, checkfirst=True)
                 LeavePolicy.__table__.create(bind=conn, checkfirst=True)
                 Holiday.__table__.create(bind=conn, checkfirst=True)
                 CalendarSetting.__table__.create(bind=conn, checkfirst=True)
                 Event.__table__.create(bind=conn, checkfirst=True)
+                Substitution.__table__.create(bind=conn, checkfirst=True)
         except Exception as e:
             app.logger.warning(f"Tenant schema update failed for institution {skid}: {str(e).splitlines()[0]}")
 

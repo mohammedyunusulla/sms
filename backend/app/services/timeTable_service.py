@@ -873,8 +873,11 @@ class TimetableService:
                     TimetableEntry.period_number
                 ).all()
 
+                from app.services.substitution_service import day_substitutions
+                subs = day_substitutions(tenant_session, date_obj)
                 periods = []
                 for entry in entries:
+                    cover = subs.get(entry.id)
                     periods.append({
                         'id': entry.id,
                         'period_number': entry.period_number,
@@ -884,6 +887,8 @@ class TimetableService:
                         'subject_name': entry.subject_name,
                         'teacher_id': entry.teacher_id,
                         'teacher_name': f"{entry.teacher_first_name} {entry.teacher_last_name}",
+                        # a substitute takes this period on this date
+                        'substitute_name': cover[1] if cover else None,
                         'room': entry.room_number,
                         'day': day_name
                     })
