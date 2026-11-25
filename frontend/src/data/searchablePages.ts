@@ -191,9 +191,9 @@ export const searchablePages: SearchablePage[] = [
     {
         id: 'calendar',
         name: 'Calendar',
-        description: 'Holidays, weekly offs, exams and leave',
+        description: 'Holidays, events, exams and leave',
         route: '/calendar',
-        keywords: ['calendar', 'holiday', 'holidays', 'vacation', 'festival', 'weekly off', 'eid', 'diwali', 'exams', 'events'],
+        keywords: ['calendar', 'holiday', 'holidays', 'vacation', 'festival', 'weekly off', 'eid', 'diwali', 'exams', 'events', 'event', 'ptm', 'parent teacher meeting', 'annual day'],
         category: 'Attendance',
         icon: '🎉',
         roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT, UserRole.CLERK, UserRole.BUS_STAFF],

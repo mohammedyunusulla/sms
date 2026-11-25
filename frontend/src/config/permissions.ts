@@ -38,6 +38,8 @@ export enum Permission {
   MANAGE_STAFF_ATTENDANCE = 'manage_staff_attendance',
   /** Add / edit holidays and weekly offs (everyone can view the Holidays page) */
   MANAGE_HOLIDAYS = 'manage_holidays',
+  /** Events / parent-teacher meetings for everyone (class teachers manage their own section's without it) */
+  MANAGE_EVENTS = 'manage_events',
 
   // Announcements
   VIEW_ANNOUNCEMENTS = 'view_announcements',

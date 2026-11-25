@@ -427,6 +427,17 @@ def _leave_events(session, user, role, start, end, child_ids):
     return out
 
 
+def _event_items(session, user, start, end, family_sections):
+    from app.services import event_service as ev
+    rows = ev.visible_events(session, user, start, end, family_sections)
+    if not rows:
+        return []
+    labels = ev.section_labels(session, {s for e in rows for s in (e.section_ids or [])})
+    full, mine = ev.can_manage_all(user), ev.own_sections(session, user)
+    return [{'type': 'EVENT', **ev.shape(e, labels, user, full, mine), 'date_from': e.start_date.isoformat(),
+             'date_to': e.end_date.isoformat()} for e in rows]
+
+
 def calendar_events(skid, user, start, end, student_id=None):
     """Everything for the Calendar page between start and end, limited to what this person may see."""
     from app.models.tenant.StudentParent import StudentParent
@@ -482,4 +493,5 @@ def calendar_events(skid, user, start, end, student_id=None):
         except Exception:
             session.rollback()  # an institution without exam tables yet: no exams to show
         events += _leave_events(session, user, role, start, end, child_ids)
+        events += _event_items(session, user, start, end, {p[1] for p in placements.values() if p and p[1]})
         return {'from': start.isoformat(), 'to': end.isoformat(), 'events': events}

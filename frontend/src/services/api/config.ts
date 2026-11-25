@@ -24,6 +24,12 @@ export const API_ENDPOINTS = {
         RESET_PASSWORD: '/auth/reset-password',
     },
     // push notifications for this device (backend: app/api/push.py)
+    EVENTS: {
+        OPTIONS: (skid: string) => `/events/options/${skid}`,
+        CREATE: (skid: string) => `/events/${skid}`,
+        ITEM: (skid: string, id: number) => `/events/${skid}/${id}`,
+        CANCEL: (skid: string, id: number) => `/events/${skid}/${id}/cancel`,
+    },
     CALENDAR: {
         EVENTS: (skid: string) => `/calendar/events/${skid}`,
     },

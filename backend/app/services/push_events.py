@@ -247,3 +247,23 @@ def holiday_announced(skid, tenant_session, holiday, kind='added'):
     else:
         title, body = f"🎉 Holiday: {holiday.name}", f"{when}{tentative}."
     push.notify(recipients, title, body, url="/calendar", tag=f"holiday-{holiday.id}", exclude_user_id=_actor_id())
+
+
+# ---------------------------------------------------------------- events
+
+@_best_effort
+def event_announced(skid, tenant_session, event, kind='added'):
+    """Event added / changed / cancelled (only when "Notify" is ticked). Title, date, time - no details."""
+    from app.services.event_service import event_recipients, TYPES
+    when = event.start_date.strftime('%a %d %b') if event.start_date == event.end_date else _short_range(event.start_date, event.end_date)
+    if event.start_time:
+        when += f", {event.start_time.strftime('%H:%M')}"
+    if kind == "cancelled":
+        title, body = "❌ Event cancelled", f"{event.title} ({when}) has been cancelled."
+    elif kind == "updated":
+        title, body = "📅 Event updated", f"{event.title}: {when}" + (f" · {event.location}" if event.location else "")
+    else:
+        icon = "🤝" if event.event_type == "PTM" else "🏅" if event.event_type == "SPORTS" else "🎭" if event.event_type == "CULTURAL" else "📅"
+        title, body = f"{icon} {event.title}", f"{when}" + (f" · {event.location}" if event.location else "")
+    push.notify(event_recipients(tenant_session, skid, event), title, body, url="/calendar",
+                tag=f"event-{event.id}", exclude_user_id=_actor_id())

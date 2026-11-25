@@ -53,7 +53,7 @@ export interface HolidayInput {
     notify?: boolean;
 }
 
-export type CalendarEventType = 'HOLIDAY' | 'WEEKLY_OFF' | 'EXAM' | 'LEAVE';
+export type CalendarEventType = 'HOLIDAY' | 'WEEKLY_OFF' | 'EXAM' | 'LEAVE' | 'EVENT';
 
 /** One item on the Calendar page (a single day or a range) */
 export interface CalendarEvent {
@@ -71,9 +71,20 @@ export interface CalendarEvent {
     /** exams: paper time; staff: classes */
     time?: string;
     detail?: string;
-    /** leave */
-    status?: 'PENDING' | 'APPROVED';
+    /** leave: PENDING / APPROVED; events: ACTIVE / CANCELLED */
+    status?: 'PENDING' | 'APPROVED' | 'ACTIVE' | 'CANCELLED';
     mine?: boolean;
+    /** events */
+    event_type?: 'GENERAL' | 'PTM' | 'SPORTS' | 'CULTURAL' | 'MEETING' | 'OTHER';
+    event_type_label?: string;
+    start_time?: string | null;
+    end_time?: string | null;
+    location?: string | null;
+    description?: string | null;
+    audience?: 'ALL' | 'STAFF' | 'STUDENTS' | 'SECTIONS';
+    audience_label?: string;
+    section_ids?: number[];
+    can_edit?: boolean;
 }
 
 interface Envelope<T> {

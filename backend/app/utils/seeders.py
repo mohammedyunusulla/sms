@@ -32,6 +32,8 @@ ALL_PERMISSIONS = [
     'manage_staff_attendance',
     # holiday calendar: weekly offs and holidays (everyone can view)
     'manage_holidays',
+    # events / parent-teacher meetings for everyone (class teachers manage their own section's without it)
+    'manage_events',
 ]
 
 # Default permissions for system roles in a new institution.

@@ -6,7 +6,7 @@
  */
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Badge, Button, ConfirmDialog, FormInput, FormSelect, Modal, PageHeader } from '../../components';
+import { Badge, Button, ConfirmDialog, FormInput, FormSelect, FormTextarea, Modal, PageHeader } from '../../components';
 import { Permission } from '../../config/permissions';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useAuthStore } from '../../stores/authStore';
@@ -14,15 +14,17 @@ import {
     AltSaturdays, Audience, CalendarEvent, CalendarEventType, CalendarSettings, holidayError, HolidayInput, holidayService,
 } from '../../services/modules/holidayService';
 import { addDays, formatRange, localDay } from '../LeaveManagement/leaveDates';
+import { EventAudience, EventInput, EventOptions, eventService, EventType } from '../../services/modules/eventService';
 
 type Filterable = Exclude<CalendarEventType, 'WEEKLY_OFF'>;
 const STYLE: Record<CalendarEventType, { label: string; chip: string; dot: string }> = {
     HOLIDAY: { label: 'Holidays', chip: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-200', dot: 'bg-purple-500' },
+    EVENT: { label: 'Events', chip: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-200', dot: 'bg-orange-500' },
     EXAM: { label: 'Exams', chip: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200', dot: 'bg-blue-500' },
     LEAVE: { label: 'Leave', chip: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200', dot: 'bg-emerald-500' },
     WEEKLY_OFF: { label: 'Weekly off', chip: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300', dot: 'bg-gray-400' },
 };
-const FILTERS: Filterable[] = ['HOLIDAY', 'EXAM', 'LEAVE'];
+const FILTERS: Filterable[] = ['HOLIDAY', 'EVENT', 'EXAM', 'LEAVE'];
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const AUDIENCE_LABEL: Record<Audience, string> = { ALL: 'Everyone', STUDENTS: 'Students only', STAFF: 'Staff only' };
 
@@ -38,11 +40,18 @@ const prettyDay = (day: string) => {
 };
 
 const chipClass = (e: CalendarEvent) => {
+    if (e.type === 'EVENT' && e.status === 'CANCELLED') return 'bg-gray-100 text-gray-400 line-through dark:bg-gray-700 dark:text-gray-500';
     if (e.type === 'HOLIDAY' && e.is_tentative) return `${STYLE.HOLIDAY.chip} border border-dashed border-purple-400`;
     if (e.type === 'LEAVE' && e.status === 'PENDING') return 'bg-amber-50 text-amber-800 border border-dashed border-amber-400 dark:bg-amber-900/20 dark:text-amber-200';
     return STYLE[e.type].chip;
 };
-const chipText = (e: CalendarEvent) => (e.type === 'HOLIDAY' && e.is_tentative ? `${e.title} ?` : e.title);
+const chipText = (e: CalendarEvent) => (e.type === 'HOLIDAY' && e.is_tentative ? `${e.title} ?`
+    : e.type === 'EVENT' && e.start_time ? `${e.start_time} ${e.title}` : e.title);
+const emptyEvent = (day: string, opts: EventOptions | null): EventInput => ({
+    title: '', event_type: 'GENERAL', start_date: day, end_date: day, start_time: '', end_time: '', location: '', description: '',
+    audience: opts?.can_manage_all ? 'ALL' : 'SECTIONS', section_ids: opts && !opts.can_manage_all && opts.sections.length === 1 ? [opts.sections[0].id] : [],
+    notify: false,
+});
 
 const CalendarPage: FC = () => {
     const { hasPermission } = usePermissions();
@@ -54,7 +63,7 @@ const CalendarPage: FC = () => {
     const [view, setView] = useState<'month' | 'list'>(() => (typeof window !== 'undefined' && window.innerWidth < 640 ? 'list' : 'month'));
     const [events, setEvents] = useState<CalendarEvent[]>([]);
     const [loading, setLoading] = useState(true);
-    const [shown, setShown] = useState<Record<Filterable, boolean>>({ HOLIDAY: true, EXAM: true, LEAVE: true });
+    const [shown, setShown] = useState<Record<Filterable, boolean>>({ HOLIDAY: true, EVENT: true, EXAM: true, LEAVE: true });
     const [selected, setSelected] = useState<string>(today);
     const [reload, setReload] = useState(0);
     // holiday management
@@ -68,6 +77,42 @@ const CalendarPage: FC = () => {
     const [offDays, setOffDays] = useState<number[]>([6]);
     const [altSat, setAltSat] = useState<AltSaturdays>('NONE');
     const [savingSettings, setSavingSettings] = useState(false);
+    // events
+    const [evOptions, setEvOptions] = useState<EventOptions | null>(null);
+    const [evEditing, setEvEditing] = useState<{ id: number | null; form: EventInput; cancelled?: boolean } | null>(null);
+    const [evSaving, setEvSaving] = useState(false);
+    const [evCancelling, setEvCancelling] = useState<CalendarEvent | null>(null);
+    const [evNotify, setEvNotify] = useState(true);
+    const [evDeleting, setEvDeleting] = useState<CalendarEvent | null>(null);
+    const [evClass, setEvClass] = useState<string>('');
+    const evClasses = useMemo(() => {
+        const seen = new Map<number, string>();
+        (evOptions?.sections || []).forEach((s) => seen.set(s.class_id, s.class_name));
+        return [...seen.entries()].map(([id, name]) => ({ value: String(id), label: name }));
+    }, [evOptions]);
+    const evClassSections = useMemo(() => (evOptions?.sections || []).filter((s) => String(s.class_id) === evClass), [evOptions, evClass]);
+    const evChosenChips = useMemo(() => {
+        const chosen = new Set(evEditing?.form.section_ids || []);
+        const byClass = new Map<number, { name: string; all: number[]; picked: { id: number; label: string }[] }>();
+        (evOptions?.sections || []).forEach((s) => {
+            const g = byClass.get(s.class_id) || { name: s.class_name, all: [], picked: [] };
+            g.all.push(s.id);
+            if (chosen.has(s.id)) g.picked.push({ id: s.id, label: s.label });
+            byClass.set(s.class_id, g);
+        });
+        const chips: { key: string; label: string; ids: number[] }[] = [];
+        byClass.forEach((g, classId) => {
+            if (!g.picked.length) return;
+            if (g.picked.length === g.all.length) chips.push({ key: `c${classId}`, label: g.all.length > 1 ? `${g.name} (all sections)` : g.picked[0].label, ids: g.all });
+            else g.picked.forEach((x) => chips.push({ key: `s${x.id}`, label: x.label, ids: [x.id] }));
+        });
+        return chips;
+    }, [evOptions, evEditing?.form.section_ids]);
+    useEffect(() => {
+        if (isFamily) return;
+        eventService.options().then(setEvOptions).catch(() => setEvOptions(null));
+    }, [isFamily]);
+    const canCreateEvents = !!evOptions?.can_create;
 
     // the grid: full weeks, Monday before the 1st to Sunday after the last day
     const gridStart = useMemo(() => addDays(ymd(month), -((month.getDay() + 6) % 7)), [month]);
@@ -102,7 +147,7 @@ const CalendarPage: FC = () => {
             if (e.type !== 'WEEKLY_OFF' && !shown[e.type as Filterable]) return;
             for (let d = e.date_from; d <= e.date_to; d = addDays(d, 1)) (map[d] ||= []).push(e);
         });
-        const order: CalendarEventType[] = ['HOLIDAY', 'EXAM', 'LEAVE', 'WEEKLY_OFF'];
+        const order: CalendarEventType[] = ['HOLIDAY', 'EVENT', 'EXAM', 'LEAVE', 'WEEKLY_OFF'];
         Object.values(map).forEach((list) => list.sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type)));
         return map;
     }, [events, shown]);
@@ -194,14 +239,88 @@ const CalendarPage: FC = () => {
         }
     };
 
+    // ---- event actions
+    const firstClassOf = (ids: number[]) => {
+        const s = (evOptions?.sections || []).find((x) => ids.includes(x.id));
+        return s ? String(s.class_id) : evClasses.length === 1 ? evClasses[0].value : '';
+    };
+    const openAddEvent = (day: string) => {
+        const form = emptyEvent(day, evOptions);
+        setEvClass(firstClassOf(form.section_ids));
+        setEvEditing({ id: null, form });
+    };
+    const openEditEvent = (e: CalendarEvent) => { setEvClass(firstClassOf(e.section_ids || [])); setEvEditing({
+        id: e.id!, cancelled: e.status === 'CANCELLED',
+        form: {
+            title: e.title, event_type: (e.event_type || 'GENERAL') as EventType, start_date: e.date_from, end_date: e.date_to,
+            start_time: e.start_time || '', end_time: e.end_time || '', location: e.location || '', description: e.description || '',
+            audience: (e.audience || 'ALL') as EventAudience, section_ids: e.section_ids || [], notify: false,
+        },
+    }); };
+    const setEvField = <K extends keyof EventInput>(k: K, v: EventInput[K]) =>
+        setEvEditing((cur) => {
+            if (!cur) return cur;
+            const form = { ...cur.form, [k]: v };
+            if (k === 'start_date' && typeof v === 'string' && form.end_date < v) form.end_date = v;
+            return { ...cur, form };
+        });
+    const saveEvent = async (reinstate = false) => {
+        if (!evEditing) return;
+        const f = evEditing.form;
+        if (!f.title.trim()) { toast.error('Give the event a title'); return; }
+        if (!f.start_date || !f.end_date || f.end_date < f.start_date) { toast.error('Check the dates'); return; }
+        if (f.end_time && !f.start_time) { toast.error('Add a start time, or leave both empty for all day'); return; }
+        if (f.audience === 'SECTIONS' && f.section_ids.length === 0) { toast.error('Choose at least one class'); return; }
+        setEvSaving(true);
+        try {
+            const body = { ...f, title: f.title.trim(), reinstate };
+            if (evEditing.id) await eventService.update(evEditing.id, body);
+            else await eventService.create(body);
+            toast.success(evEditing.id ? (reinstate ? 'Event reinstated' : 'Event updated') : 'Event added');
+            setEvEditing(null);
+            setSelected(f.start_date);
+            refresh();
+        } catch (err) {
+            toast.error(holidayError(err, 'Could not save the event'));
+        } finally {
+            setEvSaving(false);
+        }
+    };
+    const cancelEvent = async () => {
+        if (!evCancelling?.id) return;
+        try {
+            await eventService.cancel(evCancelling.id, evNotify);
+            toast.success(`${evCancelling.title} cancelled`);
+            refresh();
+        } catch (err) {
+            toast.error(holidayError(err, 'Could not cancel the event'));
+        } finally {
+            setEvCancelling(null);
+        }
+    };
+    const deleteEvent = async () => {
+        if (!evDeleting?.id) return;
+        try {
+            await eventService.remove(evDeleting.id);
+            toast.success('Event deleted');
+            refresh();
+        } catch (err) {
+            toast.error(holidayError(err, 'Could not delete the event'));
+        } finally {
+            setEvDeleting(null);
+        }
+    };
+
     // ---- pieces
     const EventRow: FC<{ e: CalendarEvent }> = ({ e }) => (
-        <div className="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-2 py-2.5">
             <div className="min-w-0">
                 <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-gray-900 dark:text-white">
                     <span className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${STYLE[e.type].dot}`} />
                     {e.title}
                     {e.type === 'HOLIDAY' && e.is_tentative && <Badge variant="warning" size="sm">Tentative</Badge>}
+                    {e.type === 'EVENT' && e.event_type && e.event_type !== 'GENERAL' && <Badge variant="secondary" size="sm">{e.event_type_label}</Badge>}
+                    {e.type === 'EVENT' && e.status === 'CANCELLED' && <Badge variant="danger" size="sm">Cancelled</Badge>}
                     {e.type === 'HOLIDAY' && !isFamily && e.applies_to && e.applies_to !== 'ALL' && <Badge variant="secondary" size="sm">{AUDIENCE_LABEL[e.applies_to]}</Badge>}
                 </p>
                 <p className="pl-4.5 text-xs text-gray-500 dark:text-gray-400">
@@ -210,10 +329,21 @@ const CalendarPage: FC = () => {
                     {e.detail ? `${e.date_from !== e.date_to || e.time ? ' · ' : ''}${e.detail}` : ''}
                     {e.type === 'HOLIDAY' && e.is_tentative ? `${e.date_from !== e.date_to ? ' · ' : ''}date may change` : ''}
                     {e.note ? ` · ${e.note}` : ''}
+                    {e.type === 'EVENT' && !e.time ? `${e.date_from !== e.date_to ? ' · ' : ''}All day` : ''}
+                    {e.location ? ` · ${e.location}` : ''}
+                    {e.type === 'EVENT' && e.audience_label && !isFamily ? ` · For: ${e.audience_label}` : ''}
                 </p>
+                {e.description && <p className="mt-1 whitespace-pre-line pl-4.5 text-xs text-gray-600 dark:text-gray-300">{e.description}</p>}
             </div>
+            {e.type === 'EVENT' && e.can_edit && (
+                <div className="flex flex-wrap gap-1.5 pl-4.5">
+                    <Button size="sm" variant="secondary" onClick={() => openEditEvent(e)}>{e.status === 'CANCELLED' ? 'Reinstate' : 'Edit'}</Button>
+                    {e.status !== 'CANCELLED' && <Button size="sm" variant="ghost" onClick={() => { setEvNotify(true); setEvCancelling(e); }}>Cancel event</Button>}
+                    <Button size="sm" variant="ghost" onClick={() => setEvDeleting(e)}>Delete</Button>
+                </div>
+            )}
             {canManage && e.type === 'HOLIDAY' && (
-                <div className="flex flex-wrap gap-1.5 pl-4.5 sm:pl-0">
+                <div className="flex flex-wrap gap-1.5 pl-4.5">
                     {e.is_tentative ? (
                         <>
                             <Button size="sm" variant="success" onClick={() => { setNotifyConfirm(true); setConfirming(e); }}>Confirm</Button>
@@ -232,12 +362,13 @@ const CalendarPage: FC = () => {
         <div className="space-y-5">
             <PageHeader
                 title="Calendar"
-                subtitle="Holidays, weekly offs, exams and leave"
+                subtitle="Holidays, events, exams and leave"
                 breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Calendar', href: '#' }]}
-                actions={canManage ? (
+                actions={canManage || canCreateEvents ? (
                     <div className="flex flex-wrap gap-2">
-                        <Button variant="secondary" size="sm" onClick={openSettings}>⚙ Calendar settings</Button>
-                        <Button size="sm" onClick={() => openAdd(selected >= today ? selected : today)}>+ Add holiday</Button>
+                        {canManage && <Button variant="secondary" size="sm" onClick={openSettings}>⚙ Calendar settings</Button>}
+                        {canCreateEvents && <Button variant="outline" size="sm" onClick={() => openAddEvent(selected >= today ? selected : today)}>+ Add event</Button>}
+                        {canManage && <Button size="sm" onClick={() => openAdd(selected >= today ? selected : today)}>+ Add holiday</Button>}
                     </div>
                 ) : undefined}
             />
@@ -327,9 +458,10 @@ const CalendarPage: FC = () => {
                                     <p key={i} className="text-xs text-gray-500 dark:text-gray-400">{e.title}</p>
                                 ))}
                             </div>
-                            {canManage && (
-                                <Button size="sm" variant="outline" onClick={() => openAdd(selected)}>+ Holiday</Button>
-                            )}
+                            <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
+                                {canCreateEvents && <Button size="sm" variant="outline" onClick={() => openAddEvent(selected)}>+ Event</Button>}
+                                {canManage && <Button size="sm" variant="outline" onClick={() => openAdd(selected)}>+ Holiday</Button>}
+                            </div>
                         </div>
                         <div className="mt-2 divide-y divide-gray-100 dark:divide-gray-700">
                             {dayItems.filter((e) => e.type !== 'WEEKLY_OFF').map((e, i) => <EventRow key={`${e.type}-${e.id ?? i}-${i}`} e={e} />)}
@@ -349,7 +481,10 @@ const CalendarPage: FC = () => {
                                 <p className={`text-sm font-semibold ${d === today ? 'text-blue-600 dark:text-blue-400' : 'text-gray-900 dark:text-white'}`}>
                                     {prettyDay(d)}{d === today ? ' · Today' : ''}
                                 </p>
-                                {canManage && <button type="button" onClick={() => openAdd(d)} className="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400">+ Holiday</button>}
+                                <span className="flex gap-3">
+                                    {canCreateEvents && <button type="button" onClick={() => openAddEvent(d)} className="text-xs font-medium text-orange-600 hover:underline dark:text-orange-400">+ Event</button>}
+                                    {canManage && <button type="button" onClick={() => openAdd(d)} className="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400">+ Holiday</button>}
+                                </span>
                             </div>
                             <div className="divide-y divide-gray-100 dark:divide-gray-700">
                                 {agendaItems(d).map((e, i) => <EventRow key={`${e.type}-${e.id ?? i}-${i}`} e={e} />)}
@@ -358,6 +493,139 @@ const CalendarPage: FC = () => {
                     ))}
                 </div>
             )}
+
+            {/* add / edit event */}
+            <Modal isOpen={!!evEditing} onClose={() => setEvEditing(null)} size="lg"
+                title={evEditing?.id ? (evEditing.cancelled ? 'Reinstate event' : 'Edit event') : 'Add event'}
+                footer={
+                    <div className="flex justify-end gap-2">
+                        <Button variant="secondary" onClick={() => setEvEditing(null)}>Cancel</Button>
+                        <Button onClick={() => saveEvent(!!evEditing?.cancelled)} isLoading={evSaving} loadingText="Saving...">
+                            {evEditing?.cancelled ? 'Reinstate' : 'Save'}
+                        </Button>
+                    </div>
+                }>
+                {evEditing && (
+                    <div className="space-y-4" data-testid="event-form">
+                        <FormInput label="Title" required value={evEditing.form.title} maxLength={150}
+                            placeholder="e.g. Annual Day, Parent-teacher meeting" onChange={(e) => setEvField('title', e.target.value)} />
+                        <FormSelect label="Type" value={evEditing.form.event_type} placeholder="Event"
+                            onChange={(e) => setEvField('event_type', (e.target.value || 'GENERAL') as EventType)}
+                            options={(evOptions?.types || []).filter((t) => t.value !== 'GENERAL')} />
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <FormInput label="From" type="date" required value={evEditing.form.start_date}
+                                onChange={(e) => setEvField('start_date', e.target.value)} />
+                            <FormInput label="To" type="date" required value={evEditing.form.end_date} min={evEditing.form.start_date}
+                                onChange={(e) => setEvField('end_date', e.target.value)} />
+                            <FormInput label="Start time" type="time" value={evEditing.form.start_time}
+                                onChange={(e) => setEvField('start_time', e.target.value)} help="Leave both times empty for an all-day event" />
+                            <FormInput label="End time" type="time" value={evEditing.form.end_time}
+                                onChange={(e) => setEvField('end_time', e.target.value)} />
+                        </div>
+                        <FormInput label="Location (optional)" value={evEditing.form.location} maxLength={150} placeholder="e.g. Main hall"
+                            onChange={(e) => setEvField('location', e.target.value)} />
+                        <FormTextarea label="Details (optional)" rows={3} maxLength={2000} value={evEditing.form.description}
+                            onChange={(e) => setEvField('description', e.target.value)} />
+                        {evOptions?.can_manage_all ? (
+                            <FormSelect label="For" value={evEditing.form.audience === 'ALL' ? '' : evEditing.form.audience} placeholder="Everyone"
+                                onChange={(e) => setEvField('audience', (e.target.value || 'ALL') as EventAudience)}
+                                options={(evOptions?.audiences || []).filter((a) => a.value !== 'ALL')} />
+                        ) : (
+                            <p className="text-sm text-gray-600 dark:text-gray-300">For: your class (its students, their parents and you)</p>
+                        )}
+                        {evEditing.form.audience === 'SECTIONS' && (
+                            <div className="space-y-2" data-testid="class-picker">
+                                {evClasses.length > 1 && (
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <Button type="button" size="sm" variant="secondary"
+                                            onClick={() => setEvField('section_ids', (evOptions?.sections || []).map((s) => s.id))}>
+                                            Select all classes
+                                        </Button>
+                                        {evEditing.form.section_ids.length > 0 && (
+                                            <Button type="button" size="sm" variant="ghost" onClick={() => setEvField('section_ids', [])}>Clear</Button>
+                                        )}
+                                        <span className="text-xs text-gray-500 dark:text-gray-400">e.g. all classes except Class 10: select all, then remove Class 10 below</span>
+                                    </div>
+                                )}
+                                <FormSelect label="Class" value={evClass} placeholder="Choose a class"
+                                    onChange={(e) => setEvClass(e.target.value)} options={evClasses} />
+                                {evClass && (
+                                    <div className="rounded-lg border border-gray-200 p-2 dark:border-gray-700">
+                                        <p className="mb-1.5 text-xs font-medium text-gray-500 dark:text-gray-400">Sections</p>
+                                        <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                                            {evClassSections.length > 1 && (
+                                                <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                    <input type="checkbox"
+                                                        checked={evClassSections.every((s) => evEditing.form.section_ids.includes(s.id))}
+                                                        onChange={(e) => {
+                                                            const ids = evClassSections.map((s) => s.id);
+                                                            const rest = evEditing.form.section_ids.filter((x) => !ids.includes(x));
+                                                            setEvField('section_ids', e.target.checked ? [...rest, ...ids] : rest);
+                                                        }} />
+                                                    All sections
+                                                </label>
+                                            )}
+                                            {evClassSections.map((s) => (
+                                                <label key={s.id} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                                    <input type="checkbox" checked={evEditing.form.section_ids.includes(s.id)}
+                                                        onChange={(e) => setEvField('section_ids', e.target.checked
+                                                            ? [...evEditing.form.section_ids, s.id]
+                                                            : evEditing.form.section_ids.filter((x) => x !== s.id))} />
+                                                    {s.section_name}
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {evChosenChips.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5" data-testid="chosen-sections">
+                                        {evChosenChips.map((c) => (
+                                            <span key={c.key} className="flex items-center gap-1 rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-800 dark:bg-orange-900/40 dark:text-orange-200">
+                                                {c.label}
+                                                <button type="button" aria-label={`Remove ${c.label}`} className="ml-0.5 text-sm leading-none text-orange-600 hover:text-orange-900"
+                                                    onClick={() => setEvField('section_ids', evEditing.form.section_ids.filter((x) => !c.ids.includes(x)))}>×</button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    Pick a class, then its sections; choose another class to add more. Students of the chosen sections, their parents and the class teachers see it.
+                                </p>
+                            </div>
+                        )}
+                        <label className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                            <input type="checkbox" className="mt-0.5" checked={!!evEditing.form.notify} onChange={(e) => setEvField('notify', e.target.checked)} />
+                            <span>Notify everyone it's for (push notification with the title, date and time)</span>
+                        </label>
+                    </div>
+                )}
+            </Modal>
+
+            <ConfirmDialog
+                isOpen={!!evCancelling}
+                title="Cancel event?"
+                message={evCancelling ? `Cancel ${evCancelling.title} (${formatRange(evCancelling.date_from, evCancelling.date_to)})? It stays on the calendar marked "Cancelled".` : ''}
+                confirmText="Cancel event"
+                cancelText="Keep it"
+                type="warning"
+                onConfirm={cancelEvent}
+                onCancel={() => setEvCancelling(null)}
+            >
+                <label className="mt-3 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <input type="checkbox" checked={evNotify} onChange={(e) => setEvNotify(e.target.checked)} />
+                    Notify everyone it's for
+                </label>
+            </ConfirmDialog>
+
+            <ConfirmDialog
+                isOpen={!!evDeleting}
+                title="Delete event?"
+                message={evDeleting ? `Delete ${evDeleting.title}? Use this for mistakes; to call an event off, cancel it instead so people see it's off.` : ''}
+                confirmText="Delete"
+                type="danger"
+                onConfirm={deleteEvent}
+                onCancel={() => setEvDeleting(null)}
+            />
 
             {/* add / edit holiday */}
             <Modal isOpen={!!editing} onClose={() => setEditing(null)} size="lg"
