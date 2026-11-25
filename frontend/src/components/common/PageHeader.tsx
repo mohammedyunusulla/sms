@@ -1,5 +1,8 @@
 import React, { FC } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
+import PageInfo from './PageInfo';
+import { getPageHelp } from '../../config/pageHelp';
+import { useAuthStore } from '../../stores/authStore';
 import { IPageHeaderProps } from '../../types';
 
 /**
@@ -15,6 +18,11 @@ const PageHeader: FC<IPageHeaderProps> = ({
     actions,
     className = '',
 }) => {
+    // the (i) "about this page" button, when the page has help text (config/pageHelp.ts)
+    const { pathname } = useLocation();
+    const role = useAuthStore((s) => s.user?.role);
+    const help = getPageHelp(pathname, role);
+    const addon = titleAddon ?? (help ? <PageInfo title={title} help={help} /> : null);
     return (
         <div className={`mb-6 ${className}`}>
             {/* Breadcrumbs */}
@@ -46,7 +54,7 @@ const PageHeader: FC<IPageHeaderProps> = ({
                 <div className="flex-1">
                     <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                         {title}
-                        {titleAddon && <span className="ml-2 inline-flex align-middle">{titleAddon}</span>}
+                        {addon && <span className="ml-2 inline-flex align-middle">{addon}</span>}
                     </h1>
                     {subtitle && (
                         <p className="text-gray-600 dark:text-gray-400">

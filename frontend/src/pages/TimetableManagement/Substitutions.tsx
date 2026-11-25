@@ -26,7 +26,6 @@ const Substitutions: FC = () => {
     const [busy, setBusy] = useState<number | 'all' | null>(null);
     const [choice, setChoice] = useState<Record<number, string>>({});
     const [removing, setRemoving] = useState<CoverPeriod | null>(null);
-    const [aboutOpen, setAboutOpen] = useState(false);
     // cover by hand
     const [manualOpen, setManualOpen] = useState(false);
     const [manualTeacher, setManualTeacher] = useState('');
@@ -120,16 +119,6 @@ const Substitutions: FC = () => {
         <div className="space-y-5">
             <PageHeader
                 title="Substitutions"
-                titleAddon={
-                    <button type="button" aria-label="About substitutions" title="About substitutions" onClick={() => setAboutOpen(true)}
-                        className="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600 dark:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-blue-400">
-                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <circle cx="12" cy="12" r="9" />
-                            <path strokeLinecap="round" d="M12 11v5" />
-                            <circle cx="12" cy="7.75" r="0.6" fill="currentColor" />
-                        </svg>
-                    </button>
-                }
                 subtitle="Cover for teachers on leave, absent or busy"
                 breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Timetable', href: '/timetable' }, { label: 'Substitutions', href: '#' }]}
                 actions={<Button variant="secondary" size="sm" onClick={openManual} disabled={!data || !!data.off_day}>+ Add cover by hand</Button>}
@@ -255,21 +244,6 @@ const Substitutions: FC = () => {
                         )
                     )}
                     <FormInput label="Reason (optional)" value={manualNote} maxLength={255} placeholder="e.g. Exam duty" onChange={(e) => setManualNote(e.target.value)} />
-                </div>
-            </Modal>
-
-            <Modal isOpen={aboutOpen} onClose={() => setAboutOpen(false)} title="About substitutions" size="md">
-                <div className="space-y-3 text-sm text-gray-700 dark:text-gray-300" data-testid="about-substitutions">
-                    <p className="font-medium text-gray-900 dark:text-white">Cover classes when a teacher can't take them.</p>
-                    <ul className="list-disc space-y-1.5 pl-5">
-                        <li>Lists the periods of teachers on leave, absent, on half day, or busy.</li>
-                        <li>Suggests free teachers, best match first (same subject).</li>
-                        <li>The substitute, students and parents see it in their timetable.</li>
-                    </ul>
-                    <p className="rounded-lg bg-gray-50 px-3 py-2 text-gray-600 dark:bg-gray-700/50 dark:text-gray-300">
-                        <span className="font-medium text-gray-900 dark:text-white">Example:</span> Ravi is on leave on Monday. His Maths class
-                        for 6-B shows here. Anita, a free Maths teacher, is suggested. Assign her, and she and the class are informed.
-                    </p>
                 </div>
             </Modal>
 
