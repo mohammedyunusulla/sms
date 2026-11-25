@@ -80,7 +80,7 @@ const LeavePolicyPage: FC = () => {
                         ))}
                     </div>
                     <ul className="list-disc space-y-1 pl-5 text-xs text-gray-500 dark:text-gray-400">
-                        <li>Sundays inside a leave are not counted.</li>
+                        <li>Weekly offs and staff holidays inside a leave are not counted (see Holidays).</li>
                         <li>Leave beyond the balance can still be approved; the extra days are unpaid and count towards the salary loss of pay.</li>
                         <li>Balances start again each academic year. Changing the policy doesn't change leave that was already approved.</li>
                         <li>Leave the box empty for no limit, or enter 0 to make that type always unpaid.</li>

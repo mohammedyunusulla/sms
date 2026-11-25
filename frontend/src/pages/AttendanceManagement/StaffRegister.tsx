@@ -44,10 +44,7 @@ const StaffRegister: FC = () => {
     }, [month]);
 
     const dayNums = useMemo(() => Array.from({ length: data?.days || 0 }, (_, i) => i + 1), [data]);
-    const weekend = (d: number) => {
-        const wd = new Date(month.getFullYear(), month.getMonth(), d).getDay();
-        return wd === 0;
-    };
+    const off = (d: number) => data?.off_days?.[String(d)];
 
     const print = async (action: PdfAction) => {
         if (!data) return;
@@ -56,7 +53,11 @@ const StaffRegister: FC = () => {
             await generateStaffRegisterPdf({
                 monthLabel,
                 days: data.days,
-                rows: data.staff.map((s) => ({ name: s.name, role: s.role_name, days: s.days, totals: s.totals as unknown as Record<string, number> })),
+                rows: data.staff.map((s) => ({
+                    name: s.name, role: s.role_name, totals: s.totals as unknown as Record<string, number>,
+                    // unmarked weekly offs / holidays print as WO / HO
+                    days: { ...Object.fromEntries(Object.entries(data.off_days || {}).map(([d, o]) => [d, o.kind === 'HOLIDAY' ? 'HOLIDAY' : 'WEEKLY_OFF'])), ...s.days },
+                })),
             }, {
                 institutionName: user?.institution_name || 'Institution',
                 institutionAddress: '', institutionPhone: '', institutionEmail: user?.email || '', logo: null,
@@ -95,7 +96,7 @@ const StaffRegister: FC = () => {
                             <tr className="bg-gray-50 text-gray-600 dark:bg-gray-700/50 dark:text-gray-300">
                                 <th className="sticky left-0 z-10 bg-gray-50 px-3 py-2 text-left font-semibold dark:bg-gray-700">Staff</th>
                                 {dayNums.map((d) => (
-                                    <th key={d} className={`w-7 px-0.5 py-2 text-center font-medium ${weekend(d) ? 'text-red-500' : ''}`}>{d}</th>
+                                    <th key={d} title={off(d)?.label} className={`w-7 px-0.5 py-2 text-center font-medium ${off(d) ? 'text-purple-600 dark:text-purple-300' : ''}`}>{d}</th>
                                 ))}
                                 {TOTALS.map(([k, label]) => <th key={k} className="bg-gray-100 px-1.5 py-2 text-center font-semibold dark:bg-gray-700">{label}</th>)}
                             </tr>
@@ -112,6 +113,7 @@ const StaffRegister: FC = () => {
                                         return (
                                             <td key={d} className="px-0.5 py-1 text-center">
                                                 {c ? <span className={`inline-block min-w-[1.5rem] rounded px-0.5 py-0.5 font-semibold ${c.cls}`}>{c.code}</span>
+                                                    : off(d) ? <span title={off(d)?.label} className="inline-block min-w-[1.5rem] rounded bg-purple-50 px-0.5 py-0.5 font-semibold text-purple-500 dark:bg-purple-900/20 dark:text-purple-300">{off(d)?.kind === 'HOLIDAY' ? 'HO' : 'WO'}</span>
                                                     : <span className="text-gray-300 dark:text-gray-600">·</span>}
                                             </td>
                                         );
@@ -126,7 +128,7 @@ const StaffRegister: FC = () => {
                         </tbody>
                     </table>
                     <p className="border-t border-gray-100 px-3 py-2 text-[11px] text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                        P Present · A Absent · L Late · H Half day · LV Leave · UL Unpaid leave (beyond the yearly balance; LV counts include it) · NM Not marked (days up to today with no entry) · Sundays in red
+                        P Present · A Absent · L Late · H Half day · LV Leave · UL Unpaid leave (beyond the yearly balance; LV counts include it) · HO Holiday · WO Weekly off · NM Not marked (working days up to today with no entry)
                     </p>
                 </div>
             ) : null}

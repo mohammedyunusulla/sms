@@ -36,6 +36,8 @@ export enum Permission {
   APPROVE_LEAVE = 'approve_leave',
   /** Mark / edit staff attendance and see the monthly staff register */
   MANAGE_STAFF_ATTENDANCE = 'manage_staff_attendance',
+  /** Add / edit holidays and weekly offs (everyone can view the Holidays page) */
+  MANAGE_HOLIDAYS = 'manage_holidays',
 
   // Announcements
   VIEW_ANNOUNCEMENTS = 'view_announcements',
@@ -325,6 +327,8 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, SidebarGroupPermissionConfig
     groupPermissions: [Permission.APPROVE_LEAVE, Permission.MANAGE_ATTENDANCE],
     itemPermissions: {},
   },
+  // Calendar: every institution user can view (adding holidays is checked on the page and the server)
+  'Calendar': { groupPermissions: [], itemPermissions: {}, roles: ['INSTITUTION_ADMIN', 'PRINCIPAL', 'TEACHER', 'CLERK', 'BUS_STAFF', 'STUDENT', 'PARENT'] },
   // Own leave: students and staff; parents apply for their child (no permission, like attendance)
   'My Leave': { groupPermissions: [], itemPermissions: {}, roles: ['STUDENT', 'PRINCIPAL', 'TEACHER', 'CLERK', 'BUS_STAFF'] },
   "My Child's Leave": { groupPermissions: [], itemPermissions: {}, roles: ['PARENT'] },

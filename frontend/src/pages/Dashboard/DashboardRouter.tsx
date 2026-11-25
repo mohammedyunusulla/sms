@@ -3,6 +3,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { UserRole } from '../../types/common';
 import NotificationsCard from '../../components/pwa/NotificationsCard';
 import PendingLeaveBanner from '../LeaveManagement/PendingLeaveBanner';
+import TentativeHolidayBanner from '../HolidayManagement/TentativeHolidayBanner';
 
 // Lazy load dashboards for better performance
 const SuperAdminDashboard = lazy(() => import('./SuperAdminDashboard'));
@@ -105,6 +106,8 @@ const DashboardRouter: FC = () => {
             {user.role !== UserRole.SUPER_ADMIN && <NotificationsCard variant="prompt" />}
             {/* approvers: leave requests waiting for a decision */}
             {[UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.CLERK, UserRole.BUS_STAFF].includes(user.role as UserRole) && <PendingLeaveBanner />}
+            {/* holiday managers: a tentative holiday in the next 3 days still needs confirming */}
+            {[UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL].includes(user.role as UserRole) && <TentativeHolidayBanner />}
             {getDashboard()}
         </>
     );

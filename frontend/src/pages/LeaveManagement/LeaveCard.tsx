@@ -37,7 +37,7 @@ const LeaveCard: FC<Props> = ({ leave, showPerson = false, actions }) => (
                     {formatRange(leave.from_date, leave.to_date)}
                     <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
                         {leave.counted_days != null && leave.counted_days !== leave.days
-                            ? `${leave.counted_days} day${leave.counted_days === 1 ? '' : 's'} counted (no Sundays)`
+                            ? `${leave.counted_days} day${leave.counted_days === 1 ? '' : 's'} counted (holidays / weekly offs not counted)`
                             : `${leave.days} day${leave.days === 1 ? '' : 's'}`} · {leave.leave_type_label}
                     </span>
                 </p>
@@ -62,6 +62,7 @@ const LeaveCard: FC<Props> = ({ leave, showPerson = false, actions }) => (
                     {leave.paid_days} paid · {leave.unpaid_days} unpaid (beyond the yearly balance)
                 </p>
             )}
+            {leave.recount_note && <p className="italic">{leave.recount_note}</p>}
             {leave.balance && (
                 <p className={leave.balance.would_be_unpaid ? 'font-medium text-amber-700 dark:text-amber-400' : ''}>
                     {leave.balance.remaining === null

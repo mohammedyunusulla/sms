@@ -30,6 +30,8 @@ ALL_PERMISSIONS = [
     'approve_leave',
     # mark / edit staff attendance and see the monthly staff register
     'manage_staff_attendance',
+    # holiday calendar: weekly offs and holidays (everyone can view)
+    'manage_holidays',
 ]
 
 # Default permissions for system roles in a new institution.

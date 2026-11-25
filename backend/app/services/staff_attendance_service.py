@@ -22,6 +22,7 @@ from app.models.tenant.Roles import Role
 from app.models.tenant.StaffAttendance import StaffAttendance
 from app.utils.db_manager import switch_to_institution_db
 from app.services.leave_balance import unpaid_leave_dates, ensure_tables as ensure_policy_table
+from app.services import calendar_service
 
 STATUSES = ('PRESENT', 'ABSENT', 'LATE', 'HALF_DAY', 'LEAVE')
 NOT_STAFF = ('STUDENT', 'PARENT', 'INSTITUTION_ADMIN', 'SUPER_ADMIN')
@@ -40,6 +41,7 @@ def ensure_tables(session):
     LeaveRequest.__table__.create(bind=bind, checkfirst=True)
     StaffAttendance.__table__.create(bind=bind, checkfirst=True)
     ensure_policy_table(session)
+    calendar_service.ensure_tables(session)
 
 
 def _parse_day(value, label='Date'):
@@ -96,10 +98,14 @@ def approved_staff_leave(session, user_ids, start, end):
         LeaveRequest.user_id.in_(ids), LeaveRequest.from_date <= end, LeaveRequest.to_date >= start,
     ).all()
     unpaid = unpaid_leave_dates(session, ids, start, end)
+    offs = calendar_service.off_days(session, start, end, 'STAFF') if rows else {}
     out = {}
     for leave in rows:
         day = max(leave.from_date, start)
         while day <= min(leave.to_date, end):
+            if day in offs:  # a weekly off / holiday inside the leave isn't a leave day
+                day = date.fromordinal(day.toordinal() + 1)
+                continue
             label = leave.leave_type.title()
             if day in unpaid.get(leave.user_id, ()):
                 label += ' (unpaid)'
@@ -114,13 +120,14 @@ def _empty_totals():
 
 def month_summaries(session, user_ids, year, month):
     """
-    {user_id: {'PRESENT': n, ..., 'NOT_MARKED': n, 'UNPAID_LEAVE': n, 'days': n}}. Not marked counts only days up
-    to today. UNPAID_LEAVE: days of approved leave beyond the balance, unless the person was marked as working
+    {user_id: {'PRESENT': n, ..., 'NOT_MARKED': n, 'UNPAID_LEAVE': n, 'OFF_DAYS': n, 'days': n}}. Not marked counts
+    working days up to today with no entry (weekly offs and staff holidays don't need one). UNPAID_LEAVE: days of approved leave beyond the balance, unless the person was marked as working
     (Present / Late) or already counted (Absent / Half day).
     """
     start, end, days = _month(year, month)
     ids = [int(u) for u in user_ids]
-    out = {u: {**_empty_totals(), 'NOT_MARKED': 0, 'UNPAID_LEAVE': 0, 'days': days} for u in ids}
+    offs = calendar_service.off_days(session, start, end, 'STAFF')
+    out = {u: {**_empty_totals(), 'NOT_MARKED': 0, 'UNPAID_LEAVE': 0, 'OFF_DAYS': len(offs), 'days': days} for u in ids}
     if not ids:
         return out
     marked = {}
@@ -131,9 +138,11 @@ def month_summaries(session, user_ids, year, month):
             out[uid][status] += 1
     for uid, dates in unpaid_leave_dates(session, ids, start, end).items():
         out[uid]['UNPAID_LEAVE'] = sum(1 for d in dates if marked.get((uid, d), 'LEAVE') == 'LEAVE')
-    elapsed = max(0, (min(end, date.today()) - start).days + 1)
+    last = min(end, date.today())
+    working = [date.fromordinal(o) for o in range(start.toordinal(), last.toordinal() + 1)
+               if date.fromordinal(o) not in offs] if last >= start else []
     for uid, totals in out.items():
-        totals['NOT_MARKED'] = max(0, elapsed - sum(totals[s] for s in STATUSES))
+        totals['NOT_MARKED'] = sum(1 for d in working if (uid, d) not in marked)
     return out
 
 
@@ -165,6 +174,8 @@ class StaffAttendanceService:
             last = max(records.values(), key=lambda r: r.updated_at or r.created_at, default=None)
             return {
                 'date': day.isoformat(),
+                # weekly off / staff holiday: the page shows a banner (marking is still allowed)
+                'off_day': calendar_service.off_days(session, day, day, 'STAFF').get(day),
                 'is_marked': bool(records),
                 'last_saved_by': names.get(last.updated_by or last.marked_by) if last else None,
                 'last_saved_at': (last.updated_at or last.created_at).isoformat() + 'Z' if last else None,
@@ -230,8 +241,10 @@ class StaffAttendanceService:
                 status = 'UNPAID_LEAVE' if r.status == 'LEAVE' and r.date in unpaid.get(r.user_id, ()) else r.status
                 grid.setdefault(r.user_id, {})[r.date.day] = status
             totals = month_summaries(session, ids, start.year, start.month)
+            offs = calendar_service.off_days(session, start, end, 'STAFF')
             return {
                 'year': start.year, 'month': start.month, 'days': days,
+                'off_days': {str(d.day): v for d, v in offs.items()},
                 'staff': [{'user_id': u.id, 'name': _name(u), 'role_name': role.role_name,
                            'days': {str(d): s for d, s in grid.get(u.id, {}).items()},
                            'totals': totals[u.id]} for u, role in members],
@@ -254,6 +267,7 @@ class StaffAttendanceService:
                 'records': [{'date': r.date.isoformat(), 'status': r.status, 'remarks': r.remarks} for r in rows],
                 'approved_leave_days': sorted(d.isoformat() for d in leave),
                 'unpaid_leave_days': sorted(d.isoformat() for d, label in leave.items() if label.endswith('(unpaid)')),
+                'off_days': [{'date': d.isoformat(), **v} for d, v in sorted(calendar_service.off_days(session, start, end, 'STAFF').items())],
                 'totals': month_summaries(session, [me], start.year, start.month)[me],
             }
 

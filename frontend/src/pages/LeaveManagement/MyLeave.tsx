@@ -8,6 +8,7 @@ import { Button, ConfirmDialog, FormInput, FormSelect, FormTextarea, LoadingSpin
 import { useAuthStore } from '../../stores/authStore';
 import { useParentStore } from '../../stores/parentStore';
 import { leaveErrorMessage, leaveService, LeaveRequest, MyLeaveData } from '../../services/modules/leaveService';
+import { holidayService } from '../../services/modules/holidayService';
 import LeaveCard from './LeaveCard';
 import { addDays, countedDays, localDay } from './leaveDates';
 
@@ -111,17 +112,30 @@ const MyLeave: FC = () => {
 
     const pending = data?.requests.filter((r) => r.status === 'PENDING').length ?? 0;
 
+    // staff: weekly offs / holidays inside the chosen dates (not counted)
+    const [offInRange, setOffInRange] = useState<Set<string> | null>(null);
+    useEffect(() => {
+        setOffInRange(null);
+        if (data?.applicant_type !== 'STAFF' || !form.from_date || !form.to_date || form.to_date < form.from_date) return;
+        let alive = true;
+        const t = window.setTimeout(() => {
+            holidayService.offDays(form.from_date, form.to_date, 'STAFF')
+                .then((l) => alive && setOffInRange(new Set(l.map((d) => d.date)))).catch(() => alive && setOffInRange(new Set()));
+        }, 250);
+        return () => { alive = false; window.clearTimeout(t); };
+    }, [data?.applicant_type, form.from_date, form.to_date]);
+
     // staff: what this request would use from the balance of the chosen type
     const preview = (() => {
-        if (data?.applicant_type !== 'STAFF' || !form.leave_type || !form.from_date || !form.to_date || form.to_date < form.from_date) return null;
-        const counted = countedDays(form.from_date, form.to_date);
+        if (data?.applicant_type !== 'STAFF' || !form.leave_type || !form.from_date || !form.to_date || form.to_date < form.from_date || !offInRange) return null;
+        const counted = countedDays(form.from_date, form.to_date, offInRange);
         const bal = data.balances?.find((b) => b.type === form.leave_type);
         const label = bal?.label || form.leave_type;
-        if (!counted) return { tone: 'warn', text: 'These dates are all Sundays: no leave is needed.' };
+        if (!counted) return { tone: 'warn', text: 'These dates are all weekly offs or holidays: no leave is needed.' };
         const daysText = `${counted} day${counted === 1 ? '' : 's'}`;
-        if (!bal || bal.remaining === null) return { tone: 'ok', text: `This request counts ${daysText} (Sundays not counted). ${label} leave has no limit, so it's all paid.` };
+        if (!bal || bal.remaining === null) return { tone: 'ok', text: `This request counts ${daysText} (holidays and weekly offs not counted). ${label} leave has no limit, so it's all paid.` };
         const unpaid = Math.max(0, counted - bal.remaining);
-        if (!unpaid) return { tone: 'ok', text: `This request counts ${daysText} (Sundays not counted), leaving ${bal.remaining - counted} of ${bal.paid_days} ${label} days.` };
+        if (!unpaid) return { tone: 'ok', text: `This request counts ${daysText} (holidays and weekly offs not counted), leaving ${bal.remaining - counted} of ${bal.paid_days} ${label} days.` };
         const left = bal.remaining === 0
             ? (bal.paid_days === 0 ? `${label} leave is always unpaid` : `no paid ${label} days are left`)
             : `only ${bal.remaining} paid ${label} day${bal.remaining === 1 ? ' is' : 's are'} left`;

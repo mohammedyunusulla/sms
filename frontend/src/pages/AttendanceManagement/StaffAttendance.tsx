@@ -135,6 +135,11 @@ const StaffAttendance: FC = () => {
                         </div>
                     </div>
 
+                    {day.off_day && (
+                        <div data-testid="offday-banner" className="rounded-lg border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-900 dark:border-purple-800 dark:bg-purple-900/20 dark:text-purple-200">
+                            <strong>{day.off_day.kind === 'HOLIDAY' ? `Holiday: ${day.off_day.label}` : day.off_day.label}</strong>. Attendance isn't needed, but you can mark staff who came in.
+                        </div>
+                    )}
                     <p className="text-xs text-gray-500 dark:text-gray-400">
                         {day.is_marked
                             ? `Saved${day.last_saved_by ? ` by ${day.last_saved_by}` : ''}${day.last_saved_at ? ` · ${new Date(day.last_saved_at).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}` : ''}. Changes are saved when you press Save.`

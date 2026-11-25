@@ -19,6 +19,8 @@ const CODE: Record<string, { text: string; color: string }> = {
     HALF_DAY: { text: 'H', color: '#e65100' },
     LEAVE: { text: 'LV', color: '#1565c0' },
     UNPAID_LEAVE: { text: 'UL', color: '#6a1b9a' },
+    HOLIDAY: { text: 'HO', color: '#8e24aa' },
+    WEEKLY_OFF: { text: 'WO', color: '#9e9e9e' },
 };
 const TOTALS = [['PRESENT', 'P'], ['ABSENT', 'A'], ['LATE', 'L'], ['HALF_DAY', 'H'], ['LEAVE', 'LV'], ['UNPAID_LEAVE', 'UL'], ['NOT_MARKED', 'NM']];
 
@@ -60,7 +62,7 @@ export const generateStaffRegisterPdf = async (
             },
         },
         {
-            text: 'P Present · A Absent · L Late · H Half day · LV Leave · UL Unpaid leave (beyond the yearly balance; included in LV) · NM Not marked (days up to today with no entry)',
+            text: 'P Present · A Absent · L Late · H Half day · LV Leave · UL Unpaid leave (beyond the yearly balance; included in LV) · HO Holiday · WO Weekly off · NM Not marked (working days up to today with no entry)',
             fontSize: 7, italics: true, color: '#666666', margin: [0, 8, 0, 0],
         },
         getSignatureSection([{ label: 'Prepared by', position: 'left' }, { label: 'Principal Signature', position: 'right' }]),

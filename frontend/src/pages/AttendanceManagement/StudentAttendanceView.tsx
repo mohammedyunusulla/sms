@@ -4,6 +4,7 @@
  */
 import { FC, useEffect, useMemo, useState } from 'react';
 import { attendanceService } from '../../services/modules/attendanceService';
+import { holidayService, OffDay, offDayMap } from '../../services/modules/holidayService';
 
 type DayRecord = { date: string; status: string; remarks?: string | null };
 type Stats = { total_days: number; present_count: number; absent_count: number; late_count: number; leave_count: number; attendance_percentage: number };
@@ -63,6 +64,12 @@ const StudentAttendanceView: FC<{ studentId: number }> = ({ studentId }) => {
     }, [studentId, first, last]);
 
     const byDate = useMemo(() => new Map(records.map((r) => [r.date, r])), [records]);
+    const [offs, setOffs] = useState<Record<string, OffDay>>({});
+    useEffect(() => {
+        let alive = true;
+        holidayService.offDays(ymd(first), ymd(last), 'STUDENTS').then((l) => alive && setOffs(offDayMap(l))).catch(() => alive && setOffs({}));
+        return () => { alive = false; };
+    }, [first, last]);
     const cells = useMemo(() => {
         const lead = (first.getDay() + 6) % 7; // Monday first
         const out: (Date | null)[] = Array.from({ length: lead }, () => null);
@@ -115,9 +122,9 @@ const StudentAttendanceView: FC<{ studentId: number }> = ({ studentId }) => {
                         const rec = byDate.get(key);
                         const style = rec ? STATUS_STYLE[statusKey(rec.status)] : undefined;
                         return (
-                            <div key={key} title={rec ? `${style?.label || rec.status}${rec.remarks ? ` - ${rec.remarks}` : ''}` : ''}
-                                data-status={rec ? statusKey(rec.status) : ''}
-                                className={`flex aspect-square items-center justify-center rounded-md text-sm ${style ? style.cell : 'text-gray-400 dark:text-gray-500'} ${key === today ? 'ring-2 ring-blue-500' : ''}`}>
+                            <div key={key} title={rec ? `${style?.label || rec.status}${rec.remarks ? ` - ${rec.remarks}` : ''}` : offs[key]?.label || ''}
+                                data-status={rec ? statusKey(rec.status) : offs[key] ? 'OFF' : ''}
+                                className={`flex aspect-square items-center justify-center rounded-md text-sm ${style ? style.cell : offs[key] ? 'bg-purple-50 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300' : 'text-gray-400 dark:text-gray-500'} ${key === today ? 'ring-2 ring-blue-500' : ''}`}>
                                 {day.getDate()}
                             </div>
                         );
@@ -127,6 +134,7 @@ const StudentAttendanceView: FC<{ studentId: number }> = ({ studentId }) => {
                     {Object.values(STATUS_STYLE).map((s) => (
                         <span key={s.label} className="flex items-center gap-1.5"><span className={`inline-block h-2.5 w-2.5 rounded-full ${s.dot}`} />{s.label}</span>
                     ))}
+                    <span className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-full bg-purple-300" />Holiday / weekly off</span>
                     <span>Unmarked days are grey</span>
                 </div>
             </div>

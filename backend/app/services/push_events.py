@@ -225,3 +225,25 @@ def leave_decided(skid, tenant_session, leave):
         tag=f"leave-{leave.id}",
         exclude_user_id=_actor_id(),
     )
+
+
+# ---------------------------------------------------------------- holidays
+
+@_best_effort
+def holiday_announced(skid, tenant_session, holiday, kind='added'):
+    """Holiday added / confirmed / moved (only when the admin ticks "Notify everyone")."""
+    if holiday.applies_to == "STUDENTS":
+        recipients = push.main_user_ids_for(skid, roles=("STUDENT", "PARENT"))
+    elif holiday.applies_to == "STAFF":
+        recipients = push.main_user_ids_for(skid, roles=STAFF_ROLES)
+    else:
+        recipients = push.main_user_ids_for(skid)
+    when = _short_range(holiday.start_date, holiday.end_date) if holiday.start_date != holiday.end_date         else holiday.start_date.strftime('%a %d %b')
+    tentative = " (tentative)" if holiday.is_tentative else ""
+    if kind == "moved":
+        title, body = "📅 Holiday date changed", f"{holiday.name} is now on {when}{tentative}."
+    elif kind == "confirmed":
+        title, body = "📅 Holiday confirmed", f"{holiday.name}: {when}."
+    else:
+        title, body = f"🎉 Holiday: {holiday.name}", f"{when}{tentative}."
+    push.notify(recipients, title, body, url="/calendar", tag=f"holiday-{holiday.id}", exclude_user_id=_actor_id())

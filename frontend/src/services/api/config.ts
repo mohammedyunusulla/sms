@@ -24,6 +24,17 @@ export const API_ENDPOINTS = {
         RESET_PASSWORD: '/auth/reset-password',
     },
     // push notifications for this device (backend: app/api/push.py)
+    CALENDAR: {
+        EVENTS: (skid: string) => `/calendar/events/${skid}`,
+    },
+    HOLIDAYS: {
+        LIST: (skid: string) => `/holidays/list/${skid}`,
+        OFF_DAYS: (skid: string) => `/holidays/off-days/${skid}`,
+        CREATE: (skid: string) => `/holidays/${skid}`,
+        ITEM: (skid: string, id: number) => `/holidays/${skid}/${id}`,
+        SETTINGS: (skid: string) => `/holidays/settings/${skid}`,
+        TENTATIVE_SOON: (skid: string) => `/holidays/tentative-soon/${skid}`,
+    },
     STAFF_ATTENDANCE: {
         DAY: (skid: string) => `/staff-attendance/day/${skid}`,
         REGISTER: (skid: string) => `/staff-attendance/register/${skid}`,

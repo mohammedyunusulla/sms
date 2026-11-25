@@ -153,6 +153,12 @@ const allMenuItems: NavItem[] = [
             { name: "Staff Register", path: "/attendance/staff-register", pro: false },
         ],
     },
+    // Calendar (holidays, weekly offs, exams, leave) - everyone in the institution
+    {
+        icon: <CalenderIcon />,
+        name: "Calendar",
+        path: "/calendar",
+    },
     // Leave - approvers (class teachers, admins, "Approve leave" tick box)
     {
         icon: <TaskIcon />,

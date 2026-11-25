@@ -16,6 +16,7 @@ import DataTable from '../../components/tables/DataTable';
 import { attendanceService } from '../../services/modules/attendanceService';
 import { classService } from '../../services/modules/classService';
 import { leaveService } from '../../services/modules/leaveService';
+import { holidayService, OffDay } from '../../services/modules/holidayService';
 import { AttendanceStatus } from '../../types/index';
 import AttendanceAuditLine from './AttendanceAuditLine';
 
@@ -60,6 +61,8 @@ const MarkAttendance: FC = () => {
     const [existingAttendance, setExistingAttendance] = useState<any | null>(null);
     // students with approved leave on the chosen day: { studentId: leave type }
     const [onLeave, setOnLeave] = useState<Record<string, string>>({});
+    // weekly off / students' holiday on the chosen day (a banner; marking is still allowed)
+    const [offDay, setOffDay] = useState<OffDay | null>(null);
 
     // Form state
     const [formData, setFormData] = useState<IFormData>({
@@ -67,6 +70,16 @@ const MarkAttendance: FC = () => {
         sectionId: '',
         date: new Date().toISOString().split('T')[0], // Today's date
     });
+
+    useEffect(() => {
+        let alive = true;
+        setOffDay(null);
+        if (formData.date) {
+            holidayService.offDays(formData.date, formData.date, 'STUDENTS')
+                .then((list) => alive && setOffDay(list[0] || null)).catch(() => undefined);
+        }
+        return () => { alive = false; };
+    }, [formData.date]);
 
     // Compute filtered and searched students
     const filteredStudents = useMemo(() => {
@@ -652,6 +665,11 @@ const MarkAttendance: FC = () => {
                                         </select>
                                     </div>
 
+                                    {offDay && (
+                                        <div data-testid="offday-banner" className="mb-3 rounded-lg border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-900 dark:border-purple-800 dark:bg-purple-900/20 dark:text-purple-200">
+                                            <strong>{offDay.kind === 'HOLIDAY' ? `Holiday: ${offDay.label}` : offDay.label}</strong>. Attendance isn't needed today, but you can still mark it.
+                                        </div>
+                                    )}
                                     {/* Students Table */}
                                     <DataTable
                                         columns={[

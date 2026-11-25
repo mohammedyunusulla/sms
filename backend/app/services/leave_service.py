@@ -174,11 +174,12 @@ def _shape(session, leaves, user=None):
 
     out = []
     for l in leaves:
-        counted = len(leave_balance.chargeable_dates(l.from_date, l.to_date)) if l.applicant_type == STAFF else None
+        counted = len(leave_balance.chargeable_dates(session, l.from_date, l.to_date)) if l.applicant_type == STAFF else None
         out.append({
             'counted_days': counted,
             'paid_days': l.paid_days,
             'unpaid_days': l.unpaid_days,
+            'recount_note': l.recount_note,
             'balance': staff_balance(l) if l.applicant_type == STAFF and l.status == PENDING else None,
             'id': l.id,
             'applicant_type': l.applicant_type,
@@ -268,8 +269,8 @@ class LeaveService:
                 raise LeaveError(f'Leave can be applied at most {DAYS_BACK} days back')
             if (end - start).days + 1 > MAX_DAYS:
                 raise LeaveError(f'One request can cover at most {MAX_DAYS} days')
-            if applicant_type == STAFF and not leave_balance.chargeable_dates(start, end):
-                raise LeaveError('These dates are all Sundays: no leave is needed')
+            if applicant_type == STAFF and not leave_balance.chargeable_dates(session, start, end):
+                raise LeaveError('These dates are all weekly offs or holidays: no leave is needed')
             leave_type = str(data.get('leave_type') or '').strip().upper()
             if leave_type not in LEAVE_TYPES[applicant_type]:
                 raise LeaveError('Choose a leave type')

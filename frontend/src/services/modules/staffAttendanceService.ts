@@ -24,6 +24,8 @@ export interface StaffDayRow {
 
 export interface StaffDay {
     date: string;
+    /** weekly off / staff holiday that day */
+    off_day: { label: string; kind: 'HOLIDAY' | 'WEEKLY_OFF'; tentative: boolean } | null;
     is_marked: boolean;
     last_saved_by: string | null;
     last_saved_at: string | null;
@@ -31,12 +33,14 @@ export interface StaffDay {
 }
 
 /** UNPAID_LEAVE: approved leave days beyond the yearly balance (counted in the loss of pay) */
-export type StaffTotals = Record<StaffStatus | 'NOT_MARKED' | 'UNPAID_LEAVE', number> & { days: number };
+export type StaffTotals = Record<StaffStatus | 'NOT_MARKED' | 'UNPAID_LEAVE' | 'OFF_DAYS', number> & { days: number };
 
 export interface StaffRegister {
     year: number;
     month: number;
     days: number;
+    /** weekly offs / staff holidays by day of the month */
+    off_days: Record<string, { label: string; kind: 'HOLIDAY' | 'WEEKLY_OFF'; tentative: boolean }>;
     /** a day's status, or UNPAID_LEAVE for leave beyond the balance */
     staff: { user_id: number; name: string; role_name: string; days: Record<string, StaffStatus | 'UNPAID_LEAVE'>; totals: StaffTotals }[];
 }
@@ -48,6 +52,7 @@ export interface MyStaffMonth {
     records: { date: string; status: StaffStatus; remarks: string | null }[];
     approved_leave_days: string[];
     unpaid_leave_days: string[];
+    off_days: { date: string; label: string; kind: 'HOLIDAY' | 'WEEKLY_OFF'; tentative: boolean }[];
     totals: StaffTotals;
 }
 

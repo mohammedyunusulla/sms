@@ -3,7 +3,7 @@ Paid-leave balances for staff.
 
 - The Leave Policy sets paid days per staff leave type for an academic year (no row = no limit; a year
   without a policy uses the latest earlier year's).
-- Days are counted without Sundays.
+- Weekly offs and staff holidays inside a leave aren't counted (calendar_service).
 - When staff leave is approved, its days are split into paid (up to what's left of the balance) and
   unpaid (the rest - the LAST days of the leave). The split is stored on the request (paid_days / unpaid_days),
   so later changes to the policy don't rewrite decided requests. Cancelling an approved leave gives its paid
@@ -27,14 +27,10 @@ def ensure_tables(session):
     LeavePolicy.__table__.create(bind=session.connection(), checkfirst=True)
 
 
-def chargeable_dates(start, end):
-    """Leave days that count: every day from start to end except Sundays."""
-    out, day = [], start
-    while day <= end:
-        if day.weekday() != 6:
-            out.append(day)
-        day += timedelta(days=1)
-    return out
+def chargeable_dates(session, start, end):
+    """Leave days that count: every day from start to end except weekly offs and staff holidays."""
+    from app.services.calendar_service import working_dates
+    return working_dates(session, start, end, 'STAFF')
 
 
 def policy_for_year(session, year_id):
@@ -83,7 +79,7 @@ def balances(session, user_id, year_id, labels):
 
 def split_for(session, leave):
     """(paid, unpaid) days if this staff leave were approved now."""
-    days = len(chargeable_dates(leave.from_date, leave.to_date))
+    days = len(chargeable_dates(session, leave.from_date, leave.to_date))
     policy, _ = policy_for_year(session, leave.academic_year_id)
     quota = policy.get(leave.leave_type)
     if quota is None:
@@ -93,12 +89,12 @@ def split_for(session, leave):
     return paid, days - paid
 
 
-def unpaid_dates(leave):
+def unpaid_dates(session, leave):
     """The unpaid days of an approved staff leave: its last `unpaid_days` counted days."""
     n = int(leave.unpaid_days or 0)
     if n <= 0:
         return []
-    return chargeable_dates(leave.from_date, leave.to_date)[-n:]
+    return chargeable_dates(session, leave.from_date, leave.to_date)[-n:]
 
 
 def unpaid_leave_dates(session, user_ids, start, end):
@@ -113,7 +109,7 @@ def unpaid_leave_dates(session, user_ids, start, end):
     ).all()
     out = {}
     for leave in rows:
-        for d in unpaid_dates(leave):
+        for d in unpaid_dates(session, leave):
             if start <= d <= end:
                 out.setdefault(leave.user_id, set()).add(d)
     return out

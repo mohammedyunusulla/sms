@@ -36,6 +36,8 @@ export interface LeaveRequest {
     /** staff leave, once approved: paid days (within the yearly balance) and unpaid days (beyond it) */
     paid_days: number | null;
     unpaid_days: number | null;
+    /** set when a holiday / weekly-off change recounted this approved leave */
+    recount_note: string | null;
     /** pending staff leave: balance of that type and how many days would be unpaid if approved now */
     balance: { paid_days: number | null; used: number; remaining: number | null; would_be_unpaid: number } | null;
 }

@@ -16,13 +16,12 @@ export const formatDay = (day: string): string => {
     return new Date(y, m - 1, d).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
-/** Leave days that count against a staff balance: every day except Sundays */
-export const countedDays = (from: string, to: string): number => {
+/** Leave days that count against a staff balance: every day except the given off days (weekly offs / holidays) */
+export const countedDays = (from: string, to: string, offDays: Set<string> = new Set()): number => {
     if (!from || !to || to < from) return 0;
     let n = 0;
     for (let d = from; d <= to; d = addDays(d, 1)) {
-        const [y, m, day] = d.split('-').map(Number);
-        if (new Date(y, m - 1, day).getDay() !== 0) n += 1;
+        if (!offDays.has(d)) n += 1;
     }
     return n;
 };

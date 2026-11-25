@@ -30,6 +30,8 @@ class LeaveRequest(BaseModelTenant, BaseModelTenantMixin):
     # and unpaid (beyond it - the last days of the leave). See services/leave_balance.py
     paid_days = Column(Integer, nullable=True)
     unpaid_days = Column(Integer, nullable=True)
+    # set when a holiday / weekly-off change recounted this approved leave
+    recount_note = Column(String(255), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
