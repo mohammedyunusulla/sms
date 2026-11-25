@@ -64,6 +64,8 @@ const MarkAttendance = lazy(() => import("./pages/AttendanceManagement").then(m 
 const AttendanceReport = lazy(() => import("./pages/AttendanceManagement").then(m => ({ default: m.AttendanceReport })));
 const MyAttendance = lazy(() => import("./pages/AttendanceManagement").then(m => ({ default: m.MyAttendance })));
 const ParentAttendance = lazy(() => import("./pages/AttendanceManagement").then(m => ({ default: m.ParentAttendance })));
+const MyLeave = lazy(() => import("./pages/LeaveManagement").then(m => ({ default: m.MyLeave })));
+const LeaveRequests = lazy(() => import("./pages/LeaveManagement").then(m => ({ default: m.LeaveRequests })));
 
 // Lazy loaded Announcement Management
 const AnnouncementList = lazy(() => import("./pages/AnnouncementManagement").then(m => ({ default: m.AnnouncementList })));
@@ -271,6 +273,10 @@ function AppContent() {
                         {/* students / parents: no permission needed (each page shows only its own student) */}
                         <Route path="/attendance/my" element={<MyAttendance />} />
                         <Route path="/parent/attendance" element={<ParentAttendance />} />
+                        {/* leave: own / child's requests (any student, parent or staff; the server checks who) and approvals */}
+                        <Route path="/leave/my" element={<MyLeave />} />
+                        <Route path="/leave" element={<Navigate to="/leave/my" replace />} />
+                        <Route path="/leave/requests" element={guarded('/leave/requests', <LeaveRequests />)} />
                         {/* published exam results: every student / parent (backend limits to own child + published exams) */}
                         <Route path="/academics/my-results" element={<MyResults />} />
                         <Route path="/parent/results" element={<ParentResults />} />

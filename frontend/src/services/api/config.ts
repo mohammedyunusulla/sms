@@ -24,6 +24,15 @@ export const API_ENDPOINTS = {
         RESET_PASSWORD: '/auth/reset-password',
     },
     // push notifications for this device (backend: app/api/push.py)
+    LEAVE: {
+        MY: (skid: string) => `/leave/my/${skid}`,
+        APPLY: (skid: string) => `/leave/apply/${skid}`,
+        CANCEL: (skid: string, id: number) => `/leave/cancel/${skid}/${id}`,
+        REQUESTS: (skid: string) => `/leave/requests/${skid}`,
+        PENDING_COUNT: (skid: string) => `/leave/pending-count/${skid}`,
+        DECIDE: (skid: string, id: number) => `/leave/decide/${skid}/${id}`,
+        ON_LEAVE: (skid: string) => `/leave/on-leave/${skid}`,
+    },
     PUSH: {
         CONFIG: '/push/config',
         SUBSCRIBE: '/push/subscribe',

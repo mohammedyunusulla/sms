@@ -145,6 +145,12 @@ def students_marked_absent(skid, tenant_session, student_ids, day):
 
     if not student_ids or day < push.today() - timedelta(days=1) or day > push.today():
         return
+    # a day on approved leave isn't an absence to alert anyone about
+    from app.services.leave_service import approved_student_leave
+    on_leave = approved_student_leave(tenant_session, student_ids, day)
+    student_ids = [s for s in student_ids if int(s) not in on_leave]
+    if not student_ids:
+        return
     names = dict(tenant_session.query(InstitutionUsers.id, InstitutionUsers.first_name).filter(
         InstitutionUsers.id.in_([int(s) for s in student_ids])
     ).all())
@@ -168,3 +174,54 @@ def newly_absent(records_before, records_after):
     """Student ids that are ABSENT now and weren't before (both: {student_id: status})."""
     return [sid for sid, status in records_after.items()
             if _is_absent(status) and not _is_absent(records_before.get(sid))]
+
+
+# ---------------------------------------------------------------- leave
+
+def _short_range(start, end):
+    if start == end:
+        return start.strftime('%d %b')
+    return f"{start.strftime('%d %b')} - {end.strftime('%d %b')}"
+
+
+@_best_effort
+def leave_requested(skid, tenant_session, leave):
+    """New leave request -> the people who can decide it (class teacher, or admins / "approve_leave")."""
+    from app.services.leave_service import approver_user_ids, _names
+    approvers = approver_user_ids(tenant_session, leave)
+    if not approvers:
+        return
+    names = _names(tenant_session, [leave.user_id, leave.applied_by])
+    who = (names.get(leave.user_id) or "Someone").split(" ")[0]
+    if leave.applicant_type == "STUDENT" and leave.applied_by != leave.user_id:
+        who = f"{who}'s parent"
+    days = (leave.to_date - leave.from_date).days + 1
+    # no reason in the text: it shows on the lock screen
+    push.notify(
+        push.main_user_ids_for(skid, approvers),
+        title="Leave request",
+        body=f"{who} asked for leave: {_short_range(leave.from_date, leave.to_date)} ({days} day{'s' if days != 1 else ''}).",
+        url="/leave/requests",
+        tag=f"leave-request-{leave.id}",
+        exclude_user_id=_actor_id(),
+    )
+
+
+@_best_effort
+def leave_decided(skid, tenant_session, leave):
+    """Approved / rejected -> the person on leave, whoever applied, and (student leave) the parents."""
+    from app.services.leave_service import _names
+    people = {leave.user_id, leave.applied_by}
+    if leave.applicant_type == "STUDENT":
+        people |= push.parents_of(tenant_session, [leave.user_id])
+    name = (_names(tenant_session, [leave.user_id]).get(leave.user_id) or "").split(" ")[0]
+    whose = "Your" if leave.applicant_type == "STAFF" else f"{name}'s" if name else "The"
+    outcome = "approved ✅" if leave.status == "APPROVED" else "not approved"
+    push.notify(
+        push.main_user_ids_for(skid, people),
+        title="Leave update",
+        body=f"{whose} leave for {_short_range(leave.from_date, leave.to_date)} was {outcome}.",
+        url="/leave/my",
+        tag=f"leave-{leave.id}",
+        exclude_user_id=_actor_id(),
+    )

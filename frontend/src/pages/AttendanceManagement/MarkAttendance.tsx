@@ -15,6 +15,7 @@ import {
 import DataTable from '../../components/tables/DataTable';
 import { attendanceService } from '../../services/modules/attendanceService';
 import { classService } from '../../services/modules/classService';
+import { leaveService } from '../../services/modules/leaveService';
 import { AttendanceStatus } from '../../types/index';
 import AttendanceAuditLine from './AttendanceAuditLine';
 
@@ -57,6 +58,8 @@ const MarkAttendance: FC = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [isEditMode, setIsEditMode] = useState(false);
     const [existingAttendance, setExistingAttendance] = useState<any | null>(null);
+    // students with approved leave on the chosen day: { studentId: leave type }
+    const [onLeave, setOnLeave] = useState<Record<string, string>>({});
 
     // Form state
     const [formData, setFormData] = useState<IFormData>({
@@ -190,6 +193,12 @@ const MarkAttendance: FC = () => {
                 }
             }
 
+            // Approved leave that day: those students start as "Leave" (the teacher can still change it)
+            const leaveToday = await leaveService.onLeave(formData.sectionId, formData.date).catch(() => ({} as Record<string, string>));
+            setOnLeave(leaveToday);
+            const startStatus = (id: string | number) => (leaveToday[String(id)] ? AttendanceStatus.LEAVE : AttendanceStatus.PRESENT);
+            const startRemarks = (id: string | number) => (leaveToday[String(id)] ? `Approved leave (${leaveToday[String(id)]})` : '');
+
             // Check if attendance already exists for this date, class, and section
             try {
                 const existingData = await attendanceService.checkExistingAttendance(
@@ -210,8 +219,8 @@ const MarkAttendance: FC = () => {
                             full_name: student.full_name,
                             studentEmail: student.email,
                             studentRoll: student.profile?.roll_no || '',
-                            status: existingRecord?.status || AttendanceStatus.PRESENT,
-                            remarks: existingRecord?.remarks || '',
+                            status: existingRecord?.status || startStatus(student.id),
+                            remarks: existingRecord ? existingRecord.remarks || '' : startRemarks(student.id),
                         };
                     });
                     setAllStudents(attendanceRows);
@@ -227,8 +236,8 @@ const MarkAttendance: FC = () => {
                         full_name: student.full_name,
                         studentEmail: student.email,
                         studentRoll: student.profile?.roll_no || '',
-                        status: AttendanceStatus.PRESENT,
-                        remarks: '',
+                        status: startStatus(student.id),
+                        remarks: startRemarks(student.id),
                     }));
                     setAllStudents(attendanceRows);
                     // toast.info('No existing attendance found - You are in NEW mode', { duration: 3000 });
@@ -245,8 +254,8 @@ const MarkAttendance: FC = () => {
                     full_name: student.full_name,
                     studentEmail: student.email,
                     studentRoll: student.profile?.roll_no || '',
-                    status: AttendanceStatus.PRESENT,
-                    remarks: '',
+                    status: startStatus(student.id),
+                    remarks: startRemarks(student.id),
                 }));
                 setAllStudents(attendanceRows);
             }
@@ -653,6 +662,11 @@ const MarkAttendance: FC = () => {
                                                 render: (_value, row) => (
                                                     <div>
                                                         <p className="font-medium text-gray-900 dark:text-white">{row.full_name}</p>
+                                                        {onLeave[String(row.studentId)] && (
+                                                            <span className="mt-0.5 inline-block rounded bg-yellow-100 px-1.5 py-0.5 text-[11px] font-medium text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
+                                                                Approved leave
+                                                            </span>
+                                                        )}
                                                         {row.studentRoll && (
                                                             <p className="text-xs text-gray-500 dark:text-gray-400">
                                                                 Roll: {row.studentRoll}

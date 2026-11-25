@@ -26,6 +26,8 @@ ALL_PERMISSIONS = [
     'manage_academic_years', 'manage_rooms', 'manage_salaries',
     # fee structures, installment plans, discounts, cancelling payments (a Clerk only collects)
     'manage_fee_settings',
+    # decide any leave request (class teachers decide their own sections' student leave without it)
+    'approve_leave',
 ]
 
 # Default permissions for system roles in a new institution.

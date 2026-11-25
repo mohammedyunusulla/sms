@@ -32,6 +32,8 @@ export enum Permission {
   // Attendance
   VIEW_ATTENDANCE = 'view_attendance',
   MANAGE_ATTENDANCE = 'manage_attendance',
+  /** Decide any student's or staff member's leave (class teachers decide their own sections' without it) */
+  APPROVE_LEAVE = 'approve_leave',
 
   // Announcements
   VIEW_ANNOUNCEMENTS = 'view_announcements',
@@ -161,6 +163,8 @@ export const ROUTE_PERMISSION_MAP: Record<string, RoutePermissionConfig> = {
   // Attendance
   '/attendance/mark': { permission: Permission.MANAGE_ATTENDANCE },
   '/attendance/report': { permission: Permission.VIEW_ATTENDANCE },
+  // class teachers (they mark attendance) and approvers; the server limits a class teacher to their sections
+  '/leave/requests': { anyPermission: [Permission.APPROVE_LEAVE, Permission.MANAGE_ATTENDANCE] },
 
   // Announcements
   '/announcements': { permission: Permission.VIEW_ANNOUNCEMENTS },
@@ -309,6 +313,13 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, SidebarGroupPermissionConfig
       '/timetable': Permission.VIEW_MY_TIMETABLE,
     },
   },
+  'Leave Requests': {
+    groupPermissions: [Permission.APPROVE_LEAVE, Permission.MANAGE_ATTENDANCE],
+    itemPermissions: {},
+  },
+  // Own leave: students and staff; parents apply for their child (no permission, like attendance)
+  'My Leave': { groupPermissions: [], itemPermissions: {}, roles: ['STUDENT', 'PRINCIPAL', 'TEACHER', 'CLERK', 'BUS_STAFF'] },
+  "My Child's Leave": { groupPermissions: [], itemPermissions: {}, roles: ['PARENT'] },
   // Own / child attendance: every student and parent (no permission, by choice)
   'My Attendance': { groupPermissions: [], itemPermissions: {}, roles: ['STUDENT'] },
   "My Child's Attendance": { groupPermissions: [], itemPermissions: {}, roles: ['PARENT'] },

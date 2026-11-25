@@ -188,6 +188,26 @@ export const searchablePages: SearchablePage[] = [
         icon: '📋',
         roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER],
     },
+    {
+        id: 'leave-requests',
+        name: 'Leave Requests',
+        description: 'Approve or reject leave requests',
+        route: '/leave/requests',
+        keywords: ['leave', 'requests', 'approve', 'reject', 'absence', 'holiday'],
+        category: 'Attendance',
+        icon: '🗓️',
+        roles: [UserRole.INSTITUTION_ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER],
+    },
+    {
+        id: 'my-leave',
+        name: 'Leave',
+        description: 'Apply for leave and see your requests',
+        route: '/leave/my',
+        keywords: ['leave', 'apply', 'sick', 'absence', 'holiday', 'request'],
+        category: 'Attendance',
+        icon: '🗓️',
+        roles: [UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.STUDENT, UserRole.PARENT, UserRole.CLERK, UserRole.BUS_STAFF],
+    },
 
     // Announcements
     {

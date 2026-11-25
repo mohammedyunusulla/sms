@@ -118,6 +118,12 @@ const allMenuItems: NavItem[] = [
         name: "My Child's Attendance",
         path: "/parent/attendance",
     },
+    // Leave - Parent applies for the linked child
+    {
+        icon: <TaskIcon />,
+        name: "My Child's Leave",
+        path: "/leave/my",
+    },
     // Exam results – Parent (linked child, published exams)
     {
         icon: <PieChartIcon />,
@@ -144,6 +150,18 @@ const allMenuItems: NavItem[] = [
             { name: "Mark Attendance", path: "/attendance/mark", pro: false },
             { name: "Attendance Report", path: "/attendance/report", pro: false },
         ],
+    },
+    // Leave - approvers (class teachers, admins, "Approve leave" tick box)
+    {
+        icon: <TaskIcon />,
+        name: "Leave Requests",
+        path: "/leave/requests",
+    },
+    // Leave - students and staff apply for themselves
+    {
+        icon: <TaskIcon />,
+        name: "My Leave",
+        path: "/leave/my",
     },
     // Class Management (InstitutionAdmin, Principal)
     {
