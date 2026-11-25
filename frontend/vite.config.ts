@@ -2,12 +2,45 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import svgr from "vite-plugin-svgr";
 import { VitePWA } from "vite-plugin-pwa";
+import type { Plugin } from "vite";
+
+/**
+ * Dev server only: answer /sw.js with a worker that deletes its caches and removes itself, then reloads the
+ * open pages. A production service worker left on this address (e.g. after `vite preview` on the same port)
+ * would otherwise keep serving the old build: the browser checks /sw.js for updates on every visit, so this
+ * replaces it on the next page load. Production builds are not affected (apply: "serve").
+ */
+const SELF_REMOVING_SW = `
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(keys.map((k) => caches.delete(k)));
+    await self.registration.unregister();
+    const windows = await self.clients.matchAll({ type: "window" });
+    windows.forEach((w) => w.navigate(w.url));
+  })());
+});
+`;
+const removeStaleServiceWorkerInDev = (): Plugin => ({
+  name: "eduspyre-remove-stale-sw-in-dev",
+  apply: "serve",
+  configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      if (req.url?.split("?")[0] !== "/sw.js") return next();
+      res.setHeader("Content-Type", "text/javascript");
+      res.setHeader("Cache-Control", "no-store");
+      res.end(SELF_REMOVING_SW);
+    });
+  },
+});
 
 const ICONS = "/images/logo/eduspyre";
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
+    removeStaleServiceWorkerInDev(),
     react(),
     svgr({
       svgrOptions: {

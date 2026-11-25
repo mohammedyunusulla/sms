@@ -3,11 +3,13 @@
  * Empty = no limit (every approved day is paid). Days beyond the balance are approved as unpaid leave.
  */
 import { FC, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router';
 import toast from 'react-hot-toast';
 import { Button, LoadingSpinner, PageHeader } from '../../components';
 import { leaveErrorMessage, leaveService, LeavePolicy } from '../../services/modules/leaveService';
 
 const LeavePolicyPage: FC = () => {
+    const navigate = useNavigate();
     const [policy, setPolicy] = useState<LeavePolicy | null>(null);
     const [values, setValues] = useState<Record<string, string>>({});
     const [saving, setSaving] = useState(false);
@@ -45,6 +47,7 @@ const LeavePolicyPage: FC = () => {
                 title="Leave Policy"
                 subtitle={policy?.year_name ? `Paid staff leave for ${policy.year_name}` : 'Paid staff leave per year'}
                 breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Leave Requests', href: '/leave/requests' }, { label: 'Leave Policy', href: '#' }]}
+                actions={<Button variant="secondary" size="sm" onClick={() => navigate('/leave/requests')}>← Back</Button>}
             />
 
             {error ? (
