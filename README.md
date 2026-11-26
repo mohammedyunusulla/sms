@@ -2,7 +2,6 @@
 
 Unified repository for backend, frontend, containerization, and CI/CD deployment.
 
-- **Local path:** `C:\Users\moulla\Downloads\hobbies\SMS`
 - **Target URL:** https://dev-sms.klopterz.in
 - **VM deploy path:** `/home/vm/apps/sms/dev`
 
