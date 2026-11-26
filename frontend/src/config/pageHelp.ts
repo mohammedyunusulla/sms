@@ -235,23 +235,30 @@ const PAGE_HELP: Record<string, HelpFor> = {
     },
 
     '/homework/teacher': {
-        lead: 'Homework that is checked with AI.',
+        lead: 'Set daily homework and see how each class did.',
         points: [
-            'Set homework for a class, with photos if needed.',
-            'Students work on a notebook page with a QR sticker and photograph it when done.',
-            "The AI grades it; you see each student's result and the class's efficiency.",
+            "Create Homework: pick the date (today by default), class and subject; that day's homework is listed below.",
+            'Students see only the title until they press Start; the AI grades their uploaded work.',
+            'Analytics: pick a date and a homework to see results, time taken and flags.',
         ],
-        example: 'Set 5 Maths sums for 8-A and see who finished, how long they took, and their marks.',
+        example: 'Set "Fractions practice" for 8-A today; tomorrow check who finished and their marks.',
     },
 
     '/homework/student': {
-        lead: 'Do your homework and get help.',
+        lead: 'Do your homework and see your results.',
         points: [
-            'Photograph the blank page with its QR sticker to start.',
-            'Ask for a hint if you are stuck.',
-            'Photograph the finished page; the AI grades it.',
+            "Today's Homework: press Start to see the questions; the timer starts then.",
+            'Ask for a hint if you are stuck, then photograph your work; the AI grades it.',
+            "Past Homeworks: pick a date to see that day's homework and your result.",
         ],
-        example: 'Start the Maths homework, ask for a hint on sum 3, then photograph your page.',
+        example: 'Start the Maths homework, ask for a hint on sum 3, then photograph your pages.',
+    },
+
+    // the menu opens /homework, which shows the teacher or student page by role
+    '/homework': (role) => {
+        const r = (role || '').toUpperCase();
+        const page = PAGE_HELP[r === 'STUDENT' || r === 'LEARNER' ? '/homework/student' : '/homework/teacher'];
+        return typeof page === 'function' ? page(role) : page;
     },
 
     '/syllabus': {

@@ -1,5 +1,5 @@
 /**
- * A submission's photos: the notebook page at the start (blank, with its QR sticker) and the finished pages.
+ * A submission's photos: the finished pages (and, for older homework started with a QR sticker, the page at the start).
  * The photo endpoint needs the login token, so each photo is fetched as a Blob. Tap a photo to enlarge it.
  */
 import { useEffect, useState } from 'react';
@@ -57,14 +57,15 @@ export default function SessionPhotos({ sessionId, hasStartPhoto, pageCount }: S
 
   return (
     <div className="space-y-3" data-testid="session-photos">
-      <div>
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">At the start (blank page)</p>
-        {hasStartPhoto ? (start ? thumb(start, 'Page at the start') : <div className="h-28 w-28 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800" />)
-          : <p className="text-sm text-gray-500">No start photo (started before page QR codes were used).</p>}
-      </div>
+      {hasStartPhoto && (
+        <div>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">At the start (blank page)</p>
+          {start ? thumb(start, 'Page at the start') : <div className="h-28 w-28 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800" />}
+        </div>
+      )}
       <div>
         <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">Submitted pages</p>
-        {pageCount === 0 ? <p className="text-sm text-gray-500">Not submitted yet.</p> : (
+        {pageCount === 0 ? <p className="text-sm text-gray-500">No photos.</p> : (
           <div className="flex flex-wrap gap-2">
             {pages.length === 0
               ? Array.from({ length: pageCount }, (_, i) => <div key={i} className="h-28 w-28 animate-pulse rounded-lg bg-gray-100 dark:bg-gray-800" />)

@@ -7,6 +7,8 @@
  * Big photos are shrunk in the browser to 2560px on the long side so uploads stay small (the server's proxy
  * may cap request size) while staying sharper than the old 1920px video frame.
  */
+import { Button } from '../../../components';
+import { CloseIcon } from '../../../icons';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 
@@ -97,8 +99,9 @@ export default function PhotoPicker({
         <span className="text-xs text-gray-500 dark:text-gray-400">({photos.length}/{max})</span>
       </div>
       <div className="flex flex-wrap gap-2">
-        <button
+        <Button
           type="button"
+          size="sm"
           onClick={() => {
             // On phones/tablets, keep using the native camera app for better autofocus/QR clarity.
             // Use in-page live scanner only where it is generally more reliable.
@@ -109,18 +112,12 @@ export default function PhotoPicker({
             prefersNativeCamera() ? cameraInputRef.current?.click() : setCameraOpen(true);
           }}
           disabled={disabled || remaining <= 0}
-          className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
         >
-          📷 Take photo
-        </button>
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={disabled || remaining <= 0}
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
-        >
-          🖼 Upload photo
-        </button>
+          Take photo
+        </Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => inputRef.current?.click()} disabled={disabled || remaining <= 0}>
+          Upload photo
+        </Button>
         <input
           ref={inputRef}
           type="file"
@@ -161,7 +158,7 @@ export default function PhotoPicker({
                 aria-label={`Remove photo ${index + 1}`}
                 title="Remove"
               >
-                ✕
+                <CloseIcon className="h-3.5 w-3.5" />
               </button>
             </div>
           ))}
@@ -307,7 +304,7 @@ function CameraCapture({
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-base font-semibold text-gray-900 dark:text-white">Take photo</h3>
           <button type="button" onClick={onClose} className="text-sm text-gray-500 hover:text-gray-800 dark:text-gray-400" aria-label="Close camera">
-            ✕
+            <CloseIcon className="h-5 w-5" />
           </button>
         </div>
         {error ? (

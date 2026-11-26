@@ -197,13 +197,14 @@ export const API_ENDPOINTS = {
         DELETE: (assignmentId: number) => `/assignments/${assignmentId}`,
     },
     HOMEWORK: {
-        CREATE_ASSIGNMENT: '/homework/assignments',
-        LIST_ASSIGNMENTS: '/homework/assignments',
+        // Homework AI (its own module; not the Assignments feature)
+        ITEMS: '/homework/items',
+        HOMEWORK_ITEM: (homeworkId: number) => `/homework/items/${homeworkId}`,
         START_SESSION: '/homework/sessions/start',
         TOGGLE_PAUSE: (sessionId: number) => `/homework/sessions/${sessionId}/toggle-pause`,
         ASK_HINT: (sessionId: number) => `/homework/sessions/${sessionId}/hint`,
         SUBMIT: (sessionId: number) => `/homework/sessions/${sessionId}/submit`,
         SESSION_PHOTO: (sessionId: number, kind: 'start' | 'page', index: number) => `/homework/sessions/${sessionId}/photos/${kind}/${index}`,
-        ANALYTICS: (assignmentId: number) => `/homework/analytics/assignment/${assignmentId}`,
+        ANALYTICS: (homeworkId: number) => `/homework/analytics/${homeworkId}`,
     },
 } as const;

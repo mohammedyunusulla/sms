@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react';
 import { homeworkApi } from '../api/homeworkApi';
 
-export default function HomeworkPhotos({ assignmentId, count }: { assignmentId: number; count: number }) {
+export default function HomeworkPhotos({ homeworkId, count }: { homeworkId: number; count: number }) {
   const [urls, setUrls] = useState<string[]>([]);
   const [failed, setFailed] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
@@ -18,7 +18,7 @@ export default function HomeworkPhotos({ assignmentId, count }: { assignmentId: 
     let cancelled = false;
     const created: string[] = [];
     setFailed(false);
-    Promise.all(Array.from({ length: count }, (_, index) => homeworkApi.getHomeworkPhoto(assignmentId, index)))
+    Promise.all(Array.from({ length: count }, (_, index) => homeworkApi.getHomeworkPhoto(homeworkId, index)))
       .then((blobs) => {
         if (cancelled) return;
         blobs.forEach((blob) => created.push(URL.createObjectURL(blob)));
@@ -29,7 +29,7 @@ export default function HomeworkPhotos({ assignmentId, count }: { assignmentId: 
       cancelled = true;
       created.forEach((url) => URL.revokeObjectURL(url));
     };
-  }, [assignmentId, count]);
+  }, [homeworkId, count]);
 
   if (!count) return null;
   if (failed) return <p className="text-sm text-red-600 dark:text-red-400">Couldn't load the homework photos.</p>;

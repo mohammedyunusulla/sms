@@ -1,15 +1,26 @@
 export type HomeworkSessionStatus = 'in_progress' | 'paused' | 'submitted' | 'graded';
 
-export interface HomeworkAssignment {
+export interface Homework {
   id: number;
   class_id: number;
   section_id: number;
   subject: string;
   title: string;
-  description: string;
+  /** null for students until they start (the questions are hidden) */
+  description: string | null;
+  questions_hidden?: boolean;
   reference_answer_key?: string | null;
   expected_time_minutes: number;
   due_date?: string | null;
+  /** the day the homework is for (YYYY-MM-DD) */
+  homework_date?: string | null;
+  /** before today: view only */
+  is_past?: boolean;
+  /** student's own result (list) */
+  my_accuracy_score?: number | null;
+  my_efficiency_score?: number | null;
+  /** teacher: how many students started it (0 = can be deleted) */
+  started_count?: number;
   /** number of homework photos (e.g. of the board) */
   photo_count?: number;
   created_by: number;
@@ -20,7 +31,7 @@ export interface HomeworkAssignment {
 export interface HomeworkSession {
   id: number;
   student_id: number;
-  assignment_id: number;
+  homework_id: number;
   status: HomeworkSessionStatus;
   started_at?: string | null;
   last_resumed_at?: string | null;
@@ -34,10 +45,12 @@ export interface HomeworkSession {
   has_start_photo?: boolean;
   page_qr_code?: string | null;
   integrity?: HomeworkIntegrity;
+  /** the homework with its questions, returned once the student has started */
+  homework?: Homework;
 }
 
 export interface HomeworkAnalytics {
-  assignment: HomeworkAssignment;
+  homework: Homework;
   total_sessions: number;
   submitted_count: number;
   completion_rate: number;
@@ -76,4 +89,9 @@ export interface HomeworkIntegrity {
   same_page_as_start?: boolean | null;
   notes?: string;
   flagged?: boolean;
+  /** finished far quicker than the class usually takes */
+  fast_finish?: boolean;
+  fast_finish_note?: string;
+  /** students whose page photo is nearly identical */
+  same_photo_with?: string[];
 }

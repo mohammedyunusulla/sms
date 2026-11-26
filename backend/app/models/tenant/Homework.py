@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, JSON, String, Text, func
+from sqlalchemy import Date, Boolean, Column, DateTime, Float, ForeignKey, Integer, JSON, String, Text, func
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModelTenant, BaseModelTenantMixin
@@ -16,8 +16,9 @@ class StudentQRSticker(BaseModelTenant, BaseModelTenantMixin):
     student = relationship("InstitutionUsers")
 
 
-class HomeworkAssignment(BaseModelTenant, BaseModelTenantMixin):
-    __tablename__ = "homework_assignments"
+class Homework(BaseModelTenant, BaseModelTenantMixin):
+    """One homework of the Homework AI module (not the Assignments feature)."""
+    __tablename__ = "homeworks"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     class_id = Column(Integer, ForeignKey("classes.id"), nullable=False, index=True)
@@ -30,6 +31,8 @@ class HomeworkAssignment(BaseModelTenant, BaseModelTenantMixin):
     instruction_image_paths = Column(JSON, default=list, nullable=True)
     expected_time_minutes = Column(Integer, default=15, nullable=False)
     due_date = Column(DateTime, nullable=True)
+    # the day the homework is for (students see it that day; afterwards it's in Past Homeworks, view only)
+    homework_date = Column(Date, nullable=True, index=True)
     created_by = Column(Integer, nullable=False, index=True)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=func.current_timestamp())
@@ -43,7 +46,7 @@ class StudentHomeworkSession(BaseModelTenant, BaseModelTenantMixin):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     student_id = Column(Integer, ForeignKey("institution_users.id"), nullable=False, index=True)
-    assignment_id = Column(Integer, ForeignKey("homework_assignments.id"), nullable=False, index=True)
+    homework_id = Column(Integer, ForeignKey("homeworks.id"), nullable=False, index=True)
     status = Column(String(20), default="in_progress", nullable=False, index=True)
     started_at = Column(DateTime, default=func.current_timestamp(), nullable=False)
     last_resumed_at = Column(DateTime, nullable=True)
@@ -66,4 +69,4 @@ class StudentHomeworkSession(BaseModelTenant, BaseModelTenantMixin):
     updated_at = Column(DateTime, default=func.current_timestamp(), onupdate=func.current_timestamp())
 
     student = relationship("InstitutionUsers")
-    assignment = relationship("HomeworkAssignment")
+    homework = relationship("Homework")

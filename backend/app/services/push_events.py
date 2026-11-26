@@ -103,7 +103,7 @@ def homework_created(skid, tenant_session, homework):
     students = push.students_in_sections(tenant_session, [homework.section_id])
     _send_to_students_and_parents(
         skid, tenant_session, students,
-        title=f"📝 New {homework.subject} homework",
+        title=f"New {homework.subject} homework",
         body=homework.title,
         student_url="/homework/student", parent_url="/dashboard",
         tag=f"homework-{homework.id}",

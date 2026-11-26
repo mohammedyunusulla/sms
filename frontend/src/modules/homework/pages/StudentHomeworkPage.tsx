@@ -1,136 +1,174 @@
-import { useEffect, useMemo, useState } from 'react';
+/**
+ * Homework AI - student. Two tabs:
+ *   Today's Homework: today's homework (plus any started earlier and not yet handed in). Pick one, press Start
+ *     to see the questions (the timer starts then), ask for hints, upload photos of the work for AI grading.
+ *   Past Homeworks: pick a date to see that day's homework, view only (questions and your result).
+ * (Homework AI is its own module; it is not the Assignments feature.)
+ */
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import PageInfo from '../../../components/common/PageInfo';
-import { getPageHelp } from '../../../config/pageHelp';
+import { Badge, Button, ConfirmDialog, FormField, FormTextarea, LoadingSpinner, PageHeader } from '../../../components';
 import { useAuth } from '../../../hooks/useAuth';
+import { ChevronDownIcon } from '../../../icons';
 import { homeworkApi } from '../api/homeworkApi';
 import HomeworkPhotos from '../components/HomeworkPhotos';
 import PhotoPicker from '../components/PhotoPicker';
 import SessionPhotos from '../components/SessionPhotos';
-import { HomeworkAssignment, HomeworkSession } from '../types';
+import { Homework, HomeworkSession } from '../types';
 
-const studentHelp = getPageHelp('/homework/student', undefined);
-
+const localDay = (d: Date = new Date()) => {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+const yesterday = () => {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return localDay(d);
+};
+const prettyDay = (day?: string | null) => {
+  if (!day) return '';
+  const [y, m, d] = day.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+};
 function formatDuration(totalSeconds: number): string {
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  const hh = String(hours).padStart(2, '0');
-  const mm = String(minutes).padStart(2, '0');
-  const ss = String(seconds).padStart(2, '0');
-  return `${hh}:${mm}:${ss}`;
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return [h, m, s].map((n) => String(n).padStart(2, '0')).join(':');
 }
-
 function formatDateTime(value?: string | null): string {
   if (!value) return '-';
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '-';
-  return date.toLocaleString();
+  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleString();
+}
+const errorText = (error: unknown, fallback: string) => (error as { message?: string })?.message || fallback;
+const DATE_INPUT = 'w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500';
+
+/** status badge for a homework card */
+function StatusBadge({ hw }: { hw: Homework }) {
+  const s = hw.current_session_status;
+  if (s === 'graded' || s === 'submitted') {
+    return <Badge variant="success" size="sm">Done{hw.my_accuracy_score != null ? ` · ${Math.round(hw.my_accuracy_score)}%` : ''}</Badge>;
+  }
+  if (s === 'in_progress' || s === 'paused') return <Badge variant="warning" size="sm">In progress</Badge>;
+  return hw.is_past ? <Badge variant="danger" size="sm">Not done</Badge> : <Badge variant="secondary" size="sm">Not started</Badge>;
 }
 
 export default function StudentHomeworkPage() {
   const { user } = useAuth();
-  const [assignments, setAssignments] = useState<HomeworkAssignment[]>([]);
-  const [selectedAssignmentId, setSelectedAssignmentId] = useState<number>(0);
-  // photo of the blank notebook page with the institution's QR sticker (starts the homework)
-  const [startPhotos, setStartPhotos] = useState<File[]>([]);
-  const [session, setSession] = useState<HomeworkSession | null>(null);
-  const [hintText, setHintText] = useState('');
-  const [hintFile, setHintFile] = useState<File | undefined>(undefined);
-  const [submissionFiles, setSubmissionFiles] = useState<File[]>([]);
-  const [latestHint, setLatestHint] = useState('');
-  const [grading, setGrading] = useState<Record<string, unknown> | null>(null);
-  const [isBusy, setIsBusy] = useState(false);
-  const [tick, setTick] = useState(0);
-
   const role = (user?.role || '').toUpperCase();
   const isStudent = role === 'STUDENT' || role === 'LEARNER';
 
-  const selectedAssignment = assignments.find((item) => item.id === selectedAssignmentId) || null;
+  const [activeTab, setActiveTab] = useState<'today' | 'past'>('today');
+  const [allHomework, setAllHomework] = useState<Homework[]>([]);
+  const [listLoading, setListLoading] = useState(true);
+  const [pastDate, setPastDate] = useState(yesterday());
+  const [pastList, setPastList] = useState<Homework[]>([]);
+  const [pastLoading, setPastLoading] = useState(false);
+
+  const [selectedId, setSelectedId] = useState<number>(0);
+  const [session, setSession] = useState<HomeworkSession | null>(null);
+  const [confirmStart, setConfirmStart] = useState(false);
+  const [hintText, setHintText] = useState('');
+  const [hintFile, setHintFile] = useState<File | undefined>(undefined);
+  const [latestHint, setLatestHint] = useState('');
+  const [submissionFiles, setSubmissionFiles] = useState<File[]>([]);
+  const [grading, setGrading] = useState<Record<string, unknown> | null>(null);
+  const [isBusy, setIsBusy] = useState(false);
+  const [now, setNow] = useState(Date.now());
+
+  const today = localDay();
+
+  const loadAll = useCallback(async () => {
+    setListLoading(true);
+    try {
+      setAllHomework(await homeworkApi.listHomework());
+    } catch (error: unknown) {
+      toast.error(errorText(error, 'Failed to load homework'));
+    } finally {
+      setListLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const load = async () => {
-      if (!isStudent) return;
-      try {
-        const rows = await homeworkApi.listAssignments();
-        setAssignments(rows);
-      } catch (error: any) {
-        toast.error(error?.message || 'Failed to load homework list');
-      }
-    };
-    void load();
-  }, [isStudent]);
+    if (isStudent) void loadAll();
+  }, [isStudent, loadAll]);
 
+  useEffect(() => {
+    if (!isStudent || activeTab !== 'past') return;
+    let cancelled = false;
+    setPastLoading(true);
+    homeworkApi.listHomework({ date: pastDate })
+      .then((rows) => !cancelled && setPastList(rows))
+      .catch(() => !cancelled && setPastList([]))
+      .finally(() => !cancelled && setPastLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [isStudent, activeTab, pastDate]);
+
+  // Today: today's homework, plus anything started on an earlier day and not handed in yet
+  const todayList = useMemo(() => allHomework.filter((hw) => hw.homework_date === today
+    || (!!hw.is_past && (hw.current_session_status === 'in_progress' || hw.current_session_status === 'paused'))), [allHomework, today]);
+
+  const selected = useMemo(
+    () => [...todayList, ...pastList].find((hw) => hw.id === selectedId) || null,
+    [todayList, pastList, selectedId],
+  );
+
+  // the selected homework's session (with its questions once started)
+  useEffect(() => {
+    setSession(null);
+    setGrading(null);
+    setLatestHint('');
+    setSubmissionFiles([]);
+    if (!selectedId) return;
+    let cancelled = false;
+    homeworkApi.latestSession(selectedId)
+      .then((latest) => {
+        if (cancelled) return;
+        setSession(latest);
+        setGrading(latest?.ai_feedback_json || null);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId]);
+
+  // live timer while in progress
   useEffect(() => {
     if (!session || session.status !== 'in_progress') return;
-    const timer = window.setInterval(() => setTick((value) => value + 1), 1000);
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [session]);
 
-  useEffect(() => {
-    if (!selectedAssignmentId) {
-      setSession(null);
-      setGrading(null);
-      setLatestHint('');
-      setSubmissionFiles([]);
-      return;
-    }
-    const loadLatestSession = async () => {
-      try {
-        const latest = await homeworkApi.latestSession(selectedAssignmentId);
-        setSession(latest);
-        setGrading(latest?.ai_feedback_json || null);
-        setLatestHint('');
-        setSubmissionFiles([]);
-      } catch {
-        setSession(null);
-        setGrading(null);
-      }
-    };
-    void loadLatestSession();
-  }, [selectedAssignmentId]);
-
-  const liveDuration = useMemo(() => {
-    if (!session) return 0;
-    const base = session.active_duration_seconds || 0;
-    if (session.status !== 'in_progress' || !session.last_resumed_at) return base;
-    const resumedAt = new Date(session.last_resumed_at).getTime();
-    const now = Date.now();
-    const live = Math.floor((now - resumedAt) / 1000);
-    return base + Math.max(live, 0);
-  }, [session, tick]);
-
   if (!isStudent) {
-    return (
-      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800">
-        This view is available only for student accounts.
-      </div>
-    );
+    return <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-800">This view is available only for student accounts.</div>;
   }
 
-  // An open (in progress / paused) session resumes without a new photo
-  const canResume = selectedAssignment?.current_session_status === 'in_progress' || selectedAssignment?.current_session_status === 'paused';
-  const isSessionActive = !!session && (session.status === 'in_progress' || session.status === 'paused');
-  const isSessionCompleted = !!session && (session.status === 'submitted' || session.status === 'graded');
+  const isActive = !!session && (session.status === 'in_progress' || session.status === 'paused');
+  const isDone = !!session && (session.status === 'submitted' || session.status === 'graded');
+  const viewOnly = activeTab === 'past' && !isActive;
+  const questions = session?.homework || (selected && !selected.questions_hidden ? selected : null);
+  const liveDuration = !session ? 0
+    : session.status === 'in_progress' && session.last_resumed_at
+      ? (session.active_duration_seconds || 0) + Math.max(Math.floor((now - new Date(session.last_resumed_at).getTime()) / 1000), 0)
+      : session.active_duration_seconds || 0;
 
-  const startSession = async () => {
-    if (!selectedAssignmentId) {
-      toast.error('Select the homework first.');
-      return;
-    }
-    if (!canResume && startPhotos.length === 0) {
-      toast.error('Take a photo of the blank page with its QR sticker to start.');
-      return;
-    }
+  const startOrResume = async () => {
+    setConfirmStart(false);
+    if (!selectedId) return;
     try {
       setIsBusy(true);
-      const response = await homeworkApi.startSession(selectedAssignmentId, canResume ? undefined : startPhotos[0]);
+      const response = await homeworkApi.startSession(selectedId);
       setSession(response);
       setGrading(response.ai_feedback_json || null);
-      setStartPhotos([]);
-      toast.success(canResume ? 'Homework resumed' : 'Homework started');
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to start session');
+      setNow(Date.now());
+      setAllHomework((rows) => rows.map((row) => (row.id === selectedId ? { ...row, current_session_status: response.status } : row)));
+      toast.success('Homework started: the timer is running');
+    } catch (error: unknown) {
+      toast.error(errorText(error, 'Failed to start'));
     } finally {
       setIsBusy(false);
     }
@@ -141,10 +179,11 @@ export default function StudentHomeworkPage() {
     try {
       setIsBusy(true);
       const response = await homeworkApi.togglePause(session.id);
-      setSession(response);
-      toast.success(response.status === 'paused' ? 'Session paused' : 'Session resumed');
-    } catch (error: any) {
-      toast.error(error?.message || 'Unable to update session status');
+      setSession((prev) => (prev ? { ...response, homework: prev.homework } : response));
+      setNow(Date.now());
+      toast.success(response.status === 'paused' ? 'Paused' : 'Resumed');
+    } catch (error: unknown) {
+      toast.error(errorText(error, 'Unable to update'));
     } finally {
       setIsBusy(false);
     }
@@ -153,7 +192,7 @@ export default function StudentHomeworkPage() {
   const askHint = async () => {
     if (!session) return;
     if (!hintText.trim() && !hintFile) {
-      toast.error('Enter a question or add a notebook photo for a hint.');
+      toast.error('Write your doubt or add a photo of your notebook.');
       return;
     }
     try {
@@ -163,236 +202,215 @@ export default function StudentHomeworkPage() {
       setHintText('');
       setHintFile(undefined);
       setSession((prev) => (prev ? { ...prev, hints_used_count: response.hints_used_count } : prev));
-      toast.success('Hint generated');
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to fetch hint');
+    } catch (error: unknown) {
+      toast.error(errorText(error, 'Failed to get a hint'));
     } finally {
       setIsBusy(false);
     }
   };
 
-  const submitHomework = async () => {
+  const submit = async () => {
     if (!session) return;
     if (submissionFiles.length === 0) {
-      toast.error('Add a photo of the finished page with its QR sticker.');
+      toast.error('Add a photo of your finished work.');
       return;
     }
     try {
       setIsBusy(true);
       const response = await homeworkApi.submitSession(session.id, submissionFiles);
-      setSession(response.session);
+      setSession((prev) => ({ ...response.session, homework: prev?.homework }));
       setGrading(response.grading);
+      setAllHomework((rows) => rows.map((row) => (row.id === selectedId
+        ? { ...row, current_session_status: response.session.status, my_accuracy_score: response.session.accuracy_score } : row)));
       toast.success('Homework submitted and graded');
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to submit homework');
+    } catch (error: unknown) {
+      toast.error(errorText(error, 'Failed to submit'));
     } finally {
       setIsBusy(false);
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          AI Homework Session
-          {studentHelp && <span className="ml-2 inline-flex align-middle"><PageInfo title="AI Homework" help={studentHelp} /></span>}
-        </h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Photograph the blank page with its QR sticker, work with the timer, ask for hints, then photograph the finished page for AI grading.</p>
-      </div>
+  const tabClass = (on: boolean) => `flex-1 px-6 py-3 text-sm font-medium transition-colors border-b-2 ${on
+    ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'}`;
 
-      <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-        <h2 className="mb-3 text-lg font-semibold text-gray-900 dark:text-white">Step 1: Start</h2>
-        <div className="space-y-4">
-          <select
-            value={selectedAssignmentId || ''}
-            onChange={(event) => setSelectedAssignmentId(Number(event.target.value))}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-600 dark:bg-gray-800 md:w-1/2"
-          >
-            <option value="">Select homework</option>
-            {assignments.map((assignment) => (
-              <option key={assignment.id} value={assignment.id}>
-                {assignment.title} ({assignment.subject})
-              </option>
-            ))}
-          </select>
-          {canResume ? (
-            <p className="text-sm text-gray-600 dark:text-gray-300">You've already started this homework. Tap Resume to continue.</p>
-          ) : (
+  const detail = () => (
+    <div className="space-y-4 border-t border-gray-200 p-4 dark:border-gray-700" data-testid="homework-card">
+          {/* only before starting; once started, Pause / Resume sits with the timer below */}
+          {!viewOnly && !session && (
+            <Button onClick={() => setConfirmStart(true)} isLoading={isBusy} loadingText="...">Start Homework</Button>
+          )}
+
+          {questions ? (
             <div>
-              <p className="mb-2 text-sm text-gray-600 dark:text-gray-300">
-                Take a photo of the <strong>blank page</strong> you will write on, with its <strong>QR sticker</strong> clearly visible.
-              </p>
-              <PhotoPicker
-                photos={startPhotos}
-                onChange={setStartPhotos}
-                max={1}
-                label="Blank page with QR sticker"
-                disabled={isBusy}
-                tip="Hold the phone close so the QR sticker is large, in focus and fully in the photo."
-                preserveOriginal
-                liveQrScan
-              />
+              {questions.description && (
+                <p className="whitespace-pre-line text-sm text-gray-700 dark:text-gray-300" data-testid="homework-questions">{questions.description}</p>
+              )}
+              {!!questions.photo_count && (
+                <div className="mt-3"><HomeworkPhotos homeworkId={questions.id} count={questions.photo_count} /></div>
+              )}
             </div>
+          ) : (
+            <p className="rounded-lg bg-gray-50 px-3 py-2 text-sm text-gray-500 dark:bg-gray-700/50 dark:text-gray-400" data-testid="questions-hidden-note">
+              The questions appear when you press <strong>Start</strong>, and the timer starts at the same time. Have your notebook ready.
+            </p>
           )}
-        </div>
-        <button
-          onClick={startSession}
-          disabled={isBusy}
-          className="mt-4 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-70"
-        >
-          {canResume ? 'Resume Homework' : 'Start Homework'}
-        </button>
-      </div>
 
-      {selectedAssignment && (
-        <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{selectedAssignment.title}</h3>
-          {selectedAssignment.description && (
-            <p className="mt-1 whitespace-pre-line text-sm text-gray-500 dark:text-gray-400">{selectedAssignment.description}</p>
+          {viewOnly && !session && (
+            <p className="text-sm text-red-600 dark:text-red-400" data-testid="not-done">You didn't do this homework.</p>
           )}
-          {!!selectedAssignment.photo_count && (
-            <div className="mt-3">
-              <HomeworkPhotos assignmentId={selectedAssignment.id} count={selectedAssignment.photo_count} />
-            </div>
-          )}
-          <p className="mt-2 text-xs text-gray-500">Expected time: {selectedAssignment.expected_time_minutes} minutes</p>
-        </div>
-      )}
 
-      {session && (
-        <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900 dark:text-white">
-            {isSessionCompleted ? 'Step 2: View Result (Read-only)' : 'Step 2: Focus & AI Tutor'}
-          </h2>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-            <Metric title="Status" value={session.status} />
-            <Metric title="Active Time" value={formatDuration(liveDuration)} />
+      {session && (isActive || isDone) && (
+        <div>
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+            <Metric title="Status" value={isDone ? 'Done' : session.status === 'paused' ? 'Paused' : 'In progress'} />
+            <Metric title="Active Time" value={formatDuration(liveDuration)} testId="active-time" />
             <Metric title="Hints Used" value={String(session.hints_used_count)} />
-            <Metric title="Session ID" value={String(session.id)} />
-          </div>
-          <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
             <Metric title="Started At" value={formatDateTime(session.started_at)} />
-            <Metric title="Finished At" value={formatDateTime(session.submitted_at)} />
-            <Metric title="Correctness" value={session.accuracy_score != null ? `${session.accuracy_score}%` : '-'} />
           </div>
-          {isSessionCompleted && (
-            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-300">
-              Submission is complete. Editing and re-upload are disabled for this session.
-            </div>
-          )}
-          <div className="mt-4 flex gap-2">
-            <button
-              onClick={togglePause}
-              disabled={isBusy || !isSessionActive}
-              className="rounded-lg bg-gray-800 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-900 disabled:opacity-70"
-            >
-              {session.status === 'paused' ? 'Resume' : 'Pause / Break'}
-            </button>
-          </div>
-          <div className="mt-5 rounded-lg border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-900/40 dark:bg-indigo-900/10">
-            <h3 className="text-sm font-semibold text-indigo-800 dark:text-indigo-300">Ask AI for a Hint (Socratic)</h3>
-            <textarea
-              value={hintText}
-              onChange={(event) => setHintText(event.target.value)}
-              placeholder="Write your doubt..."
-              disabled={!isSessionActive || isBusy}
-              className="mt-2 h-24 w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm dark:border-indigo-800 dark:bg-gray-800"
-            />
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(event) => setHintFile(event.target.files?.[0] || undefined)}
-              disabled={!isSessionActive || isBusy}
-              className="mt-2 block text-sm"
-            />
-            <button
-              onClick={askHint}
-              disabled={isBusy || !isSessionActive}
-              className="mt-3 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-70"
-            >
-              Get Hint
-            </button>
-            {latestHint && (
-              <div className="mt-3 rounded-lg border border-indigo-200 bg-white p-3 text-sm text-gray-700 dark:border-indigo-800 dark:bg-gray-900 dark:text-gray-200">
-                {latestHint}
-              </div>
-            )}
-          </div>
-          {isSessionCompleted && (
-            <div className="mt-5">
-              <SessionPhotos
-                sessionId={session.id}
-                hasStartPhoto={!!session.has_start_photo}
-                pageCount={Array.isArray(session.submission_image_paths) ? session.submission_image_paths.length : 0}
-              />
-            </div>
-          )}
-        </div>
-      )}
 
-      {isSessionActive && (
-        <div className="rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-          <h2 className="mb-3 text-lg font-semibold text-gray-900 dark:text-white">Step 3: Finish & Upload</h2>
-          <p className="mb-2 text-sm text-gray-600 dark:text-gray-300">
-            Photograph the <strong>same page</strong> now that it's done, with its <strong>QR sticker</strong> visible.
-            If your answer continues on more pages, add those photos too.
-          </p>
-          <PhotoPicker
-            photos={submissionFiles}
-            onChange={setSubmissionFiles}
-            max={10}
-            label="Finished pages"
-            disabled={isBusy}
-            preserveOriginal
-          />
-          <button
-            onClick={submitHomework}
-            disabled={isBusy}
-            className="mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-70"
-          >
-            Submit for AI Grading
-          </button>
-        </div>
-      )}
+          {isActive && (
+            <div className="mt-4 space-y-4">
+              <Button variant="secondary" onClick={togglePause} disabled={isBusy}>
+                {session.status === 'paused' ? 'Resume' : 'Pause / Break'}
+              </Button>
 
-      {isSessionCompleted && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-800 dark:bg-emerald-900/10">
-          <h2 className="text-lg font-semibold text-emerald-900 dark:text-emerald-300">AI Feedback & Report Card</h2>
-          <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Metric title="Accuracy" value={`${session.accuracy_score ?? 0}%`} />
-            <Metric title="Efficiency" value={`${session.efficiency_score ?? 0}%`} />
-            <Metric title="Active Time" value={formatDuration(session.active_duration_seconds)} />
-            <Metric title="Hints Used" value={String(session.hints_used_count)} />
-          </div>
-          {grading && (
-            <div className="mt-4 space-y-2 text-sm text-gray-700 dark:text-gray-200">
-              <p><span className="font-semibold">Summary:</span> {String(grading.overall_summary || '-')}</p>
-              <p><span className="font-semibold">Strengths:</span> {Array.isArray(grading.strengths) ? grading.strengths.join(', ') : '-'}</p>
-              <p><span className="font-semibold">Areas to Improve:</span> {Array.isArray(grading.areas_to_improve) ? grading.areas_to_improve.join(', ') : '-'}</p>
-              <p><span className="font-semibold">Common Mistakes:</span> {Array.isArray(grading.common_mistakes) ? grading.common_mistakes.join(', ') : '-'}</p>
-              {Array.isArray(grading.line_by_line_review) && grading.line_by_line_review.length > 0 && (
-                <div>
-                  <p className="font-semibold">Explanation by Answer</p>
-                  <ul className="ml-5 list-disc space-y-1">
-                    {grading.line_by_line_review.map((item, index) => (
-                      <li key={index}>{String(item)}</li>
-                    ))}
-                  </ul>
+              {session.status === 'in_progress' && (
+                <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 dark:border-indigo-900/40 dark:bg-indigo-900/10">
+                  <FormField label="Stuck? Ask the AI for a hint">
+                    <FormTextarea name="hint" rows={3} value={hintText} placeholder="Write your doubt..." onChange={(e) => setHintText(e.target.value)} />
+                  </FormField>
+                  <input type="file" accept="image/*" aria-label="Notebook photo for the hint"
+                    onChange={(e) => setHintFile(e.target.files?.[0] || undefined)} className="mt-2 block text-sm" />
+                  <Button size="sm" className="mt-3" onClick={askHint} isLoading={isBusy} loadingText="Thinking...">Get Hint</Button>
+                  {latestHint && <div className="mt-3 rounded-lg border border-indigo-200 bg-white p-3 text-sm text-gray-700 dark:border-indigo-800 dark:bg-gray-900 dark:text-gray-200">{latestHint}</div>}
                 </div>
               )}
+
+              <div className="border-t border-gray-200 pt-4 dark:border-gray-700">
+                <h4 className="mb-2 text-base font-semibold text-gray-900 dark:text-white">Finish & upload</h4>
+                <p className="mb-2 text-sm text-gray-600 dark:text-gray-300">Photograph your <strong>finished work</strong>. If it's on more than one page, add a photo of each page.</p>
+                <PhotoPicker photos={submissionFiles} onChange={setSubmissionFiles} max={10} label="Finished pages" disabled={isBusy} preserveOriginal />
+                <Button variant="success" className="mt-4" onClick={submit} isLoading={isBusy} loadingText="Grading...">Submit for AI Grading</Button>
+              </div>
+            </div>
+          )}
+
+          {isDone && (
+            <div className="mt-4 space-y-3">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                <Metric title="Accuracy" value={`${session.accuracy_score ?? 0}%`} />
+                <Metric title="Efficiency" value={`${session.efficiency_score ?? 0}%`} />
+                <Metric title="Finished At" value={formatDateTime(session.submitted_at)} />
+              </div>
+              {grading && (
+                <div className="space-y-2 text-sm text-gray-700 dark:text-gray-200">
+                  <p><span className="font-semibold">Summary:</span> {String(grading.overall_summary || '-')}</p>
+                  <p><span className="font-semibold">Strengths:</span> {Array.isArray(grading.strengths) ? grading.strengths.join(', ') : '-'}</p>
+                  <p><span className="font-semibold">Areas to Improve:</span> {Array.isArray(grading.areas_to_improve) ? grading.areas_to_improve.join(', ') : '-'}</p>
+                  {Array.isArray(grading.line_by_line_review) && grading.line_by_line_review.length > 0 && (
+                    <div>
+                      <p className="font-semibold">Explanation by Answer</p>
+                      <ul className="ml-5 list-disc space-y-1">{grading.line_by_line_review.map((item, i) => <li key={i}>{String(item)}</li>)}</ul>
+                    </div>
+                  )}
+                </div>
+              )}
+              <SessionPhotos sessionId={session.id} hasStartPhoto={!!session.has_start_photo}
+                pageCount={Array.isArray(session.submission_image_paths) ? session.submission_image_paths.length : 0} />
             </div>
           )}
         </div>
       )}
     </div>
   );
+
+  const cards = (rows: Homework[], empty: string) => (
+    rows.length === 0 ? (
+      <p className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">{empty}</p>
+    ) : (
+      <div className="space-y-3" data-testid="homework-cards">
+        {rows.map((hw) => {
+          const open = selectedId === hw.id;
+          return (
+            <div key={hw.id} className={`overflow-hidden rounded-lg border ${open ? 'border-blue-500 dark:border-blue-400' : 'border-gray-200 dark:border-gray-700'}`}>
+              <button type="button" aria-expanded={open} onClick={() => setSelectedId(open ? 0 : hw.id)}
+                className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <span className={`shrink-0 text-gray-500 transition-transform ${open ? 'rotate-180' : ''}`}><ChevronDownIcon /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium text-gray-900 dark:text-white">{hw.title}</span>
+                  <span className="mt-0.5 block text-sm text-gray-500 dark:text-gray-400">
+                    {hw.subject} · about {hw.expected_time_minutes} min{hw.homework_date && hw.homework_date !== today ? ` · ${prettyDay(hw.homework_date)}` : ''}
+                  </span>
+                </span>
+                <StatusBadge hw={hw} />
+              </button>
+              {open && detail()}
+            </div>
+          );
+        })}
+      </div>
+    )
+  );
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Homework AI"
+        subtitle="Do your homework with a timer and AI hints, and see your results"
+        breadcrumbs={[{ label: 'Dashboard', href: '/dashboard' }, { label: 'Homework AI', href: '#' }]}
+      />
+
+      <div className="rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
+        <div className="border-b border-gray-200 dark:border-gray-700">
+          <div className="flex" role="tablist">
+            <button type="button" role="tab" aria-selected={activeTab === 'today'} className={tabClass(activeTab === 'today')}
+              onClick={() => { setActiveTab('today'); setSelectedId(0); }}>
+              Today's Homework
+            </button>
+            <button type="button" role="tab" aria-selected={activeTab === 'past'} className={tabClass(activeTab === 'past')}
+              onClick={() => { setActiveTab('past'); setSelectedId(0); }}>
+              Past Homeworks
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6">
+          {activeTab === 'today' && (listLoading ? <LoadingSpinner message="Loading homework..." /> : cards(todayList, 'No homework for today.'))}
+
+          {activeTab === 'past' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <FormField label="Select Date">
+                  <input type="date" value={pastDate} max={yesterday()} aria-label="Past homework date"
+                    onChange={(e) => { if (e.target.value) { setPastDate(e.target.value); setSelectedId(0); } }} className={DATE_INPUT} />
+                </FormField>
+              </div>
+              {pastLoading ? <LoadingSpinner message="Loading homework..." /> : cards(pastList, 'No homework on this date.')}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <ConfirmDialog
+        isOpen={confirmStart}
+        title="Start this homework?"
+        message={`The questions will appear and the timer starts now${selected ? ` (about ${selected.expected_time_minutes} min)` : ''}. You can pause for a break, but you can start only once.`}
+        confirmText="Start now"
+        cancelText="Not yet"
+        type="info"
+        onConfirm={startOrResume}
+        onCancel={() => setConfirmStart(false)}
+      />
+    </div>
+  );
 }
 
-function Metric({ title, value }: { title: string; value: string }) {
+function Metric({ title, value, testId }: { title: string; value: string; testId?: string }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+    <div className="rounded-lg border border-gray-200 p-3 dark:border-gray-700">
       <p className="text-xs uppercase tracking-wider text-gray-500">{title}</p>
-      <p className="mt-1 text-base font-semibold text-gray-900 dark:text-white">{value}</p>
+      <p className="mt-1 text-base font-semibold text-gray-900 dark:text-white" data-testid={testId}>{value}</p>
     </div>
   );
 }

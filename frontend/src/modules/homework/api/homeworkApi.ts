@@ -1,6 +1,6 @@
 import { getApiClient, getInstitutionId } from '../../../services/api/client';
 import { API_ENDPOINTS } from '../../../services/api/config';
-import { HomeworkAnalytics, HomeworkAssignment, HomeworkSession } from '../types';
+import { HomeworkAnalytics, Homework, HomeworkSession } from '../types';
 
 interface ApiEnvelope<T> {
   code: number;
@@ -16,7 +16,7 @@ interface ResourceListEnvelope<T> {
 const AI_GRADING_TIMEOUT_MS = Number(import.meta.env.VITE_AI_GRADING_TIMEOUT_MS || 180000);
 
 export const homeworkApi = {
-  async createAssignment(payload: {
+  async createHomework(payload: {
     class_id: number;
     section_id: number;
     subject: string;
@@ -24,11 +24,12 @@ export const homeworkApi = {
     description: string;
     expected_time_minutes: number;
     reference_answer_key?: string;
-    due_date?: string;
-  }, photos: File[] = []): Promise<HomeworkAssignment> {
+    /** YYYY-MM-DD, the day the homework is for (default today) */
+    homework_date?: string;
+  }, photos: File[] = []): Promise<Homework> {
     const client = getApiClient();
     if (photos.length === 0) {
-      const response = await client.post<ApiEnvelope<HomeworkAssignment>>(API_ENDPOINTS.HOMEWORK.CREATE_ASSIGNMENT, payload);
+      const response = await client.post<ApiEnvelope<Homework>>(API_ENDPOINTS.HOMEWORK.ITEMS, payload);
       return response.data;
     }
     // with photos of the homework (e.g. the board): multipart form
@@ -37,7 +38,7 @@ export const homeworkApi = {
       if (value !== undefined && value !== null && value !== '') form.append(key, String(value));
     });
     photos.forEach((photo) => form.append('photos', photo));
-    const response = await client.post<ApiEnvelope<HomeworkAssignment>>(API_ENDPOINTS.HOMEWORK.CREATE_ASSIGNMENT, form, {
+    const response = await client.post<ApiEnvelope<Homework>>(API_ENDPOINTS.HOMEWORK.ITEMS, form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
@@ -50,9 +51,9 @@ export const homeworkApi = {
     return (await client.get(API_ENDPOINTS.HOMEWORK.SESSION_PHOTO(sessionId, kind, index), { responseType: 'blob' })) as unknown as Blob;
   },
 
-  async getHomeworkPhoto(assignmentId: number, index: number): Promise<Blob> {
+  async getHomeworkPhoto(homeworkId: number, index: number): Promise<Blob> {
     const client = getApiClient();
-    return (await client.get(`/homework/assignments/${assignmentId}/photos/${index}`, { responseType: 'blob' })) as unknown as Blob;
+    return (await client.get(`/homework/items/${homeworkId}/photos/${index}`, { responseType: 'blob' })) as unknown as Blob;
   },
 
   /** AI drafts the instructions from photos of the homework; the teacher edits the text before saving. */
@@ -67,25 +68,32 @@ export const homeworkApi = {
     return response.data?.instructions || '';
   },
 
-  async listAssignments(params?: {
+  async listHomework(params?: {
     class_id?: number;
     section_id?: number;
     student_id?: number;
-  }): Promise<HomeworkAssignment[]> {
+    /** YYYY-MM-DD: only that day's homework */
+    date?: string;
+  }): Promise<Homework[]> {
     const client = getApiClient();
-    const response = await client.get<ApiEnvelope<HomeworkAssignment[]>>(API_ENDPOINTS.HOMEWORK.LIST_ASSIGNMENTS, { params });
+    const response = await client.get<ApiEnvelope<Homework[]>>(API_ENDPOINTS.HOMEWORK.ITEMS, { params });
     return response.data || [];
   },
 
-  /** Start (photo of the blank page with its QR sticker) or resume (no photo) a homework. */
-  async startSession(assignmentId: number, startPhoto?: File): Promise<HomeworkSession> {
+  /** Delete a homework nobody has started yet. */
+  async deleteHomework(homeworkId: number): Promise<void> {
+    await getApiClient().delete(API_ENDPOINTS.HOMEWORK.HOMEWORK_ITEM(homeworkId));
+  },
+
+  /** Start or resume a homework. The questions come back with the session (hidden until started). */
+  async startSession(homeworkId: number, startPhoto?: File): Promise<HomeworkSession> {
     const client = getApiClient();
     if (!startPhoto) {
-      const resumed = await client.post<ApiEnvelope<HomeworkSession>>(API_ENDPOINTS.HOMEWORK.START_SESSION, { assignment_id: assignmentId });
+      const resumed = await client.post<ApiEnvelope<HomeworkSession>>(API_ENDPOINTS.HOMEWORK.START_SESSION, { homework_id: homeworkId });
       return resumed.data;
     }
     const form = new FormData();
-    form.append('assignment_id', String(assignmentId));
+    form.append('homework_id', String(homeworkId));
     form.append('start_photo', startPhoto);
     const response = await client.post<ApiEnvelope<HomeworkSession>>(API_ENDPOINTS.HOMEWORK.START_SESSION, form, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -93,10 +101,10 @@ export const homeworkApi = {
     return response.data;
   },
 
-  async latestSession(assignmentId: number): Promise<HomeworkSession | null> {
+  async latestSession(homeworkId: number): Promise<HomeworkSession | null> {
     const client = getApiClient();
     const response = await client.get<ApiEnvelope<HomeworkSession | null>>('/homework/sessions/latest', {
-      params: { assignment_id: assignmentId },
+      params: { homework_id: homeworkId },
     });
     return response.data ?? null;
   },
@@ -120,7 +128,7 @@ export const homeworkApi = {
     return response.data;
   },
 
-  /** The finished pages; the page the homework was started on (same QR sticker) must be one of them. */
+  /** The finished pages (photos), for AI grading. */
   async submitSession(sessionId: number, files: File[]): Promise<{ session: HomeworkSession; grading: Record<string, unknown> }> {
     const client = getApiClient();
     const form = new FormData();
@@ -136,9 +144,9 @@ export const homeworkApi = {
     return response.data;
   },
 
-  async getAssignmentAnalytics(assignmentId: number): Promise<HomeworkAnalytics> {
+  async getHomeworkAnalytics(homeworkId: number): Promise<HomeworkAnalytics> {
     const client = getApiClient();
-    const response = await client.get<ApiEnvelope<HomeworkAnalytics>>(API_ENDPOINTS.HOMEWORK.ANALYTICS(assignmentId));
+    const response = await client.get<ApiEnvelope<HomeworkAnalytics>>(API_ENDPOINTS.HOMEWORK.ANALYTICS(homeworkId));
     return response.data;
   },
 

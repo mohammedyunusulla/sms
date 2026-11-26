@@ -311,8 +311,8 @@ class HomeworkGeminiService:
     @classmethod
     def generate_socratic_hint(
         cls,
-        assignment_title: str,
-        assignment_description: str,
+        homework_title: str,
+        homework_description: str,
         student_doubt: str,
         student_images: Optional[Sequence[Image]] = None,
         instruction_images: Optional[Sequence[Image]] = None,
@@ -321,8 +321,8 @@ class HomeworkGeminiService:
             "You are a strict Socratic tutor for institution homework.\n"
             "Never provide the final direct answer.\n"
             "Give a concise hint in 3-6 bullets that helps the student progress.\n\n"
-            f"Homework: {assignment_title}\n"
-            f"Instructions: {assignment_description or '(see the homework photos)'}\n"
+            f"Homework: {homework_title}\n"
+            f"Instructions: {homework_description or '(see the homework photos)'}\n"
             f"Student question: {student_doubt}"
         )
         parts: List[Any] = [prompt]
@@ -352,7 +352,7 @@ class HomeworkGeminiService:
     @classmethod
     def grade_submission(
         cls,
-        assignment: Dict[str, Any],
+        homework: Dict[str, Any],
         images: Sequence[Image],
         active_duration_seconds: int,
         hints_used_count: int,
@@ -409,11 +409,11 @@ class HomeworkGeminiService:
             "- common_mistakes: array of strings\n"
             "- overall_feedback: string\n"
             f"{page_check_requirements}\n"
-            f"Title: {assignment['title']}\n"
-            f"Subject: {assignment['subject']}\n"
-            f"Description: {assignment['description'] or '(see the homework photos)'}\n"
-            f"Reference key: {assignment.get('reference_answer_key') or 'Not provided'}\n"
-            f"Expected time (minutes): {assignment['expected_time_minutes']}\n"
+            f"Title: {homework['title']}\n"
+            f"Subject: {homework['subject']}\n"
+            f"Description: {homework['description'] or '(see the homework photos)'}\n"
+            f"Reference key: {homework.get('reference_answer_key') or 'Not provided'}\n"
+            f"Expected time (minutes): {homework['expected_time_minutes']}\n"
             f"Active duration seconds: {active_duration_seconds}\n"
             f"Hints used count: {hints_used_count}\n"
         )

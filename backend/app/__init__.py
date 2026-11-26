@@ -260,6 +260,31 @@ UPDATE syllabus_progress_tracking SET is_active = FALSE
 WHERE id IN (SELECT o.id FROM ({_OLD_PROGRESS}) o)
 """
 
+# Homework AI used to call its homework "assignments" (it is not the Assignments feature): rename once.
+HOMEWORK_TABLE_RENAME = """
+DO $$
+BEGIN
+    IF to_regclass('homework_assignments') IS NOT NULL AND to_regclass('homeworks') IS NULL THEN
+        ALTER TABLE homework_assignments RENAME TO homeworks;
+        ALTER SEQUENCE IF EXISTS homework_assignments_id_seq RENAME TO homeworks_id_seq;
+        ALTER INDEX IF EXISTS homework_assignments_pkey RENAME TO homeworks_pkey;
+        ALTER INDEX IF EXISTS ix_homework_assignments_class_id RENAME TO ix_homeworks_class_id;
+        ALTER INDEX IF EXISTS ix_homework_assignments_section_id RENAME TO ix_homeworks_section_id;
+        ALTER INDEX IF EXISTS ix_homework_assignments_created_by RENAME TO ix_homeworks_created_by;
+        ALTER INDEX IF EXISTS ix_homework_assignments_homework_date RENAME TO ix_homeworks_homework_date;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name = 'student_homework_sessions' AND column_name = 'assignment_id') THEN
+        ALTER TABLE student_homework_sessions RENAME COLUMN assignment_id TO homework_id;
+        ALTER INDEX IF EXISTS ix_student_homework_sessions_assignment_id RENAME TO ix_student_homework_sessions_homework_id;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'student_homework_sessions_assignment_id_fkey') THEN
+        ALTER TABLE student_homework_sessions RENAME CONSTRAINT student_homework_sessions_assignment_id_fkey
+            TO student_homework_sessions_homework_id_fkey;
+    END IF;
+END $$;
+"""
+
 TENANT_SCHEMA_UPDATES = (
     "ALTER TABLE IF EXISTS attendance ADD COLUMN IF NOT EXISTS marked_by INTEGER",
     "ALTER TABLE IF EXISTS attendance ADD COLUMN IF NOT EXISTS updated_by INTEGER",
@@ -279,6 +304,7 @@ TENANT_SCHEMA_UPDATES = (
     # Runs once in effect: it only touches active rows without a section whose teacher has an assignment.
     SYLLABUS_PROGRESS_CARRY_OVER,
     SYLLABUS_PROGRESS_RETIRE_COPIED,
+    HOMEWORK_TABLE_RENAME,
     # paid / unpaid split of approved staff leave (leave balances)
     "ALTER TABLE IF EXISTS leave_requests ADD COLUMN IF NOT EXISTS paid_days INTEGER",
     "ALTER TABLE IF EXISTS leave_requests ADD COLUMN IF NOT EXISTS unpaid_days INTEGER",
