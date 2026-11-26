@@ -1,4 +1,5 @@
-from app.models.main.Institution import Institution, InstitutionPlan
+from app.utils import features
+from app.models.main.Institution import Institution
 from app.models.main.User import User, UserRole
 from app import db
 from app.services.user_service import UserService
@@ -29,13 +30,6 @@ class InstitutionService:
 
             # Generate unique database name
             db_name = DatabaseNameGenerator.generate_db_name(data)
-            # Validate plan if provided
-            plan = data.get('plan', 'BASIC').upper()
-            if plan not in [p.value for p in InstitutionPlan]:
-                return {
-                    'success': False,
-                    'message': f'Invalid plan. Must be one of: {", ".join([p.value for p in InstitutionPlan])}'
-                }
             
             
             # Step 1: Create database for institution
@@ -71,7 +65,9 @@ class InstitutionService:
                 state=data.get('state', '').strip(),
                 country=data.get('country', '').strip(),
                 website=data.get('website', '').strip(),
-                plan=InstitutionPlan(plan),
+                # nothing optional to start with: the Super Admin switches features on (Features & Logins)
+                features=list(features.DEFAULT_FEATURES),
+                login_roles=list(features.DEFAULT_LOGIN_ROLES),
                 skid=created_db_name.replace("eduspyre_", "").strip()
             )
             
@@ -94,6 +90,46 @@ class InstitutionService:
                 'message': 'Failed to create institution'
             }
     
+    @staticmethod
+    def get_feature_settings(institution_id):
+        """The institution's switches plus the catalogue the Super Admin page draws."""
+        institution = Institution.query.get(institution_id)
+        if not institution:
+            return {'success': False, 'message': 'Institution not found'}
+        return {'success': True, 'data': {
+            'institution': {'id': institution.id, 'name': institution.name, 'code': institution.code, 'skid': institution.skid},
+            **features.settings_of(institution),
+            'catalogue': features.catalogue(),
+        }}
+
+    @staticmethod
+    def update_feature_settings(institution_id, data):
+        """
+        Save the switches. Features are stored with everything they need (Timetable brings Subjects);
+        the page asks before turning off something another feature needs, so what arrives is what is wanted.
+        """
+        institution = Institution.query.get(institution_id)
+        if not institution:
+            return {'success': False, 'message': 'Institution not found'}
+        if 'features' in data:
+            if not isinstance(data['features'], list):
+                return {'success': False, 'message': 'features must be a list'}
+            unknown = [k for k in data['features'] if k not in features.FEATURES]
+            if unknown:
+                return {'success': False, 'message': f"Unknown feature: {', '.join(map(str, unknown))}"}
+            institution.features = features.with_requirements(data['features'])
+        if 'login_roles' in data:
+            if not isinstance(data['login_roles'], list):
+                return {'success': False, 'message': 'login_roles must be a list'}
+            unknown = [r for r in data['login_roles'] if str(r).upper() not in features.LOGIN_ROLES]
+            if unknown:
+                return {'success': False, 'message': f"Unknown role: {', '.join(map(str, unknown))}"}
+            institution.login_roles = features.clean_login_roles(data['login_roles'])
+        db.session.commit()
+        features.forget(institution.skid)
+        logger.info(f"Feature switches updated for {institution.name}: {institution.features} / {institution.login_roles}")
+        return {'success': True, 'message': 'Saved', 'data': features.settings_of(institution)}
+
     @staticmethod
     def get_institutions():
         """Get list of institutions"""
@@ -187,16 +223,6 @@ class InstitutionService:
             
             if 'website' in data:
                 institution.website = data['website'].strip()
-            
-            if 'plan' in data:
-                plan = data['plan']
-                if plan in [p.value for p in InstitutionPlan]:
-                    institution.plan = InstitutionPlan(plan)
-                else:
-                    return {
-                        'success': False,
-                        'message': f'Invalid plan. Must be one of: {", ".join([p.value for p in InstitutionPlan])}'
-                    }
             
             db.session.commit()
             
@@ -420,11 +446,11 @@ class InstitutionService:
             total_institution_admins = User.query.filter(User.role == UserRole.INSTITUTION_ADMIN).count()
             active_users = User.query.filter(User.is_active == True).count()
 
-            # Plan distribution
-            plan_distribution = db.session.query(
-                Institution.plan, sa_func.count(Institution.id)
-            ).filter(Institution.is_active == True).group_by(Institution.plan).all()
-            plan_counts = {plan.value: count for plan, count in plan_distribution}
+            # How many active institutions use each feature
+            feature_counts = {key: 0 for key in features.ALL_FEATURES}
+            for row in Institution.query.filter(Institution.is_active == True).all():
+                for key in features.settings_of(row)['features']:
+                    feature_counts[key] += 1
 
             # Recent institutions (last 5 created)
             recent_institutions = Institution.query.order_by(
@@ -457,11 +483,10 @@ class InstitutionService:
                     'active_users': active_users,
                     'total_super_admins': total_super_admins,
                     'total_institution_admins': total_institution_admins,
-                    'plan_distribution': {
-                        'BASIC': plan_counts.get('BASIC', 0),
-                        'STANDARD': plan_counts.get('STANDARD', 0),
-                        'PREMIUM': plan_counts.get('PREMIUM', 0),
-                    },
+                    'feature_usage': [
+                        {'key': key, 'label': features.feature_label(key), 'institutions': feature_counts[key]}
+                        for key in features.ALL_FEATURES
+                    ],
                     'recent_institutions': recent_institutions_data,
                     'recent_admins': recent_admins_data,
                 }

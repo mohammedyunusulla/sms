@@ -5,6 +5,7 @@
  * All other roles are checked against user.role_obj.permissions.
  */
 
+import { isPageSwitchedOff } from '../config/features';
 import { useCallback, useMemo } from 'react';
 import { useAuth } from './useAuth';
 import { UserRole } from '../types/common';
@@ -62,8 +63,11 @@ export const usePermissions = (): UsePermissionsReturn => {
         [isFullAccess, userPermissions]
     );
 
+    const features = user?.features;
+    const role = user?.role;
     const canOpen = useCallback(
         (path: string): boolean => {
+            if (isPageSwitchedOff(path, features, role)) return false; // feature not switched on for the institution
             const config = ROUTE_PERMISSION_MAP[path];
             if (!config) return true;
             if (config.superAdminOnly) return isSuperAdmin;
@@ -71,7 +75,7 @@ export const usePermissions = (): UsePermissionsReturn => {
             if (config.permission && !hasPermission(config.permission)) return false;
             return true;
         },
-        [isSuperAdmin, hasAnyPermission, hasPermission]
+        [isSuperAdmin, hasAnyPermission, hasPermission, features, role]
     );
 
     return { hasPermission, hasAnyPermission, isFullAccess, isSuperAdmin, canOpen };

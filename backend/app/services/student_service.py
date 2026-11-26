@@ -31,11 +31,10 @@ class StudentService:
             if not institution:
                 raise ValueError("Institution not found")
             
-            from app.models.main.Institution import InstitutionPlan
-            plan = institution.plan
-            create_login = plan in [InstitutionPlan.STANDARD, InstitutionPlan.PREMIUM]
+            from app.utils.features import login_enabled
+            create_login = login_enabled(skid, 'STUDENT')
     
-            # Step 1: Create main user (only for STANDARD/PREMIUM)
+            # Step 1: Create main user (only where student sign-in is on)
             if create_login:
                 user = User(
                     username=data['username'],
@@ -45,7 +44,6 @@ class StudentService:
                     phone=data.get('phone'),
                     role=UserRole.STUDENT,  # never from the request
                     skid=skid,
-                    plan=plan.value,  # Convert enum to string
                     institution_id=institution.id  # from the institution itself, never the request
                 )
                 user.set_password(data['password'])
@@ -182,9 +180,9 @@ class StudentService:
         skid: Institution identifier
         data: Dictionary containing fields to update
 
-        Plan-aware update:
-        - BASIC plan: Only updates tenant DB (user doesn't exist in main DB)
-        - STANDARD/PREMIUM: Updates both main DB and tenant DB
+        Update, with or without a login:
+        - no login (sign-in off for students): only updates tenant DB (user doesn't exist in main DB)
+        - with a login: updates both main DB and tenant DB
         """
         main_user = None
         tenant_session = None
@@ -195,16 +193,15 @@ class StudentService:
         PROTECTED_FIELDS = {'id', 'created_at', 'user_id', 'is_active'}
 
         try:
-            # Step 1: Get institution info to determine plan
+            # Step 1: Get the institution (is student sign-in on?)
             institution = Institution.query.filter_by(skid=skid).first()
             if not institution:
                 raise ValueError("Institution not found")
 
-            from app.models.main.Institution import InstitutionPlan
-            plan = institution.plan
-            create_login = plan in [InstitutionPlan.STANDARD, InstitutionPlan.PREMIUM]
+            from app.utils.features import login_enabled
+            create_login = login_enabled(skid, 'STUDENT')
 
-            # Step 2: Try to fetch from main DB (only if plan allows login)
+            # Step 2: Try to fetch from main DB (only if student sign-in is on)
             if create_login:
                 main_user = db.session.query(User).filter_by(
                     institution_user_id=user_id,
@@ -222,7 +219,7 @@ class StudentService:
                 if not current_institution_user:
                     raise ValueError("User not found in tenant database.")
 
-            # Step 4: Update the main database (if plan allows login)
+            # Step 4: Update the main database (if student sign-in is on)
             if create_login and main_user:
                 for key, value in data.items():
                     # Skip protected fields, password (handled separately), and fields not in model
@@ -730,7 +727,7 @@ class StudentService:
     def bulk_create_students(students_data, skid, default_password='Admin@123'):
         """
         Create multiple students in bulk
-        Follows same logic as create_student_user for plan-based login creation
+        Follows same logic as create_student_user: logins only where student sign-in is on
         """
         try:
             # Get institution information
@@ -738,10 +735,9 @@ class StudentService:
             if not institution:
                 raise ValueError("Institution not found")
             
-            # Determine if we should create logins based on institution plan
-            from app.models.main.Institution import InstitutionPlan
-            plan = institution.plan
-            create_login = plan in [InstitutionPlan.STANDARD, InstitutionPlan.PREMIUM]
+            # Logins only where student sign-in is switched on
+            from app.utils.features import login_enabled
+            create_login = login_enabled(skid, 'STUDENT')
     
             # Initialize counters
             successful = 0
@@ -792,7 +788,7 @@ class StudentService:
                         if existing_tenant_user:
                             raise ValueError("User with this username or email already exists in this institution")
     
-                    # Step 1: Create main user (ONLY for STANDARD/PREMIUM plans)
+                    # Step 1: Create main user (only where student sign-in is on)
                     if create_login:
                         user = User(
                             username=username,
@@ -802,14 +798,13 @@ class StudentService:
                             phone=student_data.get('phone'),
                             role=UserRole.STUDENT,
                             skid=skid,
-                            plan=plan.value,  # Convert enum to string
                             institution_id=institution.id
                         )
                         user.set_password(student_data.get('password', default_password))
                         db.session.add(user)
                         db.session.flush()  # Get user.id but don't commit yet
     
-                    # Step 2: Create tenant user (ALWAYS - regardless of plan)
+                    # Step 2: Create tenant user (always, with or without a login)
                     with switch_to_institution_db(skid) as tenant_session:
                         institution_user = InstitutionUsers(
                             username=username,
@@ -929,7 +924,6 @@ class StudentService:
                 'failed': failed,
                 'errors': errors,
                 'created_students': created_students,
-                'plan': plan.value,
                 'login_created': create_login,
                 'summary': {
                     'success_rate': round((successful / len(students_data)) * 100, 2) if len(students_data) > 0 else 0,

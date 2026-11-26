@@ -166,6 +166,17 @@ export const authService = {
     },
 
     /**
+     * The role (as getMyRole) plus the institution's feature and sign-in switches, in one call.
+     */
+    async getMyAccess(): Promise<{ role: Record<string, unknown> | null; features?: string[]; login_roles?: string[] }> {
+        const response = (await getApiClient().get('/auth/me')) as unknown as {
+            role_obj?: Record<string, unknown> | null;
+            user?: { features?: string[]; login_roles?: string[] };
+        };
+        return { role: response.role_obj ?? null, features: response.user?.features, login_roles: response.user?.login_roles };
+    },
+
+    /**
      * Update the logged-in user's own first name, last name and phone (PUT /auth/me)
      */
     async updateMe(data: { first_name: string; last_name: string; phone: string | null }): Promise<Record<string, unknown>> {

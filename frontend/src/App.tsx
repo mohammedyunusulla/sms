@@ -30,6 +30,7 @@ const UserProfiles = lazy(() => import("./pages/UserProfiles"));
 // Lazy loaded Institution Management
 const InstitutionList = lazy(() => import("./pages/InstitutionManagement").then(m => ({ default: m.InstitutionList })));
 const InstitutionForm = lazy(() => import("./pages/InstitutionManagement").then(m => ({ default: m.InstitutionForm })));
+const InstitutionFeatures = lazy(() => import("./pages/InstitutionManagement/InstitutionFeatures"));
 const InstitutionDetail = lazy(() => import("./pages/InstitutionManagement").then(m => ({ default: m.InstitutionDetail })));
 const InstitutionAdminsList = lazy(() => import("./pages/InstitutionManagement").then(m => ({ default: m.InstitutionAdminsList })));
 const SystemAdminsList = lazy(() => import("./pages/InstitutionManagement").then(m => ({ default: m.SystemAdminsList })));
@@ -235,6 +236,7 @@ function AppContent() {
                         <Route path="/institutions" element={guarded('/institutions', <InstitutionList />)} />
                         <Route path="/institutions/new" element={guarded('/institutions/new', <InstitutionForm />)} />
                         <Route path="/institutions/:id/edit" element={guarded('/institutions/:id/edit', <InstitutionForm />)} />
+                        <Route path="/institutions/:id/features" element={guarded('/institutions/:id/features', <InstitutionFeatures />)} />
                         <Route path="/institutions/:id" element={guarded('/institutions/:id', <InstitutionDetail />)} />
                         <Route path="/institution-admins" element={guarded('/institution-admins', <InstitutionAdminsList />)} />
                         <Route path="/system-admins" element={guarded('/system-admins', <SystemAdminsList />)} />
@@ -263,7 +265,7 @@ function AppContent() {
 
                         {/* Role & Permissions Management Routes */}
                         <Route path="/roles" element={guarded('/roles', <RolePermissionsList />)} />
-                        <Route path="/roles/new" element={guarded('/roles/new', <RoleForm />)} />
+                        <Route path="/roles/new" element={<Navigate to="/roles" replace />} /> {/* no new custom roles: built-in roles only */}
                         <Route path="/roles/:id/edit" element={guarded('/roles/:id/edit', <RoleForm />)} />
 
                         {/* Class Management Routes */}

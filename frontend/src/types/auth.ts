@@ -43,7 +43,10 @@ export interface AuthUser {
   phone: string;
   role: UserRole;
   is_active: boolean;
-  plan: string;
+  /** features switched on for the institution (config/features.ts); absent for the Super Admin */
+  features?: string[];
+  /** roles whose sign-in is switched on for the institution */
+  login_roles?: string[];
   institution_id: number;
   institution_code: string;
   institution_name: string;

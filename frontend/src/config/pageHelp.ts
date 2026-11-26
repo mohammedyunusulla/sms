@@ -14,6 +14,16 @@ type HelpFor = PageHelp | ((role: string | undefined) => PageHelp);
 const ADMIN_ROLES = ['INSTITUTION_ADMIN', 'PRINCIPAL'];
 
 const PAGE_HELP: Record<string, HelpFor> = {
+    '/institutions/:id/features': {
+        lead: 'Choose what this institution gets.',
+        points: [
+            'Switch on only the features it needs; the rest stay hidden for its users.',
+            'Switching a feature on also switches on what it needs.',
+            'Who can sign in: people of a role that is off are added without a login.',
+        ],
+        example: 'Switch on Timetable: Subjects comes on with it.',
+    },
+
     '/calendar': (role) => ({
         lead: 'Holidays, events, exams and leave in one place.',
         points: [
@@ -331,6 +341,7 @@ const PAGE_HELP: Record<string, HelpFor> = {
 /** Help for a page address (exact match, ignoring a trailing slash), for this role; undefined if none. */
 export const getPageHelp = (pathname: string, role: string | undefined): PageHelp | undefined => {
     const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
-    const help = PAGE_HELP[path === '/bus-scan/scan' ? '/bus-scan' : path];
+    const key = path === '/bus-scan/scan' ? '/bus-scan' : path.replace(/^\/institutions\/\d+\/features$/, '/institutions/:id/features');
+    const help = PAGE_HELP[key];
     return typeof help === 'function' ? help(role) : help;
 };

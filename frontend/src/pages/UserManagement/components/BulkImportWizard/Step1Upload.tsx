@@ -147,7 +147,7 @@ const Step1Upload: FC<IProps> = ({
 
                 <FormField
                     label="Default password"
-                    help="Applied to all imported students who get a login (Standard and Premium plans). They can change it from their profile; nothing asks them to at first sign-in."
+                    help="Applied to all imported students who get a login (where student sign-in is switched on). They can change it from their profile; nothing asks them to at first sign-in."
                 >
                     <FormInput
                         value={defaultPassword}

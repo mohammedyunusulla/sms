@@ -18,6 +18,7 @@ import {
     UserCircleIcon
 } from "../icons";
 import { SIDEBAR_PERMISSION_MAP, isPathHiddenForRole } from "../config/permissions";
+import { isPageSwitchedOff } from "../config/features";
 import { useAuthStore } from "../stores/authStore";
 // import SidebarWidget from "./SidebarWidget";
 
@@ -273,6 +274,7 @@ const AppSidebar: React.FC = () => {
     const location = useLocation();
     const { hasPermission, hasAnyPermission, isFullAccess, isSuperAdmin } = usePermissions();
     const userRole = useAuthStore((state) => state.user?.role);
+    const features = useAuthStore((state) => state.user?.features); // switched on for the institution
 
     const [openSubmenuName, setOpenSubmenuName] = useState<string | null>(null);
     const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>(
@@ -405,8 +407,17 @@ const AppSidebar: React.FC = () => {
             acc.push({ ...nav, subItems: visibleSubItems });
 
             return acc;
+        }, []).reduce<NavItem[]>((acc, nav) => {
+            // Features the Super Admin hasn't switched on for this institution (config/features.ts)
+            if (!nav.subItems) {
+                if (!isPageSwitchedOff(nav.path || '', features, userRole)) acc.push(nav);
+                return acc;
+            }
+            const subItems = nav.subItems.filter((sub) => !isPageSwitchedOff(sub.path, features, userRole));
+            if (subItems.length > 0) acc.push({ ...nav, subItems });
+            return acc;
         }, []);
-    }, [isFullAccess, isSuperAdmin, hasPermission, hasAnyPermission, userRole]);
+    }, [isFullAccess, isSuperAdmin, hasPermission, hasAnyPermission, userRole, features]);
 
     const renderMenuItems = (items: NavItem[], _menuType: "main" | "others") => (
         <ul className="flex flex-col gap-4">

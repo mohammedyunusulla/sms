@@ -3,6 +3,7 @@
  * Form for creating and editing parents with all fields
  */
 
+import { useRoleGetsLogin } from '../../config/features';
 import { FC, useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router';
@@ -24,6 +25,7 @@ const ParentForm: FC<IParentFormProps> = ({ initialData, mode: propMode = 'creat
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
+    const createsLogin = useRoleGetsLogin('PARENT'); // is parent sign-in switched on for the institution?
     // Auto-detect mode based on URL - if id exists and not in modal, it's update mode
     const mode = !isModal && id ? 'update' : propMode;
     const [formData, setFormData] = useState({
@@ -99,8 +101,10 @@ const ParentForm: FC<IParentFormProps> = ({ initialData, mode: propMode = 'creat
         if (mode === 'create') {
             if (!v('username')) found.username = 'Username is required';
             else if (!isValidEmail(v('username'))) found.username = 'Username must be a valid email address';
-            const problem = passwordProblem(String(formData.password ?? ''));
-            if (problem) found.password = problem;
+            if (createsLogin) {
+                const problem = passwordProblem(String(formData.password ?? ''));
+                if (problem) found.password = problem;
+            }
         }
         if (!v('father_full_name')) found.father_full_name = "Father's name is required";
         setErrors(found);
@@ -177,8 +181,13 @@ const ParentForm: FC<IParentFormProps> = ({ initialData, mode: propMode = 'creat
                         {errors.username && <p id="parent-username-error" role="alert" className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.username}</p>}
                     </div>
 
-                    {/* Password */}
-                    {mode === 'create' && (
+                    {/* Password (only where parent sign-in is switched on) */}
+                    {mode === 'create' && !createsLogin && (
+                        <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300" data-testid="no-login-note">
+                            Sign-in isn't switched on for parents at your institution, so no password is needed.
+                        </div>
+                    )}
+                    {mode === 'create' && createsLogin && (
                         <div>
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Password *

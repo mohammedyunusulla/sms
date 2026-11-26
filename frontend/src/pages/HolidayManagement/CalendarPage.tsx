@@ -4,6 +4,7 @@
  * confirm, move or delete them from the day panel; weekly offs are under "Calendar settings".
  * New kinds of items only need a type from /api/calendar/events and a style here.
  */
+import { featureOn } from '../../config/features';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Badge, Button, ConfirmDialog, FormInput, FormSelect, FormTextarea, Modal, PageHeader } from '../../components';
@@ -109,7 +110,7 @@ const CalendarPage: FC = () => {
         return chips;
     }, [evOptions, evEditing?.form.section_ids]);
     useEffect(() => {
-        if (isFamily) return;
+        if (isFamily || !featureOn('events')) return; // no Events feature: nothing to add
         eventService.options().then(setEvOptions).catch(() => setEvOptions(null));
     }, [isFamily]);
     const canCreateEvents = !!evOptions?.can_create;

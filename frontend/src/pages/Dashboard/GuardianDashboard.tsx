@@ -4,6 +4,7 @@
  * attendance (this academic year), fee balance, today's timetable and recent announcements.
  */
 
+import { featureOn, isPageSwitchedOff } from '../../config/features';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { PageHeader, Button } from '../../components';
@@ -111,8 +112,8 @@ const GuardianDashboard: FC = () => {
         const entries = await Promise.all(
             children.map(async (child): Promise<[number, ChildStats]> => {
                 const [attendance, fees] = await Promise.allSettled([
-                    attendanceService.getStudentAttendance(child.student_id, start, end),
-                    financeService.getStudentFeeSummary(child.student_id, academicYearId),
+                    featureOn('attendance') ? attendanceService.getStudentAttendance(child.student_id, start, end) : Promise.reject(new Error('off')),
+                    featureOn('fees') ? financeService.getStudentFeeSummary(child.student_id, academicYearId) : Promise.reject(new Error('off')),
                 ]);
                 const statistics = attendance.status === 'fulfilled' ? attendance.value?.statistics : undefined;
                 // financeService returns either the summary itself or { data: summary }
@@ -147,6 +148,11 @@ const GuardianDashboard: FC = () => {
 
     const loadAnnouncements = useCallback(async () => {
         if (!academicYearId || !user) return;
+        if (!featureOn('announcements')) {
+            setAnnouncements([]);
+            setAnnouncementsState('idle');
+            return;
+        }
         setAnnouncementsState('loading');
         try {
             // academic year + role/user filters are what the backend list endpoint reads
@@ -193,7 +199,7 @@ const GuardianDashboard: FC = () => {
         { icon: '📅', label: 'Timetable', path: '/parent/timetable', variant: 'success' as const },
         { icon: '💰', label: 'Fees', path: '/parent/fees', variant: 'warning' as const },
         { icon: '📚', label: 'Syllabus', path: '/parent/syllabus', variant: 'info' as const },
-    ];
+    ].filter((action) => !isPageSwitchedOff(action.path, user?.features, user?.role)); // only features that are switched on
 
     // ---------- empty states
     if (!childrenLoaded || childrenLoading) {

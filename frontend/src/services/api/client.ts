@@ -178,6 +178,12 @@ export const createApiClient = (): AxiosInstance => {
                 }
             }
 
+            // The Super Admin switched sign-in off for this person's role: sign out (the sign-in page says why)
+            if (error.response?.status === 403 && (error.response.data as { code?: string } | undefined)?.code === 'LOGIN_DISABLED' && !isLoginRequest) {
+                sessionStorage.setItem('eduspyre.signedOutReason', 'login-disabled');
+                forceLogout();
+            }
+
             // Handle other error responses
             const errorData = error.response?.data || {
                 message: error.message || 'An unexpected error occurred',

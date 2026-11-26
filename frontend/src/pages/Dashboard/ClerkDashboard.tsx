@@ -27,8 +27,8 @@ const LINKS: QuickLink[] = [
 
 const ClerkDashboard: FC = () => {
     const { user } = useAuth();
-    const { hasPermission } = usePermissions();
-    const links = LINKS.filter((l) => hasPermission(l.permission));
+    const { hasPermission, canOpen } = usePermissions();
+    const links = LINKS.filter((l) => hasPermission(l.permission) && canOpen(l.path));
     const name = user?.first_name || user?.username || '';
 
     return (

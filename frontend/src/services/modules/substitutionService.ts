@@ -1,6 +1,7 @@
 /**
  * Substitute teacher planner: periods needing cover on a date, suggestions, assign / remove.
  */
+import { featureOn } from '../../config/features';
 import { getApiClient, getInstitutionId } from '../api/client';
 import { API_ENDPOINTS } from '../api/config';
 
@@ -81,6 +82,7 @@ export const substitutionService = {
         await client().post(E.UNMARK(skid()), { date, entry_id: entryId });
     },
     async today(): Promise<{ needed: number; covered: number; uncovered: number }> {
+        if (!featureOn('substitutions')) return { needed: 0, covered: 0, uncovered: 0 };
         return ((await client().get(E.TODAY(skid()))) as unknown as Envelope<{ needed: number; covered: number; uncovered: number }>).data;
     },
 };

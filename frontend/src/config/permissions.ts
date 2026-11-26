@@ -125,6 +125,7 @@ export const ROUTE_PERMISSION_MAP: Record<string, RoutePermissionConfig> = {
   '/institutions': { superAdminOnly: true },
   '/institutions/new': { superAdminOnly: true },
   '/institutions/:id/edit': { superAdminOnly: true },
+  '/institutions/:id/features': { superAdminOnly: true },
   '/institutions/:id': { superAdminOnly: true },
   '/institution-admins': { superAdminOnly: true },
   '/system-admins': { superAdminOnly: true },

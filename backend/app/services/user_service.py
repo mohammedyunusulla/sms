@@ -485,7 +485,7 @@ class UserService:
     def provision_single_login(institution_user_id, skid, institution_id, password):
         """
         Create a login (User record in main DB) for an existing InstitutionUsers record.
-        Used when upgrading from BASIC plan or manually granting login access.
+        Used after sign-in is switched on for a role, for people created without a login.
         """
         try:
             from app.utils.helpers import validate_password
@@ -513,10 +513,14 @@ class UserService:
 
                 # Get role code
                 role_obj = tenant_session.query(Role).filter_by(id=institution_user.role_id).first()
-                role_code = role_obj.role_code if role_obj else None
+                # the login role: the built-in role itself, or the one a custom role is based on
+                role_code = str((role_obj.base_role or role_obj.role_code) if role_obj else '').upper() or None
 
-                if role_code not in ('STUDENT', 'PARENT'):
-                    raise ValueError("Only STUDENT and PARENT users can be provisioned this way")
+                from app.utils.features import LOGIN_ROLES, login_enabled
+                if role_code not in LOGIN_ROLES:
+                    raise ValueError("This person's role can't be given a login this way")
+                if not login_enabled(skid, role_code):
+                    raise ValueError(f"Sign-in is switched off for {LOGIN_ROLES[role_code]}s at this institution")
 
                 # Extract user data while session is open
                 user_data = {
@@ -592,12 +596,14 @@ class UserService:
             with switch_to_institution_db(skid) as tenant_session:
                 query = tenant_session.query(InstitutionUsers).join(Role, InstitutionUsers.role_id == Role.id)
 
-                # Filter to STUDENT/PARENT roles
-                eligible_roles = ['STUDENT', 'PARENT']
-                if role_filter and role_filter.upper() in eligible_roles:
-                    query = query.filter(Role.role_code == role_filter.upper())
-                else:
-                    query = query.filter(Role.role_code.in_(eligible_roles))
+                # Only roles whose sign-in is switched on (one of them when role_filter is given)
+                from sqlalchemy import func as sa_func
+                from app.utils.features import settings_for
+                eligible_roles = settings_for(skid)['login_roles']
+                if role_filter:
+                    eligible_roles = [r for r in eligible_roles if r == str(role_filter).upper()]
+                login_role = sa_func.upper(sa_func.coalesce(Role.base_role, Role.role_code))
+                query = query.filter(login_role.in_(eligible_roles or ['-']))
 
                 query = query.filter(InstitutionUsers.is_active == True)
                 all_institution_users = query.all()
@@ -614,7 +620,7 @@ class UserService:
                         'last_name': su.last_name,
                         'phone': su.phone,
                         'full_name': su.full_name,
-                        'role_code': role_obj.role_code if role_obj else None,
+                        'role_code': str((role_obj.base_role or role_obj.role_code) if role_obj else '').upper() or None,
                         'role_name': role_obj.role_name if role_obj else None,
                     })
 

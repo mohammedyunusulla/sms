@@ -12,7 +12,7 @@ import { classService } from '../../services/modules/classService';
 import { parentService } from '../../services/modules/parentService';
 import ParentForm from './ParentForm';
 import { useDebounce } from '../../hooks/useDebounce';
-import { useAuthStore } from '../../stores/authStore';
+import { useRoleGetsLogin } from '../../config/features';
 import { blanksToNull, fieldInputClass, isValidEmail, isValidPhone, passwordProblem } from '../../utils/formValidation';
 
 // Optional fields: a blank value is sent as null ('' breaks class/section/roll numbers and the unique admission number)
@@ -34,9 +34,8 @@ const StudentForm: FC<IStudentFormProps> = ({ initialData, mode: propMode = 'cre
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
-    // Basic plan: students get no login, so no password is asked for (QA A40)
-    const institutionPlan = String(useAuthStore((st) => st.user?.plan) || '').toUpperCase();
-    const createsLogin = institutionPlan === 'STANDARD' || institutionPlan === 'PREMIUM';
+    // Where student sign-in is switched off for the institution, students get no login: no password is asked for
+    const createsLogin = useRoleGetsLogin('STUDENT');
     // Auto-detect mode based on URL - if id exists, it's update mode
     const mode = id ? 'update' : propMode;
     const [student, setStudent] = useState<any>(null);
@@ -400,11 +399,10 @@ const StudentForm: FC<IStudentFormProps> = ({ initialData, mode: propMode = 'cre
                             {fieldError('username')}
                         </div>
 
-                        {/* Password (only where student logins are part of the plan) */}
+                        {/* Password (only where student sign-in is switched on) */}
                         {mode === 'create' && !createsLogin && (
-                            <div className="md:col-span-1 rounded-lg bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-                                Student logins aren't part of the Basic plan, so no password is needed. Use
-                                &quot;Create Login&quot; on the students list later if this student needs one.
+                            <div className="md:col-span-1 rounded-lg bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300" data-testid="no-login-note">
+                                Sign-in isn't switched on for students at your institution, so no password is needed.
                             </div>
                         )}
                         {mode === 'create' && createsLogin && (

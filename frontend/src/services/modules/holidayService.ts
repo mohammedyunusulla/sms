@@ -1,6 +1,7 @@
 /**
  * Holiday calendar: holidays (everyone / students / staff, possibly tentative) and weekly offs.
  */
+import { featureOn } from '../../config/features';
 import { getApiClient, getInstitutionId } from '../api/client';
 import { API_ENDPOINTS } from '../api/config';
 
@@ -103,6 +104,7 @@ export const holidayService = {
     },
     /** Weekly offs and holidays between two days (YYYY-MM-DD) */
     async offDays(from: string, to: string, audience: 'STAFF' | 'STUDENTS'): Promise<OffDay[]> {
+        if (!featureOn('calendar')) return []; // no holiday calendar: attendance / leave pages show no off days
         const res = (await client().get(E.OFF_DAYS(getInstitutionId()), { params: { from, to, audience } })) as unknown as Envelope<OffDay[]>;
         return res.data || [];
     },
@@ -128,6 +130,7 @@ export const holidayService = {
         return res.data?.events || [];
     },
     async tentativeSoon(): Promise<Holiday[]> {
+        if (!featureOn('calendar')) return [];
         const res = (await client().get(E.TENTATIVE_SOON(getInstitutionId()))) as unknown as Envelope<Holiday[]>;
         return res.data || [];
     },

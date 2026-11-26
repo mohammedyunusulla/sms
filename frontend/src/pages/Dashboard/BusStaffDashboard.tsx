@@ -4,6 +4,7 @@
  * Bus staff used to land on "No dashboard available for your role".
  */
 
+import { featureOn } from '../../config/features';
 import { FC, useEffect, useState } from 'react';
 import { Link } from 'react-router';
 import { useAuth } from '../../hooks/useAuth';
@@ -36,7 +37,7 @@ const BusStaffDashboard: FC = () => {
     const links = [
         { title: 'Scan QR Code', description: "Scan a student's card when they board or get off", path: '/bus-scan/scan', icon: '📷', permission: Permission.MANAGE_BUS_SCAN },
         { title: 'Tracking Report', description: 'Who boarded and got off, and when', path: '/bus-scan/report', icon: '📋', permission: Permission.VIEW_BUS_SCAN },
-    ].filter((l) => hasPermission(l.permission));
+    ].filter((l) => hasPermission(l.permission) && featureOn('bus'));
 
     return (
         <div className="space-y-6">

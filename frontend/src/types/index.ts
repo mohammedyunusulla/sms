@@ -116,7 +116,8 @@ export interface IInstitution {
     postal_code?: string;
     website?: string;
     logo?: string;
-    plan?: string;
+    features?: string[];
+    login_roles?: string[];
     skid: string;
     status: InstitutionStatus | InstitutionStatusString;
     createdAt: string;

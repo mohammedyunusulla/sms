@@ -24,6 +24,19 @@ interface IInstitutionListResponse {
     };
 }
 
+export interface FeatureCatalogue {
+    features: Array<{ key: string; label: string; about: string; requires: string[]; needed_by: string[] }>;
+    always_on: string[];
+    login_roles: Array<{ code: string; label: string }>;
+}
+
+export interface InstitutionFeatureSettings {
+    institution: { id: number; name: string; code: string; skid: string };
+    features: string[];
+    login_roles: string[];
+    catalogue: FeatureCatalogue;
+}
+
 class InstitutionService {
     private baseUrl = '/institution';
 
@@ -80,6 +93,19 @@ class InstitutionService {
             return response.institution;
         }
         throw new Error(response.message || 'Failed to update institution');
+    }
+
+    /**
+     * Features & Logins: an institution's switches, with the list of switches there are
+     */
+    async getFeatureSettings(id: string): Promise<InstitutionFeatureSettings> {
+        const response = await getApiClient().get(`${this.baseUrl}/${id}/features`);
+        return response.data as InstitutionFeatureSettings;
+    }
+
+    async updateFeatureSettings(id: string, data: { features: string[]; login_roles: string[] }): Promise<{ features: string[]; login_roles: string[] }> {
+        const response = await getApiClient().put(`${this.baseUrl}/${id}/features`, data);
+        return response.data as { features: string[]; login_roles: string[] };
     }
 
     /**

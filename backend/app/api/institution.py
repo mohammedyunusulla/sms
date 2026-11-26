@@ -77,6 +77,27 @@ def update_institution(institution_id):
         return jsonify({'message': 'Internal server error'}), 500
 
 
+@institution_bp.route('/<int:institution_id>/features', methods=['GET'])
+@login_required(['SUPER_ADMIN'])
+def get_institution_features(institution_id):
+    """An institution's feature and sign-in switches, with the list of switches there are."""
+    result = InstitutionService.get_feature_settings(institution_id)
+    if not result['success']:
+        return jsonify({'message': result['message']}), 404
+    return jsonify({'data': result['data'], 'status': 'success'}), 200
+
+
+@institution_bp.route('/<int:institution_id>/features', methods=['PUT'])
+@login_required(['SUPER_ADMIN'])
+@log_actions('UPDATE_INSTITUTION_FEATURES')
+def update_institution_features(institution_id):
+    """Body: { features?: [key], login_roles?: [role code] }"""
+    result = InstitutionService.update_feature_settings(institution_id, request.get_json(silent=True) or {})
+    if not result['success']:
+        return jsonify({'message': result['message']}), 404 if result['message'] == 'Institution not found' else 400
+    return jsonify({'message': result['message'], 'data': result['data'], 'status': 'success'}), 200
+
+
 @institution_bp.route('/list', methods=['GET'])
 @login_required(['SUPER_ADMIN'])
 @log_actions('GET_INSTITUTIONS')

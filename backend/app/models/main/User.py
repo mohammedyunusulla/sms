@@ -28,7 +28,6 @@ class User(BaseModel):
     role = Column(Enum(UserRole), nullable=False)
     last_login = Column(DateTime)
     skid = Column(String(50))
-    plan = Column(String(10), default='BASIC')
     institution_id = Column(Integer, ForeignKey('institutions.id'), nullable=True)  # Null for super admin
     institution_user_id = Column(Integer, nullable=True)  # Links to student/teacher ID in institution DB and Null for super admin
     # Account lockout fields
@@ -125,4 +124,7 @@ class User(BaseModel):
             data['institution_phone'] = self.institution.phone
             data['institution_email'] = self.institution.email
             data['skid'] = self.institution.skid
+            # what is switched on for the institution: the web app hides the rest (app/utils/features.py)
+            from app.utils.features import settings_of
+            data.update(settings_of(self.institution))
         return data

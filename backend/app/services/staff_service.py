@@ -25,7 +25,7 @@ class StaffService:
         Optional:
             phone, designation, employee_id
         """
-        required = ['username', 'email', 'password', 'first_name', 'last_name', 'role']
+        required = ['username', 'email', 'first_name', 'last_name', 'role']  # password: only where a login is made
         for field in required:
             if not data.get(field):
                 raise ValueError(f"Missing required field: {field}")
@@ -63,20 +63,25 @@ class StaffService:
         except ValueError:
             raise ValueError(f"The role '{role_code}' isn't based on a built-in role (Principal, Clerk or Bus Staff)")
 
-        # ── Step 1: create main DB user ──────────────────────────────────────
-        user = User(
-            username=data['username'],
-            email=data['email'],
-            first_name=data['first_name'],
-            last_name=data['last_name'],
-            phone=data.get('phone'),
-            role=user_role_enum,
-            skid=skid,
-            institution_id=institution.id,
-        )
-        user.set_password(data['password'])
-        db.session.add(user)
-        db.session.flush()
+        # ── Step 1: create main DB user (only where sign-in is switched on for this role) ──
+        from app.utils.features import login_enabled
+        user = None
+        if login_enabled(skid, login_role):
+            if not data.get('password'):
+                raise ValueError("Missing required field: password")
+            user = User(
+                username=data['username'],
+                email=data['email'],
+                first_name=data['first_name'],
+                last_name=data['last_name'],
+                phone=data.get('phone'),
+                role=user_role_enum,
+                skid=skid,
+                institution_id=institution.id,
+            )
+            user.set_password(data['password'])
+            db.session.add(user)
+            db.session.flush()
 
         # ── Step 2: create tenant-DB records ─────────────────────────────────
         with switch_to_institution_db(skid) as session:
@@ -126,10 +131,14 @@ class StaffService:
             session.add(profile)
 
             session.commit()
-            user.institution_user_id = institution_user.id
+            created = {'id': None, 'institution_user_id': institution_user.id, 'username': data['username'],
+                       'email': data['email'], 'first_name': data['first_name'], 'last_name': data['last_name'],
+                       'role': login_role, 'skid': skid, 'has_login': False}
+            if user is not None:
+                user.institution_user_id = institution_user.id
 
         db.session.commit()
-        return user
+        return {**user.to_dict(), 'has_login': True} if user is not None else created
 
     @staticmethod
     def get_staff_list(skid):

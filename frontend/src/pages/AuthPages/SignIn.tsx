@@ -12,9 +12,13 @@ export default function SignIn() {
 
   // Signed out for inactivity (set by AppLayout; kept in sessionStorage so it survives a page reload)
   useEffect(() => {
-    if (sessionStorage.getItem(SIGNED_OUT_REASON_KEY) === "idle") {
+    const reason = sessionStorage.getItem(SIGNED_OUT_REASON_KEY);
+    if (reason === "idle") {
       sessionStorage.removeItem(SIGNED_OUT_REASON_KEY);
       toast.error("Session expired due to inactivity. Please login again.", { id: "idle-signout" });
+    } else if (reason === "login-disabled") {
+      sessionStorage.removeItem(SIGNED_OUT_REASON_KEY);
+      toast.error("Sign-in has been switched off for your role at this institution.", { id: "login-disabled" });
     }
   }, []);
 

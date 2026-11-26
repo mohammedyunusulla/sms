@@ -3,6 +3,7 @@
  * Form for creating and editing teachers
  */
 
+import { useRoleGetsLogin } from '../../config/features';
 import { FC, useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router';
@@ -21,6 +22,7 @@ const TeacherForm: FC<ITeacherFormProps> = ({ initialData, mode: propMode = 'cre
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [showPassword, setShowPassword] = useState(false);
+    const createsLogin = useRoleGetsLogin('TEACHER'); // is teacher sign-in switched on for the institution?
     // Auto-detect mode based on URL - if id exists, it's update mode
     const mode = id ? 'update' : propMode;
     const [formData, setFormData] = useState({
@@ -116,7 +118,7 @@ const TeacherForm: FC<ITeacherFormProps> = ({ initialData, mode: propMode = 'cre
         const next: Record<string, string> = {};
         if (!v('username')) next.username = 'Username is required';
         else if (v('username').length < 3) next.username = 'Username must be at least 3 characters';
-        if (mode === 'create') {
+        if (mode === 'create' && createsLogin) {
             const pw = String(formData.password ?? '');
             if (!pw) next.password = 'Password is required';
             else if (pw.length < 8) next.password = 'Password must be at least 8 characters';
@@ -227,8 +229,13 @@ const TeacherForm: FC<ITeacherFormProps> = ({ initialData, mode: propMode = 'cre
                                 {fieldError('username')}
                             </div>
 
-                            {/* Password */}
-                            {mode === 'create' && (
+                            {/* Password (only where teacher sign-in is switched on) */}
+                            {mode === 'create' && !createsLogin && (
+                                <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300" data-testid="no-login-note">
+                                    Sign-in isn't switched on for teachers at your institution, so no password is needed.
+                                </div>
+                            )}
+                            {mode === 'create' && createsLogin && (
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                         Password *

@@ -8,20 +8,12 @@ roles_bp = Blueprint('roles', __name__)
 @roles_bp.route('/create/role/<skid>', methods=['POST'])
 @login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN'], permission='manage_roles')
 def create_role(skid):
-    try:
-        data = request.get_json()
-        if not skid:
-            raise ValueError("Institution ID (skid) is required")
-        
-        role = RolesService.create_role(data, skid)
-        return jsonify({'message': 'Role created', 'data': role, 'status': 'success', 'code':200}), 200
-    except ValueError as e:
-        return jsonify({'message': str(e), 'status': 'error', 'code': 400}), 400
-    except Exception as e:
-        return jsonify({'message': str(e), 'status': 'error'}), 500
+    # New custom roles are no longer made: institutions use the built-in roles (sign-in is switched per
+    # built-in role - app/utils/features.py). Existing custom roles keep working and can be edited.
+    return jsonify({'message': 'New custom roles can no longer be created. Use the built-in roles.',
+                    'code': 'CUSTOM_ROLES_CLOSED'}), 403
 
 
-# 2. GET ALL ROLES (Paginated)
 @roles_bp.route('/list/<skid>', methods=['GET'])
 @login_required(['SUPER_ADMIN', 'INSTITUTION_ADMIN', 'PRINCIPAL'], permission='manage_roles')
 def get_all_roles_paginated(skid):

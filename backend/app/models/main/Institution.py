@@ -1,13 +1,6 @@
 from app.models.base import BaseModel
-from sqlalchemy import Column, String, Text, Enum, Integer, ForeignKey, func
+from sqlalchemy import Column, String, Text, Integer, JSON
 from sqlalchemy.orm import relationship
-import enum
-from datetime import datetime
-
-class InstitutionPlan(enum.Enum):
-    BASIC = "BASIC"
-    STANDARD = "STANDARD"
-    PREMIUM = "PREMIUM"
 
 class Institution(BaseModel):
     __tablename__ = 'institutions'
@@ -21,7 +14,9 @@ class Institution(BaseModel):
     state = Column(String(120))
     country = Column(String(120))   
     website = Column(String(200))
-    plan = Column(Enum(InstitutionPlan), default=InstitutionPlan.BASIC, nullable=False)
+    # What the Super Admin switched on for this institution (see app/utils/features.py)
+    features = Column(JSON, nullable=True)      # feature keys
+    login_roles = Column(JSON, nullable=True)   # role codes that may sign in
     skid = Column(String(50))
     institution_admin_id = Column(Integer, nullable=True) # Institution admin user ID
     
@@ -46,4 +41,6 @@ class Institution(BaseModel):
             exclude_fields = []
         
         data = super().to_dict(exclude_fields)
+        from app.utils.features import settings_of
+        data.update(settings_of(self))  # features with what they need, valid sign-in roles
         return data

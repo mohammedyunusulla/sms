@@ -23,7 +23,7 @@ class ParentService:
     def create_parent_user(data, skid):
         """
         Create a new parent user in both main and tenant databases
-        Based on institution plan: BASIC (no login), STANDARD/PREMIUM (with login)
+        A login is made only where parent sign-in is switched on for the institution
         """
         from app.utils.account_create import add_role_link, remove_institution_user, role_for
         user = None
@@ -36,12 +36,11 @@ class ParentService:
             if not institution:
                 raise ValueError("Institution not found")
             
-            # Always the institution's own plan: taking it from the request let a BASIC institution's parent get a login
-            plan = institution.plan
-            # institution.plan is a InstitutionPlan enum (never equal to a plain string); compare by value
-            create_login = getattr(plan, 'value', plan) in ('STANDARD', 'PREMIUM')
-            
-            # Step 1: Create main user (only for STANDARD/PREMIUM)
+            # The institution's own switch (never from the request): a login only where parent sign-in is on
+            from app.utils.features import login_enabled
+            create_login = login_enabled(skid, 'PARENT')
+
+            # Step 1: Create main user (only where parent sign-in is on)
             if create_login:
                 user = User(
                     username=data.get('username', data['email']),
@@ -51,7 +50,6 @@ class ParentService:
                     phone=_account_phone(data),
                     role=UserRole.PARENT,
                     skid=skid,
-                    plan=getattr(plan, 'value', plan),  # store the plan name, not the enum object
                     institution_id=institution.id
                 )
                 user.set_password(data['password'])

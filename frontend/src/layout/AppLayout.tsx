@@ -1,5 +1,8 @@
 import { SidebarProvider, useSidebar } from "../context/SidebarContext";
-import { Outlet } from "react-router";
+import { Link, Outlet, useLocation } from "react-router";
+import { EmptyState } from "../components";
+import { FEATURE_LABELS, featureForPath, hasFeature } from "../config/features";
+import { useAuthStore } from "../stores/authStore";
 import AppHeader from "./AppHeader";
 import Backdrop from "./Backdrop";
 import AppSidebar from "./AppSidebar";
@@ -15,6 +18,12 @@ const LayoutContent: React.FC = () => {
   const refreshKey = usePageRefresh();
   const { isExpanded, isHovered, isMobileOpen } = useSidebar();
   const { logout, isAuthenticated } = useAuth();
+  // A page whose feature the Super Admin hasn't switched on for this institution isn't opened
+  const { pathname } = useLocation();
+  const features = useAuthStore((s) => s.user?.features);
+  const role = useAuthStore((s) => s.user?.role);
+  const pageFeature = featureForPath(pathname, role);
+  const switchedOff = !!pageFeature && !hasFeature(features, pageFeature);
 
   // Auto-logout after 15 minutes of inactivity - in a browser tab or an app installed on a computer.
   // The installed app on a phone/tablet is the person's own device: it stays signed in (so notifications keep coming).
@@ -43,7 +52,15 @@ const LayoutContent: React.FC = () => {
         <AppHeader />
         <div className="p-4 mx-auto max-w-(--breakpoint-2xl) md:p-6 overflow-x-hidden">
           {/* key changes on refresh (button / returning to the installed app) -> the page loads its data again */}
-          <Outlet key={refreshKey} />
+          {switchedOff && pageFeature ? (
+            <EmptyState
+              title={`${FEATURE_LABELS[pageFeature]} isn't switched on`}
+              description="This feature isn't part of your institution's setup. Ask your institution admin if you need it."
+              action={<Link to="/dashboard" className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400">Back to Dashboard</Link>}
+            />
+          ) : (
+            <Outlet key={refreshKey} />
+          )}
         </div>
       </div>
     </div>

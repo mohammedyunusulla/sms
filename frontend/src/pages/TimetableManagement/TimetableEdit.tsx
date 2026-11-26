@@ -3,6 +3,7 @@
  * Edit existing draft timetables with interactive grid interface
  */
 
+import { featureOn } from '../../config/features';
 import { FC, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import toast from 'react-hot-toast';
@@ -93,7 +94,7 @@ const TimetableEdit: FC = () => {
                 // Fetch teachers
                 setTeachers(await teacherService.listAll());
 
-                const roomsResponse = await roomService.list({ is_active: true });
+                const roomsResponse = featureOn('rooms') ? await roomService.list({ is_active: true }) : []; // rooms are optional
                 setRooms(Array.isArray(roomsResponse) ? roomsResponse : roomsResponse?.data || []);
             } catch (err: any) {
                 toast.error('Failed to load timetable');

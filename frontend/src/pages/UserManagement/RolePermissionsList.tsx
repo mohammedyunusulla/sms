@@ -6,7 +6,7 @@
 import { FC, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import toast from 'react-hot-toast';
-import { PageHeader, LoadingSpinner, DataTable, Button, ConfirmDialog, Badge } from '../../components';
+import { PageHeader, LoadingSpinner, DataTable, ConfirmDialog, Badge } from '../../components';
 import { roleService } from '../../services/modules/roleService';
 import { usePermissions } from '../../hooks/usePermissions';
 import { Permission } from '../../config/permissions';
@@ -181,16 +181,6 @@ const RolePermissionsList: FC = () => {
                     { label: 'Dashboard', href: '/dashboard' },
                     { label: 'Roles', href: '#' },
                 ]}
-                actions={
-                    hasPermission(Permission.MANAGE_ROLES) ? (
-                        <Button
-                            variant="primary"
-                            onClick={() => navigate('/roles/new')}
-                        >
-                            + Create Role
-                        </Button>
-                    ) : undefined
-                }
             />
 
             <DataTable

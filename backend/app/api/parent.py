@@ -36,16 +36,23 @@ def create_parent(skid):
         from app.utils.form_input import clean_payload, missing_fields_message, error
         from app.utils.helpers import validate_password
         data = clean_payload(data, PARENT_OPTIONAL_FIELDS)
-        missing = missing_fields_message(data, PARENT_REQUIRED_FIELDS)
+        # Where parent sign-in is switched off no login is made, so no password is asked for
+        from app.utils.features import login_enabled
+        creates_login = login_enabled(skid, 'PARENT')
+        missing = missing_fields_message(data, PARENT_REQUIRED_FIELDS if creates_login
+                                         else tuple(f for f in PARENT_REQUIRED_FIELDS if f[0] != 'password'))
         if missing:
             return error(missing, 400)
         # The parent form uses the username as the login email
         data['email'] = data.get('email') or data['username']
         if not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', data['email']):
             return error('Username must be a valid email address', 400)
-        ok, password_error = validate_password(data['password'])
-        if not ok:
-            return error(password_error, 400)
+        if creates_login:
+            ok, password_error = validate_password(data['password'])
+            if not ok:
+                return error(password_error, 400)
+        else:
+            data.pop('password', None)
         data['first_name'] = data.get('first_name') or data['father_full_name']
         data['last_name'] = data.get('last_name') or data.get('mother_full_name') or ''
 

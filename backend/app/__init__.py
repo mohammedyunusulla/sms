@@ -196,6 +196,13 @@ def _bootstrap_main_schema(app):
         if renamed:  # (not app.logger: "import app.models" above rebinds the name `app` to the package)
             logging.getLogger(__name__).warning(f"Main database renamed to institution names: {renamed}")
 
+        # Per-institution feature and sign-in switches: add them to older databases. Once.
+        from app.utils.features import prepare_switches
+        with db.engine.begin() as conn:
+            prepared = prepare_switches(conn)
+        if prepared:
+            logging.getLogger(__name__).warning(f"Feature switches prepared: {prepared}")
+
         db.create_all()
 
         # Backfill auth hardening columns for legacy users table schemas.

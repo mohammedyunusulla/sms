@@ -19,11 +19,7 @@ interface DashboardStats {
   active_users: number;
   total_super_admins: number;
   total_institution_admins: number;
-  plan_distribution: {
-    BASIC: number;
-    STANDARD: number;
-    PREMIUM: number;
-  };
+  feature_usage: Array<{ key: string; label: string; institutions: number }>;
   recent_institutions: any[];
   recent_admins: any[];
 }
@@ -137,41 +133,31 @@ const SuperAdminDashboard: FC = () => {
         />
       </div>
 
-      {/* Plan Distribution + Quick Actions */}
+      {/* Features in use + Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Plan Distribution */}
+        {/* Which features institutions use */}
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Subscription Plan Distribution
+            Features in Use
           </h2>
-          <div className="space-y-4">
-            {(['BASIC', 'STANDARD', 'PREMIUM'] as const).map((plan) => {
-              const count = stats.plan_distribution[plan] || 0;
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+            {(stats.feature_usage || []).map((f) => {
               const total = stats.active_institutions || 1;
-              const pct = Math.round((count / total) * 100);
-              const colors = {
-                BASIC: { bar: 'bg-gray-500', text: 'text-gray-600 dark:text-gray-400' },
-                STANDARD: { bar: 'bg-blue-500', text: 'text-blue-600 dark:text-blue-400' },
-                PREMIUM: { bar: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400' },
-              };
+              const pct = Math.round((f.institutions / total) * 100);
               return (
-                <div key={plan}>
+                <div key={f.key}>
                   <div className="flex items-center justify-between mb-1">
-                    <span className={`text-sm font-medium ${colors[plan].text}`}>{plan}</span>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      {count} institution{count !== 1 ? 's' : ''} ({pct}%)
-                    </span>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{f.label}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">{f.institutions}</span>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
-                    <div
-                      className={`h-2.5 rounded-full transition-all ${colors[plan].bar}`}
-                      style={{ width: `${pct}%` }}
-                    />
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                    <div className="h-1.5 rounded-full bg-blue-500 transition-all" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               );
             })}
           </div>
+          <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">Number of active institutions with each feature switched on.</p>
         </div>
 
         {/* Quick Actions */}
@@ -238,8 +224,8 @@ const SuperAdminDashboard: FC = () => {
                       <Badge variant={institution.is_active ? 'success' : 'danger'}>
                         {institution.is_active ? 'Active' : 'Inactive'}
                       </Badge>
-                      {institution.plan && (
-                        <Badge variant="info">{institution.plan}</Badge>
+                      {Array.isArray(institution.features) && (
+                        <Badge variant="info">{institution.features.length} features</Badge>
                       )}
                     </div>
                   </div>

@@ -18,6 +18,7 @@ import {
 import { staffService } from '../../services/modules/staffService';
 import { roleService } from '../../services/modules/roleService';
 import { useAuthStore } from '../../stores/authStore';
+import { roleGetsLogin } from '../../config/features';
 import { IUser } from '../../types/index';
 import { passwordProblem } from '../../utils/formValidation';
 
@@ -65,7 +66,13 @@ const UserForm: FC = () => {
 
     const [errors, setErrors] = useState<IFormErrors>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [roles, setRoles] = useState<{ label: string; value: string }[]>([]);
+    // loginRole: the built-in role a role signs in as (a custom role uses the one it is based on)
+    const [roles, setRoles] = useState<{ label: string; value: string; loginRole: string }[]>([]);
+    const loginRoles = useAuthStore((s) => s.user?.login_roles);
+
+    // Does the chosen role get a login? (until a role is chosen, the password fields are shown)
+    const chosenRole = roles.find((r) => r.value === formData.role);
+    const createsLogin = !chosenRole || roleGetsLogin(loginRoles, chosenRole.loginRole);
 
     // Exclude roles that have their own dedicated creation forms
     const EXCLUDED_ROLES = ['STUDENT', 'PARENT', 'TEACHER', 'SUPER_ADMIN'];
@@ -80,6 +87,7 @@ const UserForm: FC = () => {
                     .map((role: any) => ({
                         label: role.role_name,
                         value: role.role_code.toLowerCase(),
+                        loginRole: String(role.base_role || role.role_code).toUpperCase(),
                     }));
                 setRoles(filteredRoles);
             } catch (error) {
@@ -166,8 +174,8 @@ const UserForm: FC = () => {
             newErrors.role = 'Role is required';
         }
 
-        // Password validation (required for new users)
-        if (!isEditMode) {
+        // Password validation (new users whose role can sign in)
+        if (!isEditMode && createsLogin) {
             // Same rules as the backend (8+ characters, upper, lower, digit)
             const problem = passwordProblem(formData.password || '');
             if (problem) newErrors.password = problem;
@@ -235,7 +243,7 @@ const UserForm: FC = () => {
                 institution_id: authUser?.institution_id,
             };
 
-            if (!isEditMode) {
+            if (!isEditMode && createsLogin) {
                 submitData.password = formData.password;
             }
 
@@ -415,8 +423,13 @@ const UserForm: FC = () => {
                         </div>
                     </div>
 
-                    {/* Password Section (only for new users) */}
-                    {!isEditMode && (
+                    {/* Password Section (new users whose role can sign in) */}
+                    {!isEditMode && !createsLogin && (
+                        <div className="rounded-lg bg-gray-50 p-3 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-300" data-testid="no-login-note">
+                            Sign-in isn't switched on for this role at your institution, so no password is needed.
+                        </div>
+                    )}
+                    {!isEditMode && createsLogin && (
                         <div>
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                                 Password

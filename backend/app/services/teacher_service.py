@@ -26,21 +26,24 @@ class TeacherService:
             institution = Institution.query.filter_by(skid=skid).first()
             if not institution:
                 raise ValueError("Institution not found")
-            user = User(
-                username=data['username'],
-                email=data['email'],
-                first_name=data['first_name'],
-                last_name=data['last_name'],
-                phone=data.get('phone'),
-                role=UserRole.TEACHER,  # never from the request
-                skid=skid,
-                # from the institution itself: the teacher form never sent institution_id, so teacher logins had none
-                # and admins couldn't switch them on/off ("Cannot deactivate user from different institution")
-                institution_id=institution.id
-            )
-            user.set_password(data['password'])
-            db.session.add(user)
-            db.session.flush()
+            # A login only where teacher sign-in is switched on for the institution (app/utils/features.py)
+            from app.utils.features import login_enabled
+            if login_enabled(skid, 'TEACHER'):
+                user = User(
+                    username=data['username'],
+                    email=data['email'],
+                    first_name=data['first_name'],
+                    last_name=data['last_name'],
+                    phone=data.get('phone'),
+                    role=UserRole.TEACHER,  # never from the request
+                    skid=skid,
+                    # from the institution itself: the teacher form never sent institution_id, so teacher logins had none
+                    # and admins couldn't switch them on/off ("Cannot deactivate user from different institution")
+                    institution_id=institution.id
+                )
+                user.set_password(data['password'])
+                db.session.add(user)
+                db.session.flush()
 
             # Insert into tenant DB
             with switch_to_institution_db(skid) as tenant_session:
@@ -74,10 +77,14 @@ class TeacherService:
                 tenant_session.commit()
                 tenant_saved = True
 
+            if user is None:  # no login: the institution record is the whole account
+                return {'id': None, 'institution_user_id': institution_user_id, 'username': data['username'],
+                        'email': data['email'], 'first_name': data['first_name'], 'last_name': data['last_name'],
+                        'role': 'TEACHER', 'skid': skid, 'has_login': False}
             user.institution_user_id = institution_user_id
             db.session.commit()
 
-            return user.to_dict()
+            return {**user.to_dict(), 'has_login': True}
 
         except Exception as e:
             db.session.rollback()

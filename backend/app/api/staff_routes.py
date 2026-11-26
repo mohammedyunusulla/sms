@@ -17,12 +17,14 @@ def create_staff(skid):
 
     data = clean_payload(data, ('phone', 'gender', 'date_of_birth', 'address', 'employee_id', 'designation', 'salary'))
     missing = missing_fields_message(data, (('first_name', 'First name'), ('last_name', 'Last name'), ('username', 'Username'),
-                                            ('email', 'Email'), ('role', 'Role'), ('password', 'Password')))
+                                            ('email', 'Email'), ('role', 'Role')))
     if missing:
         return error(missing, 400)
-    ok, password_error = validate_password(data['password'])
-    if not ok:
-        return error(password_error, 400)
+    # A password only where the person gets a login (StaffService checks the role's sign-in switch)
+    if data.get('password'):
+        ok, password_error = validate_password(data['password'])
+        if not ok:
+            return error(password_error, 400)
 
     # Errors used to escape as an HTML 500 without CORS headers (the browser showed "Network Error")
     try:
@@ -34,7 +36,7 @@ def create_staff(skid):
         return error(f'Failed to create staff member: {e}', 500)
     return jsonify({
         'message': 'Staff member created successfully',
-        'user': user.to_dict(),
+        'user': user,
         'status': 'success',
         'code': 200,
     }), 200

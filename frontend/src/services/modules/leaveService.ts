@@ -2,6 +2,7 @@
  * Leave requests (students, parents applying for a child, staff) and approvals.
  * Who may see / decide what is checked on the server.
  */
+import { featureOn } from '../../config/features';
 import { getApiClient, getInstitutionId } from '../api/client';
 import { API_ENDPOINTS } from '../api/config';
 
@@ -133,6 +134,7 @@ export const leaveService = {
     },
 
     async pendingCount(): Promise<number> {
+        if (!featureOn('leave')) return 0;
         const res = (await client().get(E.PENDING_COUNT(getInstitutionId()))) as unknown as Envelope<number>;
         return Number(res.data) || 0;
     },

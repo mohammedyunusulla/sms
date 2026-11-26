@@ -64,11 +64,9 @@ def create_student(skid):
         from app.utils.form_input import clean_payload, missing_fields_message, error
         from app.utils.helpers import validate_password
         data = clean_payload(data, STUDENT_OPTIONAL_FIELDS)
-        # On the Basic plan students get no login, so no password is asked for (it was required and then
-        # silently thrown away - QA A40); Standard / Premium create the login and need one.
-        from app.models.main.Institution import Institution, InstitutionPlan
-        institution = Institution.query.filter_by(skid=skid).first()
-        creates_login = bool(institution and institution.plan in (InstitutionPlan.STANDARD, InstitutionPlan.PREMIUM))
+        # Where student sign-in is switched off no login is made, so no password is asked for
+        from app.utils.features import login_enabled
+        creates_login = login_enabled(skid, 'STUDENT')
         required = STUDENT_REQUIRED_FIELDS if creates_login else tuple(f for f in STUDENT_REQUIRED_FIELDS if f[0] != 'password')
         missing = missing_fields_message(data, required)
         if missing:
@@ -167,10 +165,10 @@ def update_student(skid, student_id):
           ↓ (if no duplicates)
       Service Layer (student_service.py:update_student)
           ↓
-          Step 1: Get institution plan
-          Step 2: Fetch from main DB (if plan allows login)
+          Step 1: Is student sign-in on for the institution?
+          Step 2: Fetch from main DB (if the student has a login)
           Step 3: Fetch from tenant DB to verify exists
-          Step 4: Update main DB (if plan allows login)
+          Step 4: Update main DB (if the student has a login)
           Step 5: Update tenant DB (ALWAYS)
           Step 6: Return response
     """

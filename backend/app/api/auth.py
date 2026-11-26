@@ -43,6 +43,14 @@ def login():
                     'message': 'Your institution account is currently inactive. Please contact support for assistance.'
                 }), 403
 
+            # Sign-in can be switched off per role for an institution (Super Admin > Features & Logins)
+            from app.utils.features import login_enabled
+            if not login_enabled(institution.skid, user.role):
+                return jsonify({
+                    'message': 'Sign-in is not switched on for your role at this institution. Please contact your institution.',
+                    'code': 'LOGIN_DISABLED',
+                }), 403
+
         # Create session and tokens
         session_data = AuthService.create_user_session(user)
 

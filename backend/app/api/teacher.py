@@ -39,9 +39,9 @@ def _clean_teacher_payload(data):
     return cleaned
 
 
-def _missing_teacher_fields(data):
+def _missing_teacher_fields(data, needs_password=True):
     """Return a 'X, Y are required' message for missing mandatory create fields, or None."""
-    missing = [label for key, label in TEACHER_REQUIRED_FIELDS if not data.get(key)]
+    missing = [label for key, label in TEACHER_REQUIRED_FIELDS if not data.get(key) and (needs_password or key != 'password')]
     if not missing:
         return None
     return f"{', '.join(missing)} {'is' if len(missing) == 1 and missing[0] != 'Qualifications' else 'are'} required"
@@ -63,13 +63,19 @@ def create_teacher(skid):
             raise ValueError("Institution ID (skid) is required")
 
         data = _clean_teacher_payload(data)
-        missing = _missing_teacher_fields(data)
+        # Where teacher sign-in is switched off no login is made, so no password is asked for
+        from app.utils.features import login_enabled
+        creates_login = login_enabled(skid, 'TEACHER')
+        missing = _missing_teacher_fields(data, needs_password=creates_login)
         if missing:
             return jsonify({'message': missing, 'status': 'error', 'code': 400}), 400
-        from app.utils.helpers import validate_password
-        ok, password_error = validate_password(data['password'])
-        if not ok:
-            return jsonify({'message': password_error, 'status': 'error', 'code': 400}), 400
+        if creates_login:
+            from app.utils.helpers import validate_password
+            ok, password_error = validate_password(data['password'])
+            if not ok:
+                return jsonify({'message': password_error, 'status': 'error', 'code': 400}), 400
+        else:
+            data.pop('password', None)
 
         # Check for duplicate before creating
         duplicate_check = TeacherService.check_duplicate_user(data, skid)

@@ -70,6 +70,17 @@ def login_required(allowed_roles=None, permission=None, self_service=False, own_
                 if not decide(user, user_role, allowed_roles, permissions, own_roles):
                     return jsonify({'message': 'Insufficient permissions'}), 403
 
+                # What the Super Admin switched on for the institution (app/utils/features.py)
+                if user.role != UserRole.SUPER_ADMIN and user.skid:
+                    from app.utils import features
+                    if not features.login_enabled(user.skid, user_role):
+                        return jsonify({'message': 'Sign-in is switched off for your role at this institution',
+                                        'code': 'LOGIN_DISABLED'}), 403
+                    needed = features.feature_for_path(request.path)
+                    if needed and not features.feature_enabled(user.skid, needed):
+                        return jsonify({'message': f'{features.feature_label(needed)} is not switched on for this institution',
+                                        'code': 'FEATURE_DISABLED', 'feature': needed}), 403
+
                 # Tenant isolation: non-super-admins may only touch their own institution's data.
                 if user.role != UserRole.SUPER_ADMIN:
                     target_skid = _requested_skid(kwargs)

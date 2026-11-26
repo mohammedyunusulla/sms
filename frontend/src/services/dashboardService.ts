@@ -3,6 +3,7 @@
  * API calls for institution admin / principal dashboard
  */
 
+import { featureOn } from '../config/features';
 import { getApiClient } from './api/client';
 import { API_ENDPOINTS } from './api/config';
 
@@ -254,6 +255,7 @@ const dashboardService = {
         userRole: string,
         institutionUserId: number
     ): Promise<AnnouncementItem[]> => {
+        if (!featureOn('announcements')) return [];
         const client = getApiClient();
         const response: any = await client.get(
             API_ENDPOINTS.ANNOUNCEMENTS.LIST(skid),
@@ -395,6 +397,7 @@ const dashboardService = {
      * Get student's timetable for a specific day
      */
     getStudentDayTimetable: async (skid: string, studentId: number, date: string): Promise<StudentTimetablePeriod[]> => {
+        if (!featureOn('timetable')) return [];
         const client = getApiClient();
         const response: any = await client.get(
             API_ENDPOINTS.DASHBOARD.STUDENT_DAY_TIMETABLE(skid, studentId, date)
