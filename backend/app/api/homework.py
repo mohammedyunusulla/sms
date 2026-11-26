@@ -128,22 +128,14 @@ def delete_homework(homework_id: int):
 @login_required(STUDENT_ROLES, self_service=True)
 @json_errors
 def start_session():
-    """JSON {homework_id}. The questions are returned with the session (hidden until the student starts). Older app versions may still send a start_photo: it is ignored."""
-    if request.mimetype == "multipart/form-data":
-        homework_id = _int_or_none(request.form.get("homework_id"))
-        photos, error = HomeworkService.read_images(request.files.getlist("start_photo"), max_count=1)
-        if error:
-            return _error(error, 422)
-    else:  # resuming an open session needs no photo
-        homework_id = _int_or_none((request.get_json(silent=True) or {}).get("homework_id"))
-        photos = []
+    """JSON {homework_id}. The questions are returned with the session (hidden until the student starts)."""
+    homework_id = _int_or_none((request.get_json(silent=True) or {}).get("homework_id"))
     if not homework_id:
         return _error("homework_id is required", 422)
     body, status = HomeworkService.start_session(
         request.current_user.skid,
         request.current_user.institution_user_id,
         homework_id,
-        photos[0] if photos else None,
     )
     return jsonify(body), status
 
@@ -199,7 +191,7 @@ def hint(session_id: int):
 @login_required(STUDENT_ROLES, self_service=True)
 @json_errors
 def submit_session(session_id: int):
-    """Multipart: files = the finished pages; the page the homework was started on (QR) must be one of them."""
+    """Multipart: files = photos of the finished pages."""
     images, error = HomeworkService.read_images(request.files.getlist("files"), max_count=MAX_SUBMISSION_PAGES)
     if error:
         return _error(error, 422)
@@ -212,12 +204,12 @@ def submit_session(session_id: int):
     return jsonify(body), status
 
 
-@homework_bp.route("/sessions/<int:session_id>/photos/<kind>/<int:index>", methods=["GET"])
+@homework_bp.route("/sessions/<int:session_id>/pages/<int:index>", methods=["GET"])
 @login_required(ALL_HOMEWORK_ROLES, permission='manage_assignments', own_roles=('STUDENT',))
 @json_errors
-def session_photo(session_id: int, kind: str, index: int):
-    """A session's start photo (kind=start) or finished page (kind=page) - for its student and the teachers."""
-    path, mime, error = HomeworkService.session_photo(request.current_user.skid, session_id, kind, index, request.current_user)
+def session_page(session_id: int, index: int):
+    """A submitted page - for its student and the teachers."""
+    path, mime, error = HomeworkService.session_page(request.current_user.skid, session_id, index, request.current_user)
     if error:
         body, status = error
         return jsonify(body), status

@@ -204,7 +204,7 @@ export const API_ENDPOINTS = {
         TOGGLE_PAUSE: (sessionId: number) => `/homework/sessions/${sessionId}/toggle-pause`,
         ASK_HINT: (sessionId: number) => `/homework/sessions/${sessionId}/hint`,
         SUBMIT: (sessionId: number) => `/homework/sessions/${sessionId}/submit`,
-        SESSION_PHOTO: (sessionId: number, kind: 'start' | 'page', index: number) => `/homework/sessions/${sessionId}/photos/${kind}/${index}`,
+        SESSION_PAGE: (sessionId: number, index: number) => `/homework/sessions/${sessionId}/pages/${index}`,
         ANALYTICS: (homeworkId: number) => `/homework/analytics/${homeworkId}`,
     },
 } as const;

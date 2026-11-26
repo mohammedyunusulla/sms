@@ -6,7 +6,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { Badge, Button, ConfirmDialog, DataTable, FormField, FormInput, FormSelect, FormTextarea, LoadingSpinner, Modal, PageHeader } from '../../../components';
+import { Button, ConfirmDialog, DataTable, FormField, FormInput, FormSelect, FormTextarea, LoadingSpinner, Modal, PageHeader } from '../../../components';
 import type { IColumn } from '../../../types';
 import { homeworkApi } from '../api/homeworkApi';
 import PhotoPicker from '../components/PhotoPicker';
@@ -34,18 +34,15 @@ const efficiencyBadge = (score: number | null | undefined) => {
   return 'Needs Review';
 };
 
-// Checks on a submission: finished unusually fast, same photo as another student, and (older homework
-// started with a QR sticker) the page checks
+// Checks on a submission: finished unusually fast, or the same photo as another student
 const pageCheck = (integrity?: HomeworkIntegrity) => {
   if (!integrity) return { text: '-', tone: 'text-gray-500' };
   const problems = [
     integrity.fast_finish && (integrity.fast_finish_note || 'finished unusually fast'),
     integrity.same_photo_with?.length && `same photo as ${integrity.same_photo_with.join(', ')}`,
-    integrity.page_blank_at_start === false && 'page not blank at start',
-    integrity.same_page_as_start === false && 'review suggested (visual mismatch)',
   ].filter(Boolean);
   if (problems.length) return { text: problems.join('; '), tone: 'text-amber-700 dark:text-amber-400' };
-  return integrity.qr_matched ? { text: 'Same QR page', tone: 'text-emerald-700 dark:text-emerald-400' } : { text: 'OK', tone: 'text-emerald-700 dark:text-emerald-400' };
+  return { text: 'OK', tone: 'text-emerald-700 dark:text-emerald-400' };
 };
 
 export default function TeacherHomeworkPage() {
@@ -290,12 +287,8 @@ export default function TeacherHomeworkPage() {
     { key: 'sl_no', label: '#', className: '!text-center whitespace-nowrap !px-2', width: 40, render: (_v, _row, index) => index + 1 },
     { key: 'student_name', label: 'Student', className: 'whitespace-nowrap', render: (_v, row) => row.student_name || `Student ${row.student_id}` },
     {
-      key: 'status', className: '!text-center whitespace-nowrap', label: 'Status', render: (_v, row) => (
-        <span className="whitespace-nowrap">
-          {row.status === 'graded' || row.status === 'submitted' ? 'Done' : row.status === 'paused' ? 'Paused' : 'In progress'}
-          {row.is_late && <Badge variant="warning" size="sm" className="ml-1">Late</Badge>}
-        </span>
-      ),
+      key: 'status', className: '!text-center whitespace-nowrap', label: 'Status',
+      render: (_v, row) => (row.status === 'graded' || row.status === 'submitted' ? 'Done' : row.status === 'paused' ? 'Paused' : 'In progress'),
     },
     { key: 'active_duration_seconds', className: '!text-center whitespace-nowrap', label: 'Active Time', render: (_v, row) => `${Math.round(row.active_duration_seconds / 60)} min` },
     { key: 'hints_used_count', className: '!text-center whitespace-nowrap', label: 'Hints', render: (_v, row) => String(row.hints_used_count) },
@@ -305,11 +298,11 @@ export default function TeacherHomeworkPage() {
     {
       key: 'checks', className: '!text-center whitespace-nowrap', label: 'Checks', render: (_v, row) => {
         const c = pageCheck(row.integrity);
-        return <span className={c.tone} title={row.integrity?.notes || ''}>{c.text}</span>;
+        return <span className={c.tone}>{c.text}</span>;
       },
     },
     {
-      key: 'photos', className: '!text-center whitespace-nowrap', label: 'Photos', render: (_v, row) => ((row.has_start_photo || (row.page_count ?? 0) > 0)
+      key: 'photos', className: '!text-center whitespace-nowrap', label: 'Photos', render: (_v, row) => ((row.page_count ?? 0) > 0
         ? <Button size="sm" variant="secondary" onClick={() => setPhotosFor(row.session_id)}>View</Button> : '-'),
     },
   ];
@@ -507,10 +500,7 @@ export default function TeacherHomeworkPage() {
       <Modal isOpen={!!photoRow} onClose={() => setPhotosFor(null)} size="lg"
         title={photoRow ? `${photoRow.student_name || `Student ${photoRow.student_id}`}: photos` : ''}>
         {photoRow && (
-          <div className="space-y-3">
-            <SessionPhotos sessionId={photoRow.session_id} hasStartPhoto={!!photoRow.has_start_photo} pageCount={photoRow.page_count ?? 0} />
-            {photoRow.integrity?.notes && <p className="text-xs text-gray-600 dark:text-gray-300">AI page check: {photoRow.integrity.notes}</p>}
-          </div>
+          <SessionPhotos sessionId={photoRow.session_id} pageCount={photoRow.page_count ?? 0} />
         )}
       </Modal>
 

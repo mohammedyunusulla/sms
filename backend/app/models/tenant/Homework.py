@@ -4,18 +4,6 @@ from sqlalchemy.orm import relationship
 from app.models.base import BaseModelTenant, BaseModelTenantMixin
 
 
-class StudentQRSticker(BaseModelTenant, BaseModelTenantMixin):
-    __tablename__ = "student_qr_stickers"
-
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    student_id = Column(Integer, ForeignKey("institution_users.id"), nullable=False, unique=True, index=True)
-    qr_code_value = Column(String(120), nullable=False, unique=True, index=True)
-    is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=func.current_timestamp())
-
-    student = relationship("InstitutionUsers")
-
-
 class Homework(BaseModelTenant, BaseModelTenantMixin):
     """One homework of the Homework AI module (not the Assignments feature)."""
     __tablename__ = "homeworks"
@@ -30,7 +18,6 @@ class Homework(BaseModelTenant, BaseModelTenantMixin):
     # Photos of the homework (e.g. a photo of the board) - stored under HOMEWORK_UPLOAD_DIR
     instruction_image_paths = Column(JSON, default=list, nullable=True)
     expected_time_minutes = Column(Integer, default=15, nullable=False)
-    due_date = Column(DateTime, nullable=True)
     # the day the homework is for (students see it that day; afterwards it's in Past Homeworks, view only)
     homework_date = Column(Date, nullable=True, index=True)
     created_by = Column(Integer, nullable=False, index=True)
@@ -57,12 +44,8 @@ class StudentHomeworkSession(BaseModelTenant, BaseModelTenantMixin):
     accuracy_score = Column(Float, nullable=True)
     efficiency_score = Column(Float, nullable=True)
     ai_feedback_json = Column(JSON, default=dict, nullable=False)
-    # The notebook page: the QR sticker read from the start photo, and that photo (page blank + QR).
-    # At submit the same QR must be on the uploaded pages. The same QR can be reused after the
-    # previous session is completed; only active sessions lock the QR.
-    page_qr_code = Column(String(255), nullable=True, index=True)
-    start_image_path = Column(String(500), nullable=True)
-    # Page checks: qr_matched, page_blank_at_start, same_page_as_start, notes, flagged
+    # Checks on the submission: page_hashes (fingerprints of the submitted pages, for the
+    # teacher's "same photo as another student" check)
     integrity_json = Column(JSON, default=dict, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=func.current_timestamp())

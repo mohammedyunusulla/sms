@@ -11,7 +11,6 @@ export interface Homework {
   questions_hidden?: boolean;
   reference_answer_key?: string | null;
   expected_time_minutes: number;
-  due_date?: string | null;
   /** the day the homework is for (YYYY-MM-DD) */
   homework_date?: string | null;
   /** before today: view only */
@@ -42,8 +41,6 @@ export interface HomeworkSession {
   accuracy_score?: number | null;
   efficiency_score?: number | null;
   ai_feedback_json?: Record<string, unknown>;
-  has_start_photo?: boolean;
-  page_qr_code?: string | null;
   integrity?: HomeworkIntegrity;
   /** the homework with its questions, returned once the student has started */
   homework?: Homework;
@@ -75,19 +72,13 @@ export interface HomeworkAnalytics {
     submitted_at?: string | null;
     ai_feedback_json?: Record<string, unknown>;
     student_name?: string | null;
-    has_start_photo?: boolean;
     page_count?: number;
     integrity?: HomeworkIntegrity;
-    is_late?: boolean; // handed in after the due date
   }>;
 }
 
-/** Page checks for a submission: the QR is matched by the server, the rest is the AI's view of the photos. */
+/** Checks on a submission, worked out when the teacher opens Analytics. */
 export interface HomeworkIntegrity {
-  qr_matched?: boolean | null;
-  page_blank_at_start?: boolean | null;
-  same_page_as_start?: boolean | null;
-  notes?: string;
   flagged?: boolean;
   /** finished far quicker than the class usually takes */
   fast_finish?: boolean;

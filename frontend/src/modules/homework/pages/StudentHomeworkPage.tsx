@@ -290,7 +290,7 @@ export default function StudentHomeworkPage() {
               <div className="border-t border-gray-200 pt-4 dark:border-gray-700">
                 <h4 className="mb-2 text-base font-semibold text-gray-900 dark:text-white">Finish & upload</h4>
                 <p className="mb-2 text-sm text-gray-600 dark:text-gray-300">Photograph your <strong>finished work</strong>. If it's on more than one page, add a photo of each page.</p>
-                <PhotoPicker photos={submissionFiles} onChange={setSubmissionFiles} max={10} label="Finished pages" disabled={isBusy} preserveOriginal />
+                <PhotoPicker photos={submissionFiles} onChange={setSubmissionFiles} max={10} label="Finished pages" disabled={isBusy} />
                 <Button variant="success" className="mt-4" onClick={submit} isLoading={isBusy} loadingText="Grading...">Submit for AI Grading</Button>
               </div>
             </div>
@@ -316,8 +316,7 @@ export default function StudentHomeworkPage() {
                   )}
                 </div>
               )}
-              <SessionPhotos sessionId={session.id} hasStartPhoto={!!session.has_start_photo}
-                pageCount={Array.isArray(session.submission_image_paths) ? session.submission_image_paths.length : 0} />
+              <SessionPhotos sessionId={session.id} pageCount={Array.isArray(session.submission_image_paths) ? session.submission_image_paths.length : 0} />
             </div>
           )}
         </div>

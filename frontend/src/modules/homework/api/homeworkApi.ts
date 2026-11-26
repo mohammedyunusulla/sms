@@ -44,11 +44,10 @@ export const homeworkApi = {
     return response.data;
   },
 
-  /** One homework photo as a Blob (the endpoint needs the login token, so <img src> can't load it directly). */
-  /** A session's photo: the blank start page (kind 'start', index 0) or a finished page (kind 'page'). */
-  async getSessionPhoto(sessionId: number, kind: 'start' | 'page', index: number): Promise<Blob> {
+  /** A submitted page as a Blob (the endpoint needs the login token, so <img src> can't load it directly). */
+  async getSessionPage(sessionId: number, index: number): Promise<Blob> {
     const client = getApiClient();
-    return (await client.get(API_ENDPOINTS.HOMEWORK.SESSION_PHOTO(sessionId, kind, index), { responseType: 'blob' })) as unknown as Blob;
+    return (await client.get(API_ENDPOINTS.HOMEWORK.SESSION_PAGE(sessionId, index), { responseType: 'blob' })) as unknown as Blob;
   },
 
   async getHomeworkPhoto(homeworkId: number, index: number): Promise<Blob> {
@@ -86,18 +85,9 @@ export const homeworkApi = {
   },
 
   /** Start or resume a homework. The questions come back with the session (hidden until started). */
-  async startSession(homeworkId: number, startPhoto?: File): Promise<HomeworkSession> {
+  async startSession(homeworkId: number): Promise<HomeworkSession> {
     const client = getApiClient();
-    if (!startPhoto) {
-      const resumed = await client.post<ApiEnvelope<HomeworkSession>>(API_ENDPOINTS.HOMEWORK.START_SESSION, { homework_id: homeworkId });
-      return resumed.data;
-    }
-    const form = new FormData();
-    form.append('homework_id', String(homeworkId));
-    form.append('start_photo', startPhoto);
-    const response = await client.post<ApiEnvelope<HomeworkSession>>(API_ENDPOINTS.HOMEWORK.START_SESSION, form, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const response = await client.post<ApiEnvelope<HomeworkSession>>(API_ENDPOINTS.HOMEWORK.START_SESSION, { homework_id: homeworkId });
     return response.data;
   },
 

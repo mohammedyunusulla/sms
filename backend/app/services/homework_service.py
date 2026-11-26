@@ -13,7 +13,6 @@ from app.models.tenant.Class import Class
 from app.models.tenant.Sections import Section
 from app.services.homework_gemini_service import HomeworkGeminiService
 from app.utils.db_manager import switch_to_institution_db
-from app.utils.qr_reader import QrReadError, read_qr_codes
 from app.utils.teaching_scope import student_section_id, teacher_section_ids
 
 # Upload limits (notebook pages, hint photos)
@@ -105,13 +104,6 @@ class HomeworkService:
     STAFF_UNRESTRICTED = ("SUPER_ADMIN", "INSTITUTION_ADMIN", "PRINCIPAL")
 
     @staticmethod
-    def _is_late(homework, session) -> bool:
-        """Submitted after the due date. Due dates are entered in local (India) time, submissions are stored in UTC."""
-        if not homework.due_date or not session.submitted_at:
-            return False
-        return session.submitted_at + timedelta(hours=5, minutes=30) > homework.due_date
-
-    @staticmethod
     def _local_today() -> date:
         """Today in India (the server's clock is UTC: before 5:30 am IST it would still be yesterday)."""
         return (datetime.now(timezone.utc) + timedelta(hours=5, minutes=30)).date()
@@ -179,8 +171,6 @@ class HomeworkService:
             "accuracy_score": session.accuracy_score,
             "efficiency_score": session.efficiency_score,
             "ai_feedback_json": session.ai_feedback_json or {},
-            "has_start_photo": bool(session.start_image_path),
-            "page_qr_code": session.page_qr_code,
             "integrity": session.integrity_json or {},
         }
 
@@ -199,14 +189,13 @@ class HomeworkService:
             "title": homework.title,
             "description": homework.description,
             "expected_time_minutes": homework.expected_time_minutes,
-            "due_date": homework.due_date.isoformat() if homework.due_date else None,
             "homework_date": homework.homework_date.isoformat() if homework.homework_date else None,
             # photos are fetched one by one from /homework/items/<id>/photos/<index>
             "photo_count": len(homework.instruction_image_paths or []),
             "created_by": homework.created_by,
             "created_at": homework.created_at.isoformat() if homework.created_at else None,
             "current_session_status": session_status,
-            # students see only the title, subject, time and due date until they press Start
+            # students see only the title, subject, time and date until they press Start
             "questions_hidden": hide_questions,
         }
         if hide_questions:
@@ -224,15 +213,11 @@ class HomeworkService:
         from sqlalchemy import text as sql_text
         for statement in (
             "ALTER TABLE homeworks ADD COLUMN IF NOT EXISTS instruction_image_paths JSON DEFAULT '[]'",
-            # the notebook page (QR sticker) a session was started on
-            "ALTER TABLE student_homework_sessions ADD COLUMN IF NOT EXISTS page_qr_code VARCHAR(255)",
-            "ALTER TABLE student_homework_sessions ADD COLUMN IF NOT EXISTS start_image_path VARCHAR(500)",
             "ALTER TABLE student_homework_sessions ADD COLUMN IF NOT EXISTS integrity_json JSON DEFAULT '{}'",
             # homework is per day: existing homework gets the day it was created
             "ALTER TABLE homeworks ADD COLUMN IF NOT EXISTS homework_date DATE",
             "UPDATE homeworks SET homework_date = created_at::date WHERE homework_date IS NULL",
             "CREATE INDEX IF NOT EXISTS ix_homeworks_homework_date ON homeworks (homework_date)",
-            "CREATE INDEX IF NOT EXISTS ix_student_homework_sessions_page_qr_code ON student_homework_sessions (page_qr_code)",
         ):
             tenant_session.execute(sql_text(statement))
 
@@ -291,7 +276,6 @@ class HomeworkService:
             "description": text["description"],
             "reference_answer_key": (str(payload.get("reference_answer_key") or "").strip() or None),
             "expected_time_minutes": minutes,
-            "due_date": None,
             "homework_date": homework_date,
         }, None
 
@@ -471,10 +455,10 @@ class HomeworkService:
 
     # ------------------------------------------------------------------ student sessions
     @classmethod
-    def start_session(cls, skid: str, student_user_id: int, homework_id: int, start_image: Optional[Tuple[bytes, str]]):
+    def start_session(cls, skid: str, student_user_id: int, homework_id: int):
         """
         Start (or resume) a homework. Students only see the questions once they start, so the timer measures the
-        real work: no page photo or QR sticker is needed (start_image is ignored; older app versions still send one).
+        real work: no photo is needed to start.
         A homework can be started once; opening it again resumes the same session.
         """
         with switch_to_institution_db(skid) as tenant_session:
@@ -649,23 +633,6 @@ class HomeworkService:
             if not images:
                 return cls._error("At least one image is required", 422)
 
-            # The finished pages must include the page the homework was started on (same QR sticker).
-            # Sessions started before page QRs existed have none and skip this check.
-            qr_matched = None
-            if session.page_qr_code:
-                found = set()
-                for raw, _mime in images:
-                    try:
-                        found.update(read_qr_codes(raw))
-                    except QrReadError:
-                        continue
-                if session.page_qr_code not in found:
-                    if found:
-                        return cls._error("This isn't the page you started on: the QR sticker in your photos is different. Upload the page you photographed at the start.", 403)
-                    return cls._error("Couldn't find the page's QR sticker in your photos. Include a clear photo of the page you started on, with the whole sticker visible.", 403)
-                qr_matched = True
-            start_image = load_images([session.start_image_path]) if session.start_image_path else []
-
             # Work out the final active time without touching the session yet: if grading fails,
             # nothing is saved (this used to add the time again on every failed retry).
             now = cls._utc_now()
@@ -686,24 +653,13 @@ class HomeworkService:
                     active_duration_seconds=active_seconds,
                     hints_used_count=session.hints_used_count,
                     instruction_images=load_images(homework.instruction_image_paths),
-                    start_image=start_image[0] if start_image else None,
                 )
             except Exception as exc:
                 return cls._error(f"AI grading failed: {exc}", 500)
 
-            # Page checks: the QR is checked above; the AI says whether the page was blank at the start and
-            # whether the finished page is the same page. Those two don't block - they flag it for the teacher.
-            blank_at_start = grading.pop("page_blank_at_start", None) if start_image else None
-            same_page = grading.pop("same_page_as_start", None) if start_image else None
-            notes = grading.pop("page_check_notes", "") if start_image else ""
             integrity = {
                 # fingerprints of the submitted pages, for the teacher's "same photo as another student" check
                 "page_hashes": [h for h in (page_fingerprint(raw) for raw, _m in images) if h],
-                "qr_matched": qr_matched,
-                "page_blank_at_start": blank_at_start,
-                "same_page_as_start": same_page,
-                "notes": notes,
-                "flagged": blank_at_start is False or same_page is False,
             }
 
             # Only now save the pages (no orphaned files when grading fails)
@@ -764,10 +720,10 @@ class HomeworkService:
             return cls._response("Latest session fetched successfully", cls._with_questions(session, homework))
 
     @classmethod
-    def session_photo(cls, skid: str, session_id: int, kind: str, index: int, current_user):
+    def session_page(cls, skid: str, session_id: int, index: int, current_user):
         """
-        A session's photo: kind 'start' (the blank page) or 'page' (finished pages, by index).
-        For the student who owns it, and for staff who may see that section. Returns (path, mime, error).
+        One submitted page of a session, by index. For the student who owns it, and for staff who may see
+        that section. Returns (path, mime, error).
         """
         with switch_to_institution_db(skid) as tenant_session:
             cls._ensure_tables(tenant_session)
@@ -782,13 +738,8 @@ class HomeworkService:
                 allowed = cls._teacher_sections(tenant_session, current_user)
                 if allowed is not None and (not homework or homework.section_id not in allowed):
                     return None, None, cls._error("You can only view homework of sections you teach", 403)
-            if kind == "start":
-                path = session.start_image_path if index == 0 else None
-            elif kind == "page":
-                paths = session.submission_image_paths or []
-                path = paths[index] if 0 <= index < len(paths) else None
-            else:
-                path = None
+            paths = session.submission_image_paths or []
+            path = paths[index] if 0 <= index < len(paths) else None
             if not path:
                 return None, None, cls._error("Photo not found", 404)
             full = Path(path).resolve()
@@ -863,12 +814,9 @@ class HomeworkService:
                             "submitted_at": _utc_iso(s.submitted_at),
                             "ai_feedback_json": s.ai_feedback_json or {},
                             "student_name": names.get(s.student_id),
-                            "has_start_photo": bool(s.start_image_path),
                             "page_count": len(s.submission_image_paths or []),
                             "integrity": {**{k: v for k, v in (s.integrity_json or {}).items() if k != "page_hashes"},
                                           **flags.get(s.id, {})},
-                            # handed in after the due date: accepted, but flagged (owner's choice - QA D15)
-                            "is_late": cls._is_late(homework, s),
                         }
                         for s in sessions
                     ],

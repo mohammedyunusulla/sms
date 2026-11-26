@@ -305,6 +305,11 @@ TENANT_SCHEMA_UPDATES = (
     SYLLABUS_PROGRESS_CARRY_OVER,
     SYLLABUS_PROGRESS_RETIRE_COPIED,
     HOMEWORK_TABLE_RENAME,
+    # Homework AI no longer uses a QR sticker / start photo or a due date
+    "ALTER TABLE IF EXISTS homeworks DROP COLUMN IF EXISTS due_date",
+    "ALTER TABLE IF EXISTS student_homework_sessions DROP COLUMN IF EXISTS page_qr_code",
+    "ALTER TABLE IF EXISTS student_homework_sessions DROP COLUMN IF EXISTS start_image_path",
+    "DROP TABLE IF EXISTS student_qr_stickers",
     # paid / unpaid split of approved staff leave (leave balances)
     "ALTER TABLE IF EXISTS leave_requests ADD COLUMN IF NOT EXISTS paid_days INTEGER",
     "ALTER TABLE IF EXISTS leave_requests ADD COLUMN IF NOT EXISTS unpaid_days INTEGER",
