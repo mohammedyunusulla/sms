@@ -111,11 +111,14 @@ const AppHeader: React.FC = () => {
             </div>
           )}
 
+          {/* Right side on phones: refresh sits next to the three-dots button */}
+          <div className="flex shrink-0 items-center gap-1 lg:hidden">
           {/* Installed app only: it has no browser reload button (phone layout; wide screens below) */}
-          <RefreshButton className="h-10 w-10 lg:hidden" />
+          <RefreshButton className="h-10 w-10" />
 
           <button
             onClick={toggleApplicationMenu}
+            aria-label="More options"
             className="flex items-center justify-center w-10 h-10 text-gray-700 rounded-lg z-99999 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 lg:hidden"
           >
             <svg
@@ -133,6 +136,7 @@ const AppHeader: React.FC = () => {
               />
             </svg>
           </button>
+          </div>
 
           <div className="hidden lg:block">
             <form onSubmit={(e) => e.preventDefault()}>
