@@ -25,10 +25,23 @@ import { useAuthStore } from "../stores/authStore";
 type NavItem = {
     name: string;
     icon: React.ReactNode;
+    section?: string; // heading the item is listed under (SECTION_ORDER); none = top, no heading
     path?: string;
     subItems?: { name: string; path: string; pro?: boolean; new?: boolean }[];
 };
 
+// Sidebar headings, in the order they are shown. A heading only appears for a
+// person when at least one of its items is visible to them.
+const SECTION_ORDER = [
+    "Academics",
+    "Attendance & Leave",
+    "Communication",
+    "Finance & Transport",
+    "Administration",
+];
+
+// Items are shown in this order inside their section. Who sees what is decided
+// by SIDEBAR_PERMISSION_MAP (config/permissions.ts), keyed by `name`.
 const allMenuItems: NavItem[] = [
     // Dashboard (All roles)
     {
@@ -36,184 +49,123 @@ const allMenuItems: NavItem[] = [
         name: "Dashboard",
         path: "/dashboard",
     },
-    // Institution Management (SuperAdmin Only)
+
+    // ---------------- Academics ----------------
+    // Daily items first; set-up items (subjects, exams, classes) last.
+    // AI Homework Tracking (Teacher/Student/Admin)
     {
-        icon: <BoxCubeIcon />,
-        name: "Institution Management",
-        subItems: [
-            { name: "List Institutions", path: "/institutions", pro: false },
-            { name: "Create Institution", path: "/institutions/new", pro: false },
-            { name: "Institution Admins", path: "/institution-admins", pro: false },
-            { name: "System Admins", path: "/system-admins", pro: false },
-        ],
-    },
-    // Announcements (InstitutionAdmin, Principal, Teacher, Student)
-    {
-        icon: <TableIcon />,
-        name: "Announcements",
-        path: "/announcements",
+        icon: <TaskIcon />,
+        name: "Homework AI",
+        section: "Academics",
+        path: "/homework",
     },
     // Timetable (InstitutionAdmin, Principal, Teacher)
     {
         icon: <CalenderIcon />,
         name: "Timetable",
+        section: "Academics",
         path: "/timetable",
     },
     // Timetable – Student (own schedule)
     {
         icon: <CalenderIcon />,
         name: "My Timetable",
+        section: "Academics",
         path: "/timetable/my-timetable",
     },
-    // Attendance – Student (own)
+    // Timetable – Parent (linked child)
     {
         icon: <CalenderIcon />,
-        name: "My Attendance",
-        path: "/attendance/my",
+        name: "My Child's Timetable",
+        section: "Academics",
+        path: "/parent/timetable",
     },
-    // Exam results – Student (own, published exams)
+    // Substitute teacher planner - timetable managers
     {
-        icon: <PieChartIcon />,
-        name: "My Results",
-        path: "/academics/my-results",
+        icon: <CalenderIcon />,
+        name: "Substitutions",
+        section: "Academics",
+        path: "/substitutions",
     },
     // Assignments – Teacher / Admin
     {
         icon: <ListIcon />,
         name: "Assignments",
+        section: "Academics",
         path: "/assignments",
     },
     // Assignments – Student
     {
         icon: <ListIcon />,
         name: "My Assignments",
+        section: "Academics",
         path: "/assignments/my-assignments",
     },
     // Assignments – Parent (linked child)
     {
         icon: <ListIcon />,
         name: "My Child's Assignments",
+        section: "Academics",
         path: "/parent/assignments",
     },
-    // Timetable – Parent (linked child)
+    // Syllabus Management (InstitutionAdmin, Principal, Teacher)
     {
-        icon: <CalenderIcon />,
-        name: "My Child's Timetable",
-        path: "/parent/timetable",
-    },
-    // Fees – Parent (linked child)
-    {
-        icon: <GridIcon />,
-        name: "My Child's Fees",
-        path: "/parent/fees",
+        icon: <PageIcon />,
+        name: "Syllabus Management",
+        section: "Academics",
+        subItems: [
+            { name: "All Syllabi", path: "/syllabus", pro: false },
+            { name: "Analytics", path: "/syllabus/analytics", pro: false },
+            { name: "My Syllabus Progress", path: "/syllabus/my-progress", pro: false },
+        ],
     },
     // Syllabus – Parent (linked child)
     {
         icon: <PageIcon />,
         name: "My Child's Syllabus",
+        section: "Academics",
         path: "/parent/syllabus",
-    },
-    // Attendance – Parent (linked child)
-    {
-        icon: <CalenderIcon />,
-        name: "My Child's Attendance",
-        path: "/parent/attendance",
-    },
-    // Leave - Parent applies for the linked child
-    {
-        icon: <TaskIcon />,
-        name: "My Child's Leave",
-        path: "/leave/my",
-    },
-    // Exam results – Parent (linked child, published exams)
-    {
-        icon: <PieChartIcon />,
-        name: "My Child's Results",
-        path: "/parent/results",
-    },
-    // Exam timetable – Parent (linked child)
-    {
-        icon: <CalenderIcon />,
-        name: "My Child's Exam Timetable",
-        path: "/parent/exam-timetable",
-    },
-    // AI Homework Tracking (Teacher/Student/Admin)
-    {
-        icon: <TaskIcon />,
-        name: "Homework AI",
-        path: "/homework",
-    },
-    // Attendance (InstitutionAdmin, Principal, Teacher)
-    {
-        icon: <ListIcon />,
-        name: "Attendance",
-        subItems: [
-            { name: "Mark Attendance", path: "/attendance/mark", pro: false },
-            { name: "Attendance Report", path: "/attendance/report", pro: false },
-            { name: "Staff Attendance", path: "/attendance/staff", pro: false },
-            { name: "Staff Register", path: "/attendance/staff-register", pro: false },
-        ],
-    },
-    // Substitute teacher planner - timetable managers
-    {
-        icon: <CalenderIcon />,
-        name: "Substitutions",
-        path: "/substitutions",
-    },
-    // Calendar (holidays, weekly offs, exams, leave) - everyone in the institution
-    {
-        icon: <CalenderIcon />,
-        name: "Calendar",
-        path: "/calendar",
-    },
-    // Leave - approvers (class teachers, admins, "Approve leave" tick box)
-    {
-        icon: <TaskIcon />,
-        name: "Leave Requests",
-        path: "/leave/requests",
-    },
-    // Leave - students and staff apply for themselves
-    {
-        icon: <TaskIcon />,
-        name: "My Leave",
-        path: "/leave/my",
-    },
-    // Class Management (InstitutionAdmin, Principal)
-    {
-        icon: <PageIcon />,
-        name: "Class Management",
-        subItems: [
-            { name: "Classes", path: "/classes", pro: false },
-            { name: "Rooms", path: "/rooms", pro: false },
-        ],
-    },
-    // Exam Management (InstitutionAdmin, Principal)
-    {
-        icon: <PieChartIcon />,
-        name: "Exam Management",
-        subItems: [
-            { name: "Exams Type", path: "/exams", pro: false },
-            { name: "Exam Timetable", path: "/exams/timetable", pro: false },
-            { name: "Subject Configuration", path: "/exams/configs", pro: false },
-            { name: "Seating Arrangement", path: "/exams/seating", pro: false },
-        ],
     },
     // My Exam Timetable (Student)
     {
         icon: <PieChartIcon />,
         name: "My Exam Timetable",
+        section: "Academics",
         path: "/exams/my-timetable",
+    },
+    // Exam timetable – Parent (linked child)
+    {
+        icon: <CalenderIcon />,
+        name: "My Child's Exam Timetable",
+        section: "Academics",
+        path: "/parent/exam-timetable",
     },
     // My Invigilator Schedule (Teacher)
     {
         icon: <TaskIcon />,
         name: "My Invigilator Schedule",
+        section: "Academics",
         path: "/exams/invigilator-schedule",
+    },
+    // Exam results – Student (own, published exams)
+    {
+        icon: <PieChartIcon />,
+        name: "My Results",
+        section: "Academics",
+        path: "/academics/my-results",
+    },
+    // Exam results – Parent (linked child, published exams)
+    {
+        icon: <PieChartIcon />,
+        name: "My Child's Results",
+        section: "Academics",
+        path: "/parent/results",
     },
     // Academics Management (InstitutionAdmin, Principal, Teacher)
     {
         icon: <PlugInIcon />,
         name: "Academics Management",
+        section: "Academics",
         subItems: [
             { name: "Subjects", path: "/academics/subjects", pro: false },
             { name: "Assign Subjects", path: "/academics/assign-subjects", pro: false },
@@ -221,49 +173,152 @@ const allMenuItems: NavItem[] = [
             { name: "Class Progress", path: "/academics/progress/class", pro: false },
         ],
     },
-    // Syllabus Management (InstitutionAdmin, Principal, Teacher)
+    // Exam Management (InstitutionAdmin, Principal)
+    {
+        icon: <PieChartIcon />,
+        name: "Exam Management",
+        section: "Academics",
+        subItems: [
+            { name: "Exams Type", path: "/exams", pro: false },
+            { name: "Exam Timetable", path: "/exams/timetable", pro: false },
+            { name: "Subject Configuration", path: "/exams/configs", pro: false },
+            { name: "Seating Arrangement", path: "/exams/seating", pro: false },
+        ],
+    },
+    // Class Management (InstitutionAdmin, Principal)
     {
         icon: <PageIcon />,
-        name: "Syllabus Management",
+        name: "Class Management",
+        section: "Academics",
         subItems: [
-            { name: "All Syllabi", path: "/syllabus", pro: false },
-            { name: "Analytics", path: "/syllabus/analytics", pro: false },
-            { name: "My Syllabus Progress", path: "/syllabus/my-progress", pro: false },
+            { name: "Classes", path: "/classes", pro: false },
+            { name: "Rooms", path: "/rooms", pro: false },
         ],
+    },
+
+    // ---------------- Attendance & Leave ----------------
+    // Attendance (InstitutionAdmin, Principal, Teacher)
+    {
+        icon: <ListIcon />,
+        name: "Attendance",
+        section: "Attendance & Leave",
+        subItems: [
+            { name: "Mark Attendance", path: "/attendance/mark", pro: false },
+            { name: "Attendance Report", path: "/attendance/report", pro: false },
+            { name: "Staff Attendance", path: "/attendance/staff", pro: false },
+            { name: "Staff Register", path: "/attendance/staff-register", pro: false },
+        ],
+    },
+    // Attendance – Student (own)
+    {
+        icon: <CalenderIcon />,
+        name: "My Attendance",
+        section: "Attendance & Leave",
+        path: "/attendance/my",
+    },
+    // Attendance – Parent (linked child)
+    {
+        icon: <CalenderIcon />,
+        name: "My Child's Attendance",
+        section: "Attendance & Leave",
+        path: "/parent/attendance",
+    },
+    // Leave - approvers (class teachers, admins, "Approve leave" tick box)
+    {
+        icon: <TaskIcon />,
+        name: "Leave Requests",
+        section: "Attendance & Leave",
+        path: "/leave/requests",
+    },
+    // Leave - students and staff apply for themselves
+    {
+        icon: <TaskIcon />,
+        name: "My Leave",
+        section: "Attendance & Leave",
+        path: "/leave/my",
+    },
+    // Leave - Parent applies for the linked child
+    {
+        icon: <TaskIcon />,
+        name: "My Child's Leave",
+        section: "Attendance & Leave",
+        path: "/leave/my",
+    },
+    // Calendar (holidays, weekly offs, exams, leave) - everyone in the institution
+    {
+        icon: <CalenderIcon />,
+        name: "Calendar",
+        section: "Attendance & Leave",
+        path: "/calendar",
+    },
+
+    // ---------------- Communication ----------------
+    // Announcements (InstitutionAdmin, Principal, Teacher, Student)
+    {
+        icon: <TableIcon />,
+        name: "Announcements",
+        section: "Communication",
+        path: "/announcements",
+    },
+
+    // ---------------- Finance & Transport ----------------
+    // Finance Management (InstitutionAdmin)
+    {
+        icon: <GridIcon />,
+        name: "Finance Management",
+        section: "Finance & Transport",
+        subItems: [
+            { name: "Fee Collection", path: "/finance/fee-collection", pro: false },
+            { name: "Fee Defaulters", path: "/finance/defaulters", pro: false },
+            { name: "Collection Report", path: "/finance/collection-report", pro: false },
+            { name: "Expenses", path: "/finance/expenses", pro: false },
+            { name: "Salary Payments", path: "/finance/salary-payments", pro: false },
+            { name: "Fee Structure", path: "/finance/fee-structure", pro: false },
+            { name: "Salary Setup", path: "/finance/salary-setup", pro: false },
+        ],
+    },
+    // Fees – Parent (linked child)
+    {
+        icon: <GridIcon />,
+        name: "My Child's Fees",
+        section: "Finance & Transport",
+        path: "/parent/fees",
     },
     // Bus Management (InstitutionAdmin, Principal, Bus Staff)
     {
         icon: <TaskIcon />,
         name: "Bus Management",
+        section: "Finance & Transport",
         subItems: [
             { name: "Scan QR Code", path: "/bus-scan/scan", pro: false },
             { name: "Tracking Report", path: "/bus-scan/report", pro: false },
         ],
     },
-    // Finance Management (InstitutionAdmin)
+
+    // ---------------- Administration ----------------
+    // Institution Management (SuperAdmin Only)
     {
-        icon: <GridIcon />,
-        name: "Finance Management",
+        icon: <BoxCubeIcon />,
+        name: "Institution Management",
+        section: "Administration",
         subItems: [
-            { name: "Fee Structure", path: "/finance/fee-structure", pro: false },
-            { name: "Fee Collection", path: "/finance/fee-collection", pro: false },
-            { name: "Fee Defaulters", path: "/finance/defaulters", pro: false },
-            { name: "Collection Report", path: "/finance/collection-report", pro: false },
-            { name: "Expenses", path: "/finance/expenses", pro: false },
-            { name: "Salary Setup", path: "/finance/salary-setup", pro: false },
-            { name: "Salary Payments", path: "/finance/salary-payments", pro: false },
+            { name: "List Institutions", path: "/institutions", pro: false },
+            { name: "Create Institution", path: "/institutions/new", pro: false },
+            { name: "Institution Admins", path: "/institution-admins", pro: false },
+            { name: "System Admins", path: "/system-admins", pro: false },
         ],
     },
     // User Management (InstitutionAdmin, Principal)
     {
         icon: <UserCircleIcon />,
         name: "User Management",
+        section: "Administration",
         subItems: [
+            { name: "Students", path: "/students", pro: false },
+            { name: "Teachers", path: "/teachers", pro: false },
+            { name: "Parents", path: "/parents", pro: false },
             { name: "Users List", path: "/users", pro: false },
             { name: "Create User", path: "/users/new", pro: false },
-            { name: "Teachers", path: "/teachers", pro: false },
-            { name: "Students", path: "/students", pro: false },
-            { name: "Parents", path: "/parents", pro: false },
             { name: "Roles & Permissions", path: "/roles", pro: false },
         ],
     },
@@ -360,6 +415,9 @@ const AppSidebar: React.FC = () => {
             // All other groups are institution-specific and not relevant to SuperAdmin
             if (isSuperAdmin) return acc;
 
+            // Items meant for certain roles only (permissions are still checked below)
+            if (sidebarConfig.onlyRoles && !(userRole && sidebarConfig.onlyRoles.includes(userRole))) return acc;
+
             // Full-access roles (INSTITUTION_ADMIN) see everything, except excluded paths
             if (isFullAccess) {
                 const excluded = sidebarConfig.excludeFromFullAccess;
@@ -385,7 +443,8 @@ const AppSidebar: React.FC = () => {
             if (!nav.subItems) {
                 if (isPathHiddenForRole(userRole, nav.path || '')) return acc;
                 const excludePerm = sidebarConfig.excludeIfHasPermission?.[nav.path || ''];
-                if (excludePerm && hasPermission(excludePerm)) return acc;
+                const keepPerm = sidebarConfig.keepIfHasPermission?.[nav.path || ''];
+                if (excludePerm && hasPermission(excludePerm) && !(keepPerm && hasPermission(keepPerm))) return acc;
                 acc.push(nav);
                 return acc;
             }
@@ -394,7 +453,8 @@ const AppSidebar: React.FC = () => {
             const visibleSubItems = nav.subItems.filter((sub) => {
                 if (isPathHiddenForRole(userRole, sub.path)) return false;
                 const excludePerm = sidebarConfig.excludeIfHasPermission?.[sub.path];
-                if (excludePerm && hasPermission(excludePerm)) return false;
+                const keepPerm = sidebarConfig.keepIfHasPermission?.[sub.path];
+                if (excludePerm && hasPermission(excludePerm) && !(keepPerm && hasPermission(keepPerm))) return false;
 
                 const requiredPerm = sidebarConfig.itemPermissions[sub.path];
                 if (!requiredPerm) return true;
@@ -419,7 +479,16 @@ const AppSidebar: React.FC = () => {
         }, []);
     }, [isFullAccess, isSuperAdmin, hasPermission, hasAnyPermission, userRole, features]);
 
-    const renderMenuItems = (items: NavItem[], _menuType: "main" | "others") => (
+    // Visible items grouped under their headings (items with no section come first, no heading)
+    const menuSections = useMemo(() => {
+        const groups = [undefined, ...SECTION_ORDER].map((title) => ({
+            title,
+            items: filteredMenuItems.filter((nav) => nav.section === title),
+        }));
+        return groups.filter((group) => group.items.length > 0);
+    }, [filteredMenuItems]);
+
+    const renderMenuItems = (items: NavItem[]) => (
         <ul className="flex flex-col gap-4">
             {items.map((nav) => (
                 <li key={nav.name}>
@@ -578,8 +647,25 @@ const AppSidebar: React.FC = () => {
                 </Link>
             </div>
             <div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
-                <nav className="mb-6">
-                    {renderMenuItems(filteredMenuItems, "main")}
+                <nav className="mb-6 flex flex-col gap-6">
+                    {menuSections.map((group) => (
+                        <div key={group.title ?? "top"}>
+                            {group.title &&
+                                (isExpanded || isHovered || isMobileOpen ? (
+                                    <h2 className="mb-3 px-3 text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                                        {group.title}
+                                    </h2>
+                                ) : (
+                                    // Icons-only sidebar: a line marks where a section starts
+                                    <div
+                                        className="mb-4 border-t border-gray-200 dark:border-gray-800"
+                                        role="separator"
+                                        aria-label={group.title}
+                                    />
+                                ))}
+                            {renderMenuItems(group.items)}
+                        </div>
+                    ))}
                 </nav>
                 {/* {isExpanded || isHovered || isMobileOpen ? <SidebarWidget /> : null} */}
             </div>

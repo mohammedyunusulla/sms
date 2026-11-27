@@ -123,7 +123,7 @@ const ROLES: Role[] = [
     ],
     previewTitle: "Up next",
     rows: [
-      { icon: SparklesIcon, title: "Homework · Geometry", meta: "Due tomorrow", badge: "AI tutor", tone: "purple" },
+      { icon: SparklesIcon, title: "Homework · Geometry", meta: "Today's homework", badge: "AI tutor", tone: "purple" },
       { icon: CalendarIcon, title: "Next period", meta: "Science lab · 10:30", badge: "Room 4", tone: "brand" },
       { icon: StarIcon, title: "Homework feedback", meta: "Geometry · graded", badge: "92%", tone: "warning" },
     ],

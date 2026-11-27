@@ -264,8 +264,13 @@ export interface SidebarGroupPermissionConfig {
   /** Hide a path if the user HAS a given permission (inverse check).
    *  Use case: hide "My Assignments" from users who have manage_assignments. */
   excludeIfHasPermission?: Record<string, Permission>;
+  /** ...unless the user also has this permission (e.g. "Timetable" stays for whoever can edit timetables) */
+  keepIfHasPermission?: Record<string, Permission>;
   /** Shown to exactly these roles, without a permission (e.g. a student's own attendance) */
   roles?: string[];
+  /** Only for these roles, and the permissions are still checked (e.g. "My Child's ..." items are for
+   *  parents; a Principal has every tick box but no linked child) */
+  onlyRoles?: string[];
 }
 
 export const SIDEBAR_PERMISSION_MAP: Record<string, SidebarGroupPermissionConfig> = {
@@ -324,8 +329,12 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, SidebarGroupPermissionConfig
     itemPermissions: {
       '/timetable': Permission.VIEW_TIMETABLE,
     },
+    // teachers / students get "My Timetable" instead; whoever can edit timetables keeps the full page
     excludeIfHasPermission: {
       '/timetable': Permission.VIEW_MY_TIMETABLE,
+    },
+    keepIfHasPermission: {
+      '/timetable': Permission.MANAGE_TIMETABLE,
     },
   },
   'Leave Requests': {
@@ -356,6 +365,7 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, SidebarGroupPermissionConfig
       '/timetable/my-timetable': Permission.VIEW_MY_TIMETABLE,
     },
     excludeFromFullAccess: ['/timetable/my-timetable'],
+    onlyRoles: ['TEACHER', 'STUDENT'], // the page has a teacher view and a student view only
   },
   'Exam Management': {
     groupPermissions: [Permission.MANAGE_EXAMS],
@@ -416,6 +426,7 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, SidebarGroupPermissionConfig
       '/parent/assignments': Permission.VIEW_CHILD_ASSIGNMENTS,
     },
     excludeFromFullAccess: ['/parent/assignments'],
+    onlyRoles: ['PARENT'],
   },
   "My Child's Timetable": {
     groupPermissions: [Permission.VIEW_CHILD_TIMETABLE],
@@ -423,6 +434,7 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, SidebarGroupPermissionConfig
       '/parent/timetable': Permission.VIEW_CHILD_TIMETABLE,
     },
     excludeFromFullAccess: ['/parent/timetable'],
+    onlyRoles: ['PARENT'],
   },
   "My Child's Fees": {
     groupPermissions: [Permission.VIEW_CHILD_FEES],
@@ -430,6 +442,7 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, SidebarGroupPermissionConfig
       '/parent/fees': Permission.VIEW_CHILD_FEES,
     },
     excludeFromFullAccess: ['/parent/fees'],
+    onlyRoles: ['PARENT'],
   },
   "My Child's Syllabus": {
     groupPermissions: [Permission.VIEW_CHILD_SYLLABUS],
@@ -437,6 +450,7 @@ export const SIDEBAR_PERMISSION_MAP: Record<string, SidebarGroupPermissionConfig
       '/parent/syllabus': Permission.VIEW_CHILD_SYLLABUS,
     },
     excludeFromFullAccess: ['/parent/syllabus'],
+    onlyRoles: ['PARENT'],
   },
   'Homework AI': {
     groupPermissions: [Permission.MANAGE_ASSIGNMENTS, Permission.VIEW_ASSIGNMENTS],
