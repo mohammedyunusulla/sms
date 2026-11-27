@@ -51,45 +51,13 @@ const allMenuItems: NavItem[] = [
     },
 
     // ---------------- Academics ----------------
-    // Class Management (InstitutionAdmin, Principal)
+    // Daily items first; set-up items (subjects, exams, classes) last.
+    // AI Homework Tracking (Teacher/Student/Admin)
     {
-        icon: <PageIcon />,
-        name: "Class Management",
+        icon: <TaskIcon />,
+        name: "Homework AI",
         section: "Academics",
-        subItems: [
-            { name: "Classes", path: "/classes", pro: false },
-            { name: "Rooms", path: "/rooms", pro: false },
-        ],
-    },
-    // Academics Management (InstitutionAdmin, Principal, Teacher)
-    {
-        icon: <PlugInIcon />,
-        name: "Academics Management",
-        section: "Academics",
-        subItems: [
-            { name: "Subjects", path: "/academics/subjects", pro: false },
-            { name: "Assign Subjects", path: "/academics/assign-subjects", pro: false },
-            { name: "Marks Entry", path: "/academics/marks/entry", pro: false },
-            { name: "Class Progress", path: "/academics/progress/class", pro: false },
-        ],
-    },
-    // Syllabus Management (InstitutionAdmin, Principal, Teacher)
-    {
-        icon: <PageIcon />,
-        name: "Syllabus Management",
-        section: "Academics",
-        subItems: [
-            { name: "All Syllabi", path: "/syllabus", pro: false },
-            { name: "Analytics", path: "/syllabus/analytics", pro: false },
-            { name: "My Syllabus Progress", path: "/syllabus/my-progress", pro: false },
-        ],
-    },
-    // Syllabus – Parent (linked child)
-    {
-        icon: <PageIcon />,
-        name: "My Child's Syllabus",
-        section: "Academics",
-        path: "/parent/syllabus",
+        path: "/homework",
     },
     // Timetable (InstitutionAdmin, Principal, Teacher)
     {
@@ -140,24 +108,23 @@ const allMenuItems: NavItem[] = [
         section: "Academics",
         path: "/parent/assignments",
     },
-    // AI Homework Tracking (Teacher/Student/Admin)
+    // Syllabus Management (InstitutionAdmin, Principal, Teacher)
     {
-        icon: <TaskIcon />,
-        name: "Homework AI",
-        section: "Academics",
-        path: "/homework",
-    },
-    // Exam Management (InstitutionAdmin, Principal)
-    {
-        icon: <PieChartIcon />,
-        name: "Exam Management",
+        icon: <PageIcon />,
+        name: "Syllabus Management",
         section: "Academics",
         subItems: [
-            { name: "Exams Type", path: "/exams", pro: false },
-            { name: "Exam Timetable", path: "/exams/timetable", pro: false },
-            { name: "Subject Configuration", path: "/exams/configs", pro: false },
-            { name: "Seating Arrangement", path: "/exams/seating", pro: false },
+            { name: "All Syllabi", path: "/syllabus", pro: false },
+            { name: "Analytics", path: "/syllabus/analytics", pro: false },
+            { name: "My Syllabus Progress", path: "/syllabus/my-progress", pro: false },
         ],
+    },
+    // Syllabus – Parent (linked child)
+    {
+        icon: <PageIcon />,
+        name: "My Child's Syllabus",
+        section: "Academics",
+        path: "/parent/syllabus",
     },
     // My Exam Timetable (Student)
     {
@@ -193,6 +160,40 @@ const allMenuItems: NavItem[] = [
         name: "My Child's Results",
         section: "Academics",
         path: "/parent/results",
+    },
+    // Academics Management (InstitutionAdmin, Principal, Teacher)
+    {
+        icon: <PlugInIcon />,
+        name: "Academics Management",
+        section: "Academics",
+        subItems: [
+            { name: "Subjects", path: "/academics/subjects", pro: false },
+            { name: "Assign Subjects", path: "/academics/assign-subjects", pro: false },
+            { name: "Marks Entry", path: "/academics/marks/entry", pro: false },
+            { name: "Class Progress", path: "/academics/progress/class", pro: false },
+        ],
+    },
+    // Exam Management (InstitutionAdmin, Principal)
+    {
+        icon: <PieChartIcon />,
+        name: "Exam Management",
+        section: "Academics",
+        subItems: [
+            { name: "Exams Type", path: "/exams", pro: false },
+            { name: "Exam Timetable", path: "/exams/timetable", pro: false },
+            { name: "Subject Configuration", path: "/exams/configs", pro: false },
+            { name: "Seating Arrangement", path: "/exams/seating", pro: false },
+        ],
+    },
+    // Class Management (InstitutionAdmin, Principal)
+    {
+        icon: <PageIcon />,
+        name: "Class Management",
+        section: "Academics",
+        subItems: [
+            { name: "Classes", path: "/classes", pro: false },
+            { name: "Rooms", path: "/rooms", pro: false },
+        ],
     },
 
     // ---------------- Attendance & Leave ----------------
@@ -267,13 +268,13 @@ const allMenuItems: NavItem[] = [
         name: "Finance Management",
         section: "Finance & Transport",
         subItems: [
-            { name: "Fee Structure", path: "/finance/fee-structure", pro: false },
             { name: "Fee Collection", path: "/finance/fee-collection", pro: false },
             { name: "Fee Defaulters", path: "/finance/defaulters", pro: false },
             { name: "Collection Report", path: "/finance/collection-report", pro: false },
             { name: "Expenses", path: "/finance/expenses", pro: false },
-            { name: "Salary Setup", path: "/finance/salary-setup", pro: false },
             { name: "Salary Payments", path: "/finance/salary-payments", pro: false },
+            { name: "Fee Structure", path: "/finance/fee-structure", pro: false },
+            { name: "Salary Setup", path: "/finance/salary-setup", pro: false },
         ],
     },
     // Fees – Parent (linked child)
@@ -313,11 +314,11 @@ const allMenuItems: NavItem[] = [
         name: "User Management",
         section: "Administration",
         subItems: [
+            { name: "Students", path: "/students", pro: false },
+            { name: "Teachers", path: "/teachers", pro: false },
+            { name: "Parents", path: "/parents", pro: false },
             { name: "Users List", path: "/users", pro: false },
             { name: "Create User", path: "/users/new", pro: false },
-            { name: "Teachers", path: "/teachers", pro: false },
-            { name: "Students", path: "/students", pro: false },
-            { name: "Parents", path: "/parents", pro: false },
             { name: "Roles & Permissions", path: "/roles", pro: false },
         ],
     },
@@ -414,6 +415,9 @@ const AppSidebar: React.FC = () => {
             // All other groups are institution-specific and not relevant to SuperAdmin
             if (isSuperAdmin) return acc;
 
+            // Items meant for certain roles only (permissions are still checked below)
+            if (sidebarConfig.onlyRoles && !(userRole && sidebarConfig.onlyRoles.includes(userRole))) return acc;
+
             // Full-access roles (INSTITUTION_ADMIN) see everything, except excluded paths
             if (isFullAccess) {
                 const excluded = sidebarConfig.excludeFromFullAccess;
@@ -439,7 +443,8 @@ const AppSidebar: React.FC = () => {
             if (!nav.subItems) {
                 if (isPathHiddenForRole(userRole, nav.path || '')) return acc;
                 const excludePerm = sidebarConfig.excludeIfHasPermission?.[nav.path || ''];
-                if (excludePerm && hasPermission(excludePerm)) return acc;
+                const keepPerm = sidebarConfig.keepIfHasPermission?.[nav.path || ''];
+                if (excludePerm && hasPermission(excludePerm) && !(keepPerm && hasPermission(keepPerm))) return acc;
                 acc.push(nav);
                 return acc;
             }
@@ -448,7 +453,8 @@ const AppSidebar: React.FC = () => {
             const visibleSubItems = nav.subItems.filter((sub) => {
                 if (isPathHiddenForRole(userRole, sub.path)) return false;
                 const excludePerm = sidebarConfig.excludeIfHasPermission?.[sub.path];
-                if (excludePerm && hasPermission(excludePerm)) return false;
+                const keepPerm = sidebarConfig.keepIfHasPermission?.[sub.path];
+                if (excludePerm && hasPermission(excludePerm) && !(keepPerm && hasPermission(keepPerm))) return false;
 
                 const requiredPerm = sidebarConfig.itemPermissions[sub.path];
                 if (!requiredPerm) return true;
