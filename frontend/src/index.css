@@ -300,13 +300,25 @@ layer(base);
 }
 
 @layer utilities {
-  /* For Remove Date Icon */
+  /* Date / time fields: keep the browser's calendar and clock button (it opens the picker; the rest of the field is for typing), hide only the spinner */
   input[type="date"]::-webkit-inner-spin-button,
-  input[type="time"]::-webkit-inner-spin-button,
-  input[type="date"]::-webkit-calendar-picker-indicator,
-  input[type="time"]::-webkit-calendar-picker-indicator {
+  input[type="time"]::-webkit-inner-spin-button {
     display: none;
     -webkit-appearance: none;
+  }
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.6;
+  }
+  input[type="date"]:hover::-webkit-calendar-picker-indicator,
+  input[type="time"]:hover::-webkit-calendar-picker-indicator {
+    opacity: 1;
+  }
+  /* dark theme: a light icon and a dark picker */
+  .dark input[type="date"],
+  .dark input[type="time"] {
+    color-scheme: dark;
   }
 }
 
